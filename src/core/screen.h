@@ -1,8 +1,10 @@
 /* core/screen.h — screen update helpers.
  *
  * Owns: the small PPU-writing subroutines the reset and NMI paths share,
- * and the top-score bookkeeping. The VRAM buffer writer itself
- * (UpdateScreen) is pending translation and currently a documented no-op.
+ * the top-score bookkeeping, and the ScreenRoutines task tree with its
+ * palette and colour subroutines. WriteGameText (data/gametext) and the
+ * title screen CHR copy (hw/ppu CPU reads) are pending their own atoms —
+ * the tasks that need them run their control flow and skip the write.
  */
 #ifndef SMBC_CORE_SCREEN_H
 #define SMBC_CORE_SCREEN_H
@@ -46,5 +48,28 @@ void print_status_bar_numbers(CoreState *state, uint8_t nybbles);
  * digits (digits stay 0-9), then erase the modifiers. On the title screen
  * only the erase happens. */
 void digits_math_routine(CoreState *state, uint8_t y);
+
+/* smb.asm: GetPlayerColors — append the player's palette set to VRAM
+ * buffer 1 at its current offset: $3f $10, length 4, the background
+ * colour (from BackgroundColorCtrl when set, else AreaType) followed by
+ * the three player colours, then a terminator. Called from the screen
+ * task tree and the player atom's palette changes. */
+void get_player_colors(struct Smbc *smbc);
+
+/* smb.asm: UpdateNumber — print the status bar values selected by
+ * `nybbles`, then zero-suppress the score's highest digit. */
+void update_number(CoreState *state, uint8_t nybbles);
+
+/* smb.asm: GetSBNybbles — UpdateNumber with the current player's
+ * StatusBarNybbles entry. */
+void get_sb_nybbles(CoreState *state);
+
+/* smb.asm: ScreenRoutines — the screen task tree, jump table order:
+ *   0 InitScreen, 1 SetupIntermediate, 2 WriteTopStatusLine,
+ *   3 WriteBottomStatusLine, 4 DisplayTimeUp, 5/7 ResetSpritesAndScreenTimer,
+ *   6 DisplayIntermediate, 8 AreaParserTaskControl, 9 GetAreaPalette,
+ *   10 GetBackgroundColor, 11 GetAlternatePalette1, 12 DrawTitleScreen,
+ *   13 ClearBuffersDrawIcon, 14 WriteTopScore */
+void screen_routines(struct Smbc *smbc);
 
 #endif /* SMBC_CORE_SCREEN_H */

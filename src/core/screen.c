@@ -4,8 +4,12 @@
 #include "../hw/ppu.h"
 #include "../data/messages.h"
 #include "../data/palettes.h"
+#include "../data/screen.h"
 #include "../data/statusbar.h"
 #include "frame.h"
+#include "memory.h"
+#include "sprites.h"
+#include "title.h"
 
 #include <stddef.h>
 
@@ -250,4 +254,198 @@ void update_top_score(CoreState *state) {
   /* smb.asm: UpdateTopScore — mario's score, then luigi's */
   top_score_check(state, 0x05);
   top_score_check(state, 0x0b);
+}
+
+void get_player_colors(Smbc *smbc) {
+  /* smb.asm: GetPlayerColors */
+  CoreState *st = &smbc->state;
+  uint8_t x = st->ram[SMBC_VRAM_BUFFER1_OFFSET];
+  uint8_t y = 0x00;
+  if (st->ram[SMBC_CURRENT_PLAYER] != 0x00) y = 0x04u; /* luigi's offset */
+  if (st->ram[SMBC_PLAYER_STATUS] == 0x02u) y = 0x08u; /* fiery offset */
+  for (int i = 3; i >= 0; i--) { /* ClrGetLoop */
+    st->ram[SMBC_VRAM_BUFFER1 + 3 + x] = SMBC_PLAYER_COLORS[y];
+    y++;
+    x++;
+  }
+  x = st->ram[SMBC_VRAM_BUFFER1_OFFSET];
+  /* the background colour overwrites the first fetched player colour */
+  y = st->ram[SMBC_BACKGROUND_COLOR_CTRL];
+  if (y == 0x00) y = st->ram[SMBC_AREA_TYPE]; /* SetBGColor */
+  st->ram[SMBC_VRAM_BUFFER1 + 3 + x] = SMBC_BACKGROUND_COLORS[y];
+  st->ram[SMBC_VRAM_BUFFER1 + x] = 0x3fu;     /* sprite palette address */
+  st->ram[SMBC_VRAM_BUFFER1 + 1 + x] = 0x10u;
+  st->ram[SMBC_VRAM_BUFFER1 + 2 + x] = 0x04u; /* length byte */
+  st->ram[SMBC_VRAM_BUFFER1 + 7 + x] = 0x00u; /* null terminator */
+  st->ram[SMBC_VRAM_BUFFER1_OFFSET] = (uint8_t)(x + 7u); /* SetVRAMOffset */
+}
+
+void update_number(CoreState *state, uint8_t nybbles) {
+  /* smb.asm: UpdateNumber */
+  print_status_bar_numbers(state, nybbles);
+  uint8_t y = state->ram[SMBC_VRAM_BUFFER1_OFFSET];
+  /* NoZSup — zero-suppress the score's highest digit */
+  if (state->ram[SMBC_VRAM_BUFFER1 - 6 + y] == 0x00) {
+    state->ram[SMBC_VRAM_BUFFER1 - 6 + y] = 0x24u; /* space tile */
+  }
+}
+
+void get_sb_nybbles(CoreState *state) {
+  /* smb.asm: GetSBNybbles — falls through into UpdateNumber */
+  update_number(state, SMBC_STATUS_BAR_NYBBLES[state->ram[SMBC_CURRENT_PLAYER]]);
+}
+
+/* smb.asm: ResetScreenTimer — the tail of ResetSpritesAndScreenTimer. */
+static void reset_screen_timer(CoreState *st) {
+  st->ram[SMBC_SCREEN_TIMER] = 0x07u;
+  st->ram[SMBC_SCREEN_ROUTINE_TASK]++;
+}
+
+/* smb.asm: OutputInter — the shared tail of DisplayTimeUp and
+ * DisplayIntermediate's PlayerInter path. `text` selects the message. */
+static void output_inter(Smbc *smbc, uint8_t text) {
+  CoreState *st = &smbc->state;
+  (void)text; /* TODO(port): smb.asm: WriteGameText (data/gametext) */
+  reset_screen_timer(st);
+  st->ram[SMBC_DISABLE_SCREEN_FLAG] = 0x00; /* reenable screen output */
+}
+
+void screen_routines(Smbc *smbc) {
+  CoreState *st = &smbc->state;
+  switch (st->ram[SMBC_SCREEN_ROUTINE_TASK]) {
+    case 0: /* smb.asm: InitScreen */
+      move_all_sprites_offscreen(st);
+      initialize_name_tables(smbc);
+      if (st->ram[SMBC_OPER_MODE] != SMBC_MODE_TITLE) {
+        st->ram[SMBC_VRAM_BUFFER_ADDR_CTRL] = 0x03u; /* SetVRAMAddr_A */
+      }
+      st->ram[SMBC_SCREEN_ROUTINE_TASK]++; /* NextSubtask */
+      break;
+    case 1: { /* smb.asm: SetupIntermediate */
+      uint8_t bg = st->ram[SMBC_BACKGROUND_COLOR_CTRL];
+      uint8_t status = st->ram[SMBC_PLAYER_STATUS];
+      st->ram[SMBC_PLAYER_STATUS] = 0x00;      /* not fiery */
+      st->ram[SMBC_BACKGROUND_COLOR_CTRL] = 0x02u; /* the one time it is < 4 */
+      get_player_colors(smbc);
+      st->ram[SMBC_PLAYER_STATUS] = status;
+      st->ram[SMBC_BACKGROUND_COLOR_CTRL] = bg;
+      st->ram[SMBC_SCREEN_ROUTINE_TASK]++;
+      break;
+    }
+    case 2: /* smb.asm: WriteTopStatusLine */
+      /* TODO(port): smb.asm: WriteGameText with the top status bar
+       * (data/gametext) */
+      st->ram[SMBC_SCREEN_ROUTINE_TASK]++;
+      break;
+    case 3: { /* smb.asm: WriteBottomStatusLine */
+      get_sb_nybbles(st);
+      uint8_t x = st->ram[SMBC_VRAM_BUFFER1_OFFSET];
+      st->ram[SMBC_VRAM_BUFFER1 + x] = 0x20u;     /* world-area number */
+      st->ram[SMBC_VRAM_BUFFER1 + 1 + x] = 0x73u;
+      st->ram[SMBC_VRAM_BUFFER1 + 2 + x] = 0x03u; /* length */
+      st->ram[SMBC_VRAM_BUFFER1 + 3 + x] =
+          (uint8_t)(st->ram[SMBC_WORLD_NUMBER] + 1u);
+      st->ram[SMBC_VRAM_BUFFER1 + 4 + x] = 0x28u; /* the dash */
+      st->ram[SMBC_VRAM_BUFFER1 + 5 + x] =
+          (uint8_t)(st->ram[SMBC_LEVEL_NUMBER] + 1u);
+      st->ram[SMBC_VRAM_BUFFER1 + 6 + x] = 0x00u; /* null terminator */
+      st->ram[SMBC_VRAM_BUFFER1_OFFSET] = (uint8_t)(x + 6u);
+      st->ram[SMBC_SCREEN_ROUTINE_TASK]++;
+      break;
+    }
+    case 4: /* smb.asm: DisplayTimeUp */
+      if (st->ram[SMBC_GAME_TIMER_EXPIRED_FLAG] == 0x00) {
+        st->ram[SMBC_SCREEN_ROUTINE_TASK] += 2u; /* NoTimeUp */
+        break;
+      }
+      st->ram[SMBC_GAME_TIMER_EXPIRED_FLAG] = 0x00;
+      output_inter(smbc, 0x02u); /* the time-up screen */
+      break;
+    case 5:
+    case 7: /* smb.asm: ResetSpritesAndScreenTimer */
+      if (st->ram[SMBC_SCREEN_TIMER] != 0x00) break; /* NoReset */
+      move_all_sprites_offscreen(st);
+      reset_screen_timer(st);
+      break;
+    case 6: { /* smb.asm: DisplayIntermediate */
+      uint8_t mode = st->ram[SMBC_OPER_MODE];
+      if (mode == SMBC_MODE_GAME_OVER) {
+        st->ram[SMBC_SCREEN_TIMER] = 0x12u;
+        /* TODO(port): smb.asm: WriteGameText with the game over screen */
+        st->ram[SMBC_OPER_MODE_TASK]++; /* IncModeTask_B */
+        break;
+      }
+      if (mode != SMBC_MODE_TITLE &&
+          st->ram[SMBC_ALT_ENTRANCE_CONTROL] == 0x00 &&
+          (st->ram[SMBC_AREA_TYPE] == 0x03u || /* castle: possibly residual */
+           st->ram[SMBC_DISABLE_INTERMEDIATE] == 0x00)) {
+        /* TODO(port): smb.asm: DrawPlayer_Intermediate (core/player) */
+        output_inter(smbc, 0x01u); /* the lives display */
+        break;
+      }
+      st->ram[SMBC_SCREEN_ROUTINE_TASK] = 0x08u; /* NoInter */
+      break;
+    }
+    case 8: /* smb.asm: AreaParserTaskControl */
+      st->ram[SMBC_DISABLE_SCREEN_FLAG]++; /* turn off screen */
+      do {
+        /* TODO(port): smb.asm: AreaParserTaskHandler (core/areaparser) */
+      } while (st->ram[SMBC_AREA_PARSER_TASK_NUM] != 0x00); /* TaskLoop */
+      st->ram[SMBC_COLUMN_SETS]--;
+      if ((st->ram[SMBC_COLUMN_SETS] & 0x80u) != 0x00) {
+        st->ram[SMBC_SCREEN_ROUTINE_TASK]++; /* no more sets: move on */
+      }
+      st->ram[SMBC_VRAM_BUFFER_ADDR_CTRL] = 0x06u; /* OutputCol */
+      break;
+    case 9: /* smb.asm: GetAreaPalette */
+      st->ram[SMBC_VRAM_BUFFER_ADDR_CTRL] =
+          SMBC_AREA_PALETTE[st->ram[SMBC_AREA_TYPE]]; /* SetVRAMAddr_A */
+      st->ram[SMBC_SCREEN_ROUTINE_TASK]++;
+      break;
+    case 10: { /* smb.asm: GetBackgroundColor — falls into GetPlayerColors */
+      uint8_t ctrl = st->ram[SMBC_BACKGROUND_COLOR_CTRL];
+      /* ctrl is 0 or 4-7 by design; 1-3 read stray bytes in the original */
+      if (ctrl >= 0x04u) {
+        st->ram[SMBC_VRAM_BUFFER_ADDR_CTRL] = SMBC_BG_COLOR_CTRL_ADDR[ctrl - 4u];
+      }
+      st->ram[SMBC_SCREEN_ROUTINE_TASK]++; /* NoBGColor */
+      get_player_colors(smbc);
+      break;
+    }
+    case 11: /* smb.asm: GetAlternatePalette1 */
+      if (st->ram[SMBC_AREA_STYLE] == 0x01u) {
+        st->ram[SMBC_VRAM_BUFFER_ADDR_CTRL] = 0x0bu; /* SetVRAMAddr_B */
+      }
+      st->ram[SMBC_SCREEN_ROUTINE_TASK]++;
+      break;
+    case 12: /* smb.asm: DrawTitleScreen */
+      if (st->ram[SMBC_OPER_MODE] != SMBC_MODE_TITLE) {
+        st->ram[SMBC_OPER_MODE_TASK]++; /* IncModeTask_B */
+        break;
+      }
+      /* TODO(port): the $1ec0 CHR copy through $2007 — 314 bytes into the
+       * $0300 buffer page (hw/ppu CPU reads) */
+      st->ram[SMBC_VRAM_BUFFER_ADDR_CTRL] = 0x05u; /* SetVRAMAddr_B */
+      st->ram[SMBC_SCREEN_ROUTINE_TASK]++;
+      break;
+    case 13: /* smb.asm: ClearBuffersDrawIcon */
+      if (st->ram[SMBC_OPER_MODE] != SMBC_MODE_TITLE) {
+        st->ram[SMBC_OPER_MODE_TASK]++; /* IncModeTask_B */
+        break;
+      }
+      /* clear the buffer pages $0300-$04ff (a holds OperMode, i.e. zero) */
+      for (int i = 0; i < 0x100; i++) { /* TScrClear */
+        st->ram[SMBC_VRAM_BUFFER1 - 1 + i] = 0x00;
+        st->ram[SMBC_VRAM_BUFFER1 - 1 + 0x100 + i] = 0x00;
+      }
+      draw_mushroom_icon(smbc);
+      st->ram[SMBC_SCREEN_ROUTINE_TASK]++;
+      break;
+    case 14: /* smb.asm: WriteTopScore */
+      update_number(st, 0xfau);
+      st->ram[SMBC_OPER_MODE_TASK]++; /* IncModeTask_B */
+      break;
+    default:
+      break;
+  }
 }

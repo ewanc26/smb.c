@@ -2,6 +2,7 @@
 #include "gamemode.h"
 
 #include "frame.h"
+#include "screen.h"
 #include "setup.h"
 #include "state.h"
 
@@ -87,7 +88,7 @@ void game_mode(Smbc *smbc) {
    *   3 GameCoreRoutine */
   switch (smbc->state.ram[SMBC_OPER_MODE_TASK]) {
     case 0: /* TODO(port): smb.asm: InitializeArea (core/area) */ break;
-    case 1: /* TODO(port): smb.asm: ScreenRoutines (core/screen) */ break;
+    case 1: screen_routines(smbc); break;
     case 2: secondary_game_setup(smbc); break;
     case 3: game_core_routine(smbc); break;
     default: break;

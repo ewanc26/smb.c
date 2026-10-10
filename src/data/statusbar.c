@@ -15,3 +15,8 @@ const uint8_t SMBC_STATUS_BAR_OFFSET[SMBC_STATUS_BAR_OFFSET_SIZE] = {
     /* smb.asm: StatusBarOffset */
     0x06u, 0x0cu, 0x12u, 0x18u, 0x1eu, 0x24u,
 };
+
+const uint8_t SMBC_STATUS_BAR_NYBBLES[SMBC_STATUS_BAR_NYBBLES_SIZE] = {
+    /* smb.asm: StatusBarNybbles */
+    0x02u, 0x13u,
+};

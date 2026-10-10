@@ -4,6 +4,7 @@
 #include "../data/music.h"
 #include "area.h"
 #include "frame.h"
+#include "screen.h"
 #include "state.h"
 
 /* smb.asm: SetupGameOver */
@@ -55,7 +56,7 @@ void game_over_mode(Smbc *smbc) {
    *   0 SetupGameOver, 1 ScreenRoutines, 2 RunGameOver */
   switch (smbc->state.ram[SMBC_OPER_MODE_TASK]) {
     case 0: setup_game_over(smbc); break;
-    case 1: /* TODO(port): smb.asm: ScreenRoutines (core/screen) */ break;
+    case 1: screen_routines(smbc); break;
     case 2: run_game_over(smbc); break;
     default: break;
   }

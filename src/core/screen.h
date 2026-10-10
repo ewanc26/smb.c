@@ -1,10 +1,11 @@
 /* core/screen.h — screen update helpers.
  *
  * Owns: the small PPU-writing subroutines the reset and NMI paths share,
- * the top-score bookkeeping, and the ScreenRoutines task tree with its
- * palette and colour subroutines. WriteGameText (data/gametext) and the
- * title screen CHR copy (hw/ppu CPU reads) are pending their own atoms —
- * the tasks that need them run their control flow and skip the write.
+ * the top-score bookkeeping, WriteGameText, and the ScreenRoutines task
+ * tree with its palette and colour subroutines. The title screen CHR
+ * copy (hw/ppu CPU reads), DrawPlayer_Intermediate and the area parser
+ * are pending their own atoms — the tasks that need them run their
+ * control flow and skip the write.
  */
 #ifndef SMBC_CORE_SCREEN_H
 #define SMBC_CORE_SCREEN_H
@@ -63,6 +64,15 @@ void update_number(CoreState *state, uint8_t nybbles);
 /* smb.asm: GetSBNybbles — UpdateNumber with the current player's
  * StatusBarNybbles entry. */
 void get_sb_nybbles(CoreState *state);
+
+/* smb.asm: WriteGameText — copy message number `text` (0 top status bar,
+ * 1 world/lives display, 2 time up, 3 game over, 4 warp zone welcome)
+ * into VRAM buffer 1 from its start. The world/lives display gets the
+ * lives count (a crown tile past nine), world and level numbers patched
+ * in; two-player messages get "LUIGI" over "MARIO" for the right player;
+ * the warp zone gets its world numbers and sets the buffer offset to
+ * $2c. */
+void write_game_text(CoreState *state, uint8_t text);
 
 /* smb.asm: ScreenRoutines — the screen task tree, jump table order:
  *   0 InitScreen, 1 SetupIntermediate, 2 WriteTopStatusLine,

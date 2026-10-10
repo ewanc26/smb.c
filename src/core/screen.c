@@ -2,6 +2,7 @@
 #include "screen.h"
 
 #include "../hw/ppu.h"
+#include "../data/gametext.h"
 #include "../data/messages.h"
 #include "../data/palettes.h"
 #include "../data/screen.h"
@@ -295,6 +296,60 @@ void get_sb_nybbles(CoreState *state) {
   update_number(state, SMBC_STATUS_BAR_NYBBLES[state->ram[SMBC_CURRENT_PLAYER]]);
 }
 
+void write_game_text(CoreState *state, uint8_t text) {
+  /* smb.asm: WriteGameText */
+  uint8_t y = (uint8_t)(text * 2u);
+  if (y >= 0x08u) {
+    y = 0x08u; /* the warp zone */
+  } else if (y >= 0x04u && state->ram[SMBC_NUMBER_OF_PLAYERS] == 0x00) {
+    y++; /* one player: skip the name row */
+  }
+  uint8_t x = SMBC_GAME_TEXT_OFFSETS[y];
+  y = 0x00;
+  for (;;) { /* GameTextLoop */
+    uint8_t a = SMBC_GAME_TEXT[x];
+    if (a == 0xffu) break; /* EndGameText */
+    state->ram[SMBC_VRAM_BUFFER1 + y] = a;
+    x++;
+    y++;
+  }
+  state->ram[SMBC_VRAM_BUFFER1 + y] = 0x00; /* null terminator */
+  if (text >= 0x04u) {
+    /* smb.asm: PrintWarpZoneNumbers — a number in every fourth space */
+    x = (uint8_t)((text - 0x04u) * 4u);
+    for (y = 0x00; y < 0x0cu; y = (uint8_t)(y + 4u)) {
+      state->ram[SMBC_VRAM_BUFFER1 + 27 + y] = SMBC_WARP_ZONE_NUMBERS[x];
+      x++;
+    }
+    state->ram[SMBC_VRAM_BUFFER1_OFFSET] = 0x2cu; /* SetVRAMOffset */
+    return;
+  }
+  if (text == 0x01u) {
+    /* the world/lives display: patch in lives, world and level */
+    uint8_t lives = (uint8_t)(state->ram[SMBC_NUMBEROF_LIVES] + 1u);
+    if (lives >= 10u) { /* PutLives — more than 9: a crown tile */
+      lives = (uint8_t)(lives - 10u);
+      state->ram[SMBC_VRAM_BUFFER1 + 7] = 0x9fu;
+    }
+    state->ram[SMBC_VRAM_BUFFER1 + 8] = lives;
+    state->ram[SMBC_VRAM_BUFFER1 + 19] =
+        (uint8_t)(state->ram[SMBC_WORLD_NUMBER] + 1u);
+    state->ram[SMBC_VRAM_BUFFER1 + 21] =
+        (uint8_t)(state->ram[SMBC_LEVEL_NUMBER] + 1u);
+    return;
+  }
+  /* smb.asm: CheckPlayerName */
+  if (state->ram[SMBC_NUMBER_OF_PLAYERS] == 0x00u) return;
+  uint8_t player = state->ram[SMBC_CURRENT_PLAYER];
+  if (text == 0x02u && state->ram[SMBC_OPER_MODE] != SMBC_MODE_GAME_OVER) {
+    player ^= 0x01u; /* time up names the other player */
+  }
+  if ((player & 0x01u) == 0x00u) return; /* mario: keep the name */
+  for (int i = 4; i >= 0; i--) { /* NameLoop */
+    state->ram[SMBC_VRAM_BUFFER1 + 3 + i] = SMBC_LUIGI_NAME[i];
+  }
+}
+
 /* smb.asm: ResetScreenTimer — the tail of ResetSpritesAndScreenTimer. */
 static void reset_screen_timer(CoreState *st) {
   st->ram[SMBC_SCREEN_TIMER] = 0x07u;
@@ -305,7 +360,7 @@ static void reset_screen_timer(CoreState *st) {
  * DisplayIntermediate's PlayerInter path. `text` selects the message. */
 static void output_inter(Smbc *smbc, uint8_t text) {
   CoreState *st = &smbc->state;
-  (void)text; /* TODO(port): smb.asm: WriteGameText (data/gametext) */
+  write_game_text(st, text);
   reset_screen_timer(st);
   st->ram[SMBC_DISABLE_SCREEN_FLAG] = 0x00; /* reenable screen output */
 }
@@ -333,8 +388,7 @@ void screen_routines(Smbc *smbc) {
       break;
     }
     case 2: /* smb.asm: WriteTopStatusLine */
-      /* TODO(port): smb.asm: WriteGameText with the top status bar
-       * (data/gametext) */
+      write_game_text(st, 0x00u); /* the main status bar */
       st->ram[SMBC_SCREEN_ROUTINE_TASK]++;
       break;
     case 3: { /* smb.asm: WriteBottomStatusLine */
@@ -371,7 +425,7 @@ void screen_routines(Smbc *smbc) {
       uint8_t mode = st->ram[SMBC_OPER_MODE];
       if (mode == SMBC_MODE_GAME_OVER) {
         st->ram[SMBC_SCREEN_TIMER] = 0x12u;
-        /* TODO(port): smb.asm: WriteGameText with the game over screen */
+        write_game_text(st, 0x03u); /* the game over screen */
         st->ram[SMBC_OPER_MODE_TASK]++; /* IncModeTask_B */
         break;
       }

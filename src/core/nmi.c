@@ -74,7 +74,7 @@ void nmi_run(Smbc *smbc) {
   state->ram[SMBC_VRAM_BUFFER_ADDR_CTRL] = 0x00u;
   ppu_write(ppu, 1, state->ram[SMBC_MIRROR_PPU_CTRL2]);
 
-  sound_engine(smbc);           /* smb.asm: SoundEngine (pending) */
+  sound_engine(smbc);           /* smb.asm: SoundEngine */
   read_joypads(smbc);
   pause_routine(smbc);
   update_top_score(state);

@@ -120,3 +120,65 @@ void state_init(CoreState *state);
 /* boot entry offsets, low bytes into the RAM page (smb.asm: constants) */
 #define SMBC_WARM_BOOT_OFFSET 0xd6u /* smb.asm: WarmBootOffset = <$07d6 */
 #define SMBC_COLD_BOOT_OFFSET 0xfeu /* smb.asm: ColdBootOffset = <$07fe */
+
+/* sound engine state (smb.asm: sound engine RAM defines, lines 506-549) */
+#define SMBC_NOTE_LEN_LOOKUP_TBL_OFS 0x00f0u /* smb.asm: NoteLenLookupTblOfs */
+#define SMBC_SQUARE1_SOUND_BUFFER 0x00f1u /* smb.asm: Square1SoundBuffer */
+#define SMBC_SQUARE2_SOUND_BUFFER 0x00f2u /* smb.asm: Square2SoundBuffer */
+#define SMBC_NOISE_SOUND_BUFFER  0x00f3u /* smb.asm: NoiseSoundBuffer */
+#define SMBC_AREA_MUSIC_BUFFER   0x00f4u /* smb.asm: AreaMusicBuffer */
+#define SMBC_MUSIC_DATA_LOW      0x00f5u /* smb.asm: MusicDataLow */
+#define SMBC_MUSIC_DATA_HIGH     0x00f6u /* smb.asm: MusicDataHigh */
+#define SMBC_MUSIC_OFFSET_SQUARE2 0x00f7u /* smb.asm: MusicOffset_Square2 */
+#define SMBC_MUSIC_OFFSET_SQUARE1 0x00f8u /* smb.asm: MusicOffset_Square1 */
+#define SMBC_MUSIC_OFFSET_TRIANGLE 0x00f9u /* smb.asm: MusicOffset_Triangle */
+#define SMBC_EVENT_MUSIC_QUEUE   0x00fcu /* smb.asm: EventMusicQueue */
+#define SMBC_NOISE_SOUND_QUEUE   0x00fdu /* smb.asm: NoiseSoundQueue */
+#define SMBC_SQUARE2_SOUND_QUEUE 0x00feu /* smb.asm: Square2SoundQueue */
+#define SMBC_SQUARE1_SOUND_QUEUE 0x00ffu /* smb.asm: Square1SoundQueue */
+#define SMBC_MUSIC_OFFSET_NOISE  0x07b0u /* smb.asm: MusicOffset_Noise */
+#define SMBC_EVENT_MUSIC_BUFFER  0x07b1u /* smb.asm: EventMusicBuffer */
+#define SMBC_PAUSE_SOUND_BUFFER  0x07b2u /* smb.asm: PauseSoundBuffer */
+#define SMBC_SQU2_NOTE_LEN_BUFFER 0x07b3u /* smb.asm: Squ2_NoteLenBuffer */
+#define SMBC_SQU2_NOTE_LEN_COUNTER 0x07b4u /* smb.asm: Squ2_NoteLenCounter */
+#define SMBC_SQU2_ENVELOPE_DATA_CTRL 0x07b5u /* smb.asm: Squ2_EnvelopeDataCtrl */
+#define SMBC_SQU1_NOTE_LEN_COUNTER 0x07b6u /* smb.asm: Squ1_NoteLenCounter */
+#define SMBC_SQU1_ENVELOPE_DATA_CTRL 0x07b7u /* smb.asm: Squ1_EnvelopeDataCtrl */
+#define SMBC_TRI_NOTE_LEN_BUFFER 0x07b8u /* smb.asm: Tri_NoteLenBuffer */
+#define SMBC_TRI_NOTE_LEN_COUNTER 0x07b9u /* smb.asm: Tri_NoteLenCounter */
+#define SMBC_NOISE_BEAT_LEN_COUNTER 0x07bau /* smb.asm: Noise_BeatLenCounter */
+#define SMBC_SQU1_SFX_LEN_COUNTER 0x07bbu /* smb.asm: Squ1_SfxLenCounter */
+#define SMBC_SQU2_SFX_LEN_COUNTER 0x07bdu /* smb.asm: Squ2_SfxLenCounter */
+#define SMBC_SFX_SECONDARY_COUNTER 0x07beu /* smb.asm: Sfx_SecondaryCounter */
+#define SMBC_NOISE_SFX_LEN_COUNTER 0x07bfu /* smb.asm: Noise_SfxLenCounter */
+#define SMBC_DAC_COUNTER         0x07c0u /* smb.asm: DAC_Counter */
+#define SMBC_NOISE_DATA_LOOPBACK_OFS 0x07c1u /* smb.asm: NoiseDataLoopbackOfs */
+#define SMBC_NOTE_LENGTH_TBL_ADDER 0x07c4u /* smb.asm: NoteLengthTblAdder */
+#define SMBC_AREA_MUSIC_BUFFER_ALT 0x07c5u /* smb.asm: AreaMusicBuffer_Alt */
+#define SMBC_PAUSE_MODE_FLAG     0x07c6u /* smb.asm: PauseModeFlag */
+#define SMBC_GROUND_MUSIC_HEADER_OFS 0x07c7u /* smb.asm: GroundMusicHeaderOfs */
+#define SMBC_ALT_REG_CONTENT_FLAG 0x07cau /* smb.asm: AltRegContentFlag */
+
+/* ---- sound effect queue bits (smb.asm: Sfx_*) ----------------------------
+ * Square 1 and the noise channel each share one bit layout; square 2 has
+ * its own. */
+#define SMBC_SFX_SMALL_JUMP        0x80u /* smb.asm: Sfx_SmallJump */
+#define SMBC_SFX_BIG_JUMP          0x01u /* smb.asm: Sfx_BigJump */
+#define SMBC_SFX_BUMP              0x02u /* smb.asm: Sfx_Bump */
+#define SMBC_SFX_ENEMY_STOMP       0x04u /* smb.asm: Sfx_EnemyStomp (also swim) */
+#define SMBC_SFX_ENEMY_SMACK       0x08u /* smb.asm: Sfx_EnemySmack */
+#define SMBC_SFX_PIPE_DOWN_INJURY  0x10u /* smb.asm: Sfx_PipeDownInjury */
+#define SMBC_SFX_FIREBALL          0x20u /* smb.asm: Sfx_Fireball */
+#define SMBC_SFX_FLAGPOLE          0x40u /* smb.asm: Sfx_Flagpole */
+
+#define SMBC_SFX_BOWSER_FALL       0x80u /* smb.asm: Sfx_BowserFall */
+#define SMBC_SFX_COIN_GRAB         0x01u /* smb.asm: Sfx_CoinGrab */
+#define SMBC_SFX_GROW_POWER_UP     0x02u /* smb.asm: Sfx_GrowPowerUp */
+#define SMBC_SFX_GROW_VINE         0x04u /* smb.asm: Sfx_GrowVine */
+#define SMBC_SFX_BLAST             0x08u /* smb.asm: Sfx_Blast */
+#define SMBC_SFX_TIMER_TICK        0x10u /* smb.asm: Sfx_TimerTick */
+#define SMBC_SFX_POWER_UP_GRAB     0x20u /* smb.asm: Sfx_PowerUpGrab */
+#define SMBC_SFX_EXTRA_LIFE        0x40u /* smb.asm: Sfx_ExtraLife */
+
+#define SMBC_SFX_BRICK_SHATTER     0x01u /* smb.asm: Sfx_BrickShatter */
+#define SMBC_SFX_BOWSER_FLAME      0x02u /* smb.asm: Sfx_BowserFlame */

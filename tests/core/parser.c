@@ -75,10 +75,52 @@ static void attribute_flush(void) {
   assert(smbc.state.ram[SMBC_VRAM_BUFFER2 + 1] == 0xd0u);
 }
 
+static void area_graphics(void) {
+  /* the black metatile (palette 0, index 1: all $27 tiles) down a
+   * column; even task number draws the right half */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_CURRENT_NT_ADDR_LOW] = 0x44u;
+  smbc.state.ram[SMBC_CURRENT_NT_ADDR_HIGH] = 0x24u;
+  smbc.state.ram[SMBC_CURRENT_COLUMN_POS] = 0x02u; /* even: left square */
+  for (int row = 0; row < 13; row++)
+    smbc.state.ram[SMBC_METATILE_BUFFER + row] = 0x01u;
+  smbc.state.ram[SMBC_AREA_PARSER_TASK_NUM] = 0x02u; /* a graphics task */
+  area_parser_task_handler(&smbc.state);
+  assert(smbc.state.ram[SMBC_VRAM_BUFFER2] == 0x24u);
+  assert(smbc.state.ram[SMBC_VRAM_BUFFER2 + 1] == 0x44u);
+  assert(smbc.state.ram[SMBC_VRAM_BUFFER2 + 2] == 0x9au);
+  for (int i = 0; i < 26; i++)
+    assert(smbc.state.ram[SMBC_VRAM_BUFFER2 + 3 + i] == 0x27u);
+  assert(smbc.state.ram[SMBC_VRAM_BUFFER2 + 29] == 0x00u);
+  assert(smbc.state.ram[SMBC_VRAM_BUFFER2_OFFSET] == 0x1du);
+  /* the column advanced; palette 0 contributes no attribute bits */
+  assert(smbc.state.ram[SMBC_CURRENT_NT_ADDR_LOW] == 0x45u);
+  assert(smbc.state.ram[SMBC_CURRENT_NT_ADDR_HIGH] == 0x24u);
+  assert(smbc.state.ram[SMBC_ATTRIBUTE_BUFFER] == 0x00u);
+
+  /* palette 3 bits, odd column: upper right at d3-d2, lower right at
+   * d7-d6 of the next attribute row */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_CURRENT_NT_ADDR_LOW] = 0x5fu;
+  smbc.state.ram[SMBC_CURRENT_NT_ADDR_HIGH] = 0x23u;
+  smbc.state.ram[SMBC_CURRENT_COLUMN_POS] = 0x03u; /* odd: right square */
+  smbc.state.ram[SMBC_METATILE_BUFFER + 0] = 0xc0u; /* palette 3, blank */
+  smbc.state.ram[SMBC_METATILE_BUFFER + 1] = 0xc0u;
+  smbc.state.ram[SMBC_AREA_PARSER_TASK_NUM] = 0x06u; /* a graphics task */
+  area_parser_task_handler(&smbc.state);
+  assert(smbc.state.ram[SMBC_ATTRIBUTE_BUFFER + 0] == 0x0cu); /* d3-d2 */
+  assert(smbc.state.ram[SMBC_ATTRIBUTE_BUFFER + 1] == 0xc0u); /* d7-d6 */
+  /* low $5f + 1 wraps: back under the status bar, other name table */
+  assert(smbc.state.ram[SMBC_CURRENT_NT_ADDR_LOW] == 0x80u);
+  assert(smbc.state.ram[SMBC_CURRENT_NT_ADDR_HIGH] == 0x27u);
+}
+
 int main(void) {
   task_counter();
   column_positions();
   attribute_flush();
+  area_graphics();
   printf("tests/core/parser: ok\n");
   return 0;
 }

@@ -1,6 +1,8 @@
 /* core/parser.c — see core/parser.h for the contract. */
 #include "parser.h"
 
+#include "../data/metatiles.h"
+
 /* smb.asm: IncrementColumnPos */
 static void increment_column_pos(CoreState *st) {
   uint8_t col = (uint8_t)(st->ram[SMBC_CURRENT_COLUMN_POS] + 1u);
@@ -13,9 +15,58 @@ static void increment_column_pos(CoreState *st) {
       (uint8_t)(st->ram[SMBC_BLOCK_BUFFER_COLUMN_POS] + 1u) & 0x1fu;
 }
 
-/* smb.asm: RenderAreaGraphics — pending the scenery tables atom */
+/* smb.asm: RenderAreaGraphics — draw one column of metatiles from the
+ * metatile buffer into VRAM buffer 2 as 26 tile bytes, OR-ing each
+ * metatile's attribute bits into the attribute buffer. The two top bits
+ * of a metatile number select its palette's attribute bits; the rest is
+ * the metatile index, four bytes per metatile (UL, LL, UR, LR), and the
+ * task number's parity picks the left or right half. */
 static void render_area_graphics(CoreState *st) {
-  (void)st; /* TODO(port): smb.asm: RenderAreaGraphics (data/scenery) */
+  uint8_t col_lsb = st->ram[SMBC_CURRENT_COLUMN_POS] & 0x01u; /* $05 */
+  uint8_t buf_off = st->ram[SMBC_VRAM_BUFFER2_OFFSET];        /* $00 */
+  st->ram[SMBC_VRAM_BUFFER2 + buf_off] = st->ram[SMBC_CURRENT_NT_ADDR_HIGH];
+  st->ram[SMBC_VRAM_BUFFER2 + buf_off + 1] = st->ram[SMBC_CURRENT_NT_ADDR_LOW];
+  st->ram[SMBC_VRAM_BUFFER2 + buf_off + 2] = 0x9au; /* 26 bytes, +32 stride */
+  uint8_t attr_row = 0x00u; /* $04 */
+  /* ((task & 1) ^ 1) << 1: the metatile half this pass draws */
+  uint8_t half =
+      (uint8_t)(((st->ram[SMBC_AREA_PARSER_TASK_NUM] & 0x01u) ^ 0x01u) << 1);
+  for (uint8_t row = 0x00u; row < 0x0du; row++) { /* DrawMTLoop */
+    uint8_t mt = st->ram[SMBC_METATILE_BUFFER + row];
+    uint8_t attr = mt & 0xc0u; /* $03: attribute table bits */
+    const uint8_t *table = SMBC_METATILE_GRAPHICS
+        [(uint8_t)((mt & 0xc0u) >> 6)]; /* asl/rol/rol: bits to d1-d0 */
+    uint8_t tile_off = (uint8_t)(half + (uint8_t)(mt << 2)); /* asl asl */
+    st->ram[SMBC_VRAM_BUFFER2 + buf_off + 3] = table[tile_off];
+    st->ram[SMBC_VRAM_BUFFER2 + buf_off + 4] = table[(uint8_t)(tile_off + 1u)];
+    if (col_lsb == 0x00u) { /* left attribute square */
+      if ((row & 0x01u) == 0x00u) {
+        attr >>= 6; /* upper left: three rol through carry, d1-d0 */
+      } else {
+        attr >>= 2; /* LLeft: lower left square, d5-d4 */
+        attr_row++; /* falls through into NextMTRow */
+      }
+    } else if ((row & 0x01u) == 0x00u) {
+      attr >>= 4; /* RightCheck: upper right square, d3-d2 */
+    } else {
+      attr_row++; /* NextMTRow: lower right keeps d7-d6, next row */
+    }
+    uint8_t slot = attr_row;
+    st->ram[SMBC_ATTRIBUTE_BUFFER + slot] |= attr; /* SetAttrib */
+    buf_off = (uint8_t)(buf_off + 2u);
+  }
+  buf_off = (uint8_t)(buf_off + 3u); /* past the address and length */
+  st->ram[SMBC_VRAM_BUFFER2 + buf_off] = 0x00u; /* null terminator */
+  st->ram[SMBC_VRAM_BUFFER2_OFFSET] = buf_off;
+  /* advance the name table address one column, wrapping under the status
+   * bar and into the other name table */
+  uint8_t low = (uint8_t)(st->ram[SMBC_CURRENT_NT_ADDR_LOW] + 1u);
+  st->ram[SMBC_CURRENT_NT_ADDR_LOW] = low;
+  if ((low & 0x1fu) == 0x00u) {
+    st->ram[SMBC_CURRENT_NT_ADDR_LOW] = 0x80u;
+    st->ram[SMBC_CURRENT_NT_ADDR_HIGH] ^= 0x04u;
+  }
+  st->ram[SMBC_VRAM_BUFFER_ADDR_CTRL] = 0x06u; /* SetVRAMCtrl */
 }
 
 /* smb.asm: AreaParserCore — pending the area object data atom */

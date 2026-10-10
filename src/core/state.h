@@ -80,6 +80,8 @@ void state_init(CoreState *state);
 #define SMBC_CURRENT_PAGE_LOC    0x0725u /* smb.asm: CurrentPageLoc */
 #define SMBC_CURRENT_COLUMN_POS  0x0726u /* smb.asm: CurrentColumnPos */
 #define SMBC_BLOCK_BUFFER_COLUMN_POS 0x06a0u /* smb.asm: BlockBufferColumnPos */
+#define SMBC_METATILE_BUFFER     0x06a1u /* smb.asm: MetatileBuffer
+                                          * ($06a1-$06ad) */
 #define SMBC_ATTRIBUTE_BUFFER    0x03f9u /* smb.asm: AttributeBuffer
                                           * ($03f9-$03ff) */
 #define SMBC_VRAM_BUFFER2        0x0341u /* smb.asm: VRAM_Buffer2 */

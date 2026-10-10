@@ -18,6 +18,12 @@
 
 typedef struct {
   uint8_t ram[SMBC_RAM_SIZE];
+  /* smb.asm: AreaData / EnemyData ($e7, $e9) — the zero-page object
+   * stream pointers. The streams live in C arrays in the port (see
+   * data/areadata.h), so the pointers are real ones, the same shape the
+   * PPU's chr pointer takes. */
+  const uint8_t *area_data;
+  const uint8_t *enemy_data;
 } CoreState;
 
 void state_init(CoreState *state);
@@ -171,6 +177,8 @@ void state_init(CoreState *state);
 
 /* game setup state */
 #define SMBC_PLAYER_ENTRANCE_CTRL 0x0710u /* smb.asm: PlayerEntranceCtrl */
+#define SMBC_GAME_TIMER_SETTING   0x0715u /* smb.asm: GameTimerSetting */
+#define SMBC_AREA_ADDRS_L_OFFSET  0x074fu /* smb.asm: AreaAddrsLOffset */
 #define SMBC_SCREEN_LEFT_PAGE_LOC 0x071au /* smb.asm: ScreenLeft_PageLoc */
 #define SMBC_BACKLOADING_FLAG   0x0728u /* smb.asm: BackloadingFlag */
 #define SMBC_CLOUD_TYPE_OVERRIDE 0x0743u /* smb.asm: CloudTypeOverride */

@@ -9,9 +9,9 @@
 
 struct Smbc;
 
-/* smb.asm: OperModeExecutionTree — GameOverMode is translated
- * (core/gameover); TODO(port): TitleScreenMode, GameMode and VictoryMode
- * are pending and dispatch does nothing for them. */
+/* smb.asm: OperModeExecutionTree — GameOverMode (core/gameover) and
+ * TitleScreenMode (core/title) are translated; TODO(port): GameMode and
+ * VictoryMode are pending and dispatch does nothing for them. */
 void oper_mode_execution_tree(struct Smbc *smbc);
 
 #endif /* SMBC_CORE_MODE_H */

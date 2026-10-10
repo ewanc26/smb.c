@@ -61,6 +61,8 @@ void state_init(CoreState *state);
 #define SMBC_MISC_SPR_DATA_OFFSET 0x06f3u /* smb.asm: Misc_SprDataOffset */
 
 /* screen and mode state */
+#define SMBC_DEMO_ACTION         0x0717u /* smb.asm: DemoAction */
+#define SMBC_DEMO_ACTION_TIMER   0x0718u /* smb.asm: DemoActionTimer */
 #define SMBC_SPRITE0_HIT_FLAG    0x0722u /* smb.asm: Sprite0HitDetectFlag */
 #define SMBC_SCREEN_ROUTINE_TASK 0x073cu /* smb.asm: ScreenRoutineTask */
 #define SMBC_HORIZONTAL_SCROLL   0x073fu /* smb.asm: HorizontalScroll */
@@ -73,12 +75,16 @@ void state_init(CoreState *state);
 #define SMBC_PLAYER_STATUS       0x0756u /* smb.asm: PlayerStatus */
 #define SMBC_FETCH_NEW_GAME_TIMER_FLAG 0x0757u /* smb.asm: FetchNewGameTimerFlag */
 #define SMBC_ONSCREEN_PLAYER_INFO 0x075au /* smb.asm: OnscreenPlayerInfo (7 bytes) */
+#define SMBC_HIDDEN_1UP_FLAG     0x075du /* smb.asm: Hidden1UpFlag */
 #define SMBC_WORLD_NUMBER        0x075fu /* smb.asm: WorldNumber */
 #define SMBC_AREA_NUMBER         0x0760u /* smb.asm: AreaNumber */
 #define SMBC_OFFSCREEN_PLAYER_INFO 0x0761u /* smb.asm: OffscreenPlayerInfo (7 bytes) */
 #define SMBC_OFFSCR_NUMBEROF_LIVES 0x0761u /* smb.asm: OffScr_NumberofLives (info byte 0) */
+#define SMBC_OFFSCR_HIDDEN_1UP_FLAG 0x0764u /* smb.asm: OffScr_Hidden1UpFlag */
 #define SMBC_OFFSCR_WORLD_NUMBER 0x0766u /* smb.asm: OffScr_WorldNumber */
 #define SMBC_OFFSCR_AREA_NUMBER  0x0767u /* smb.asm: OffScr_AreaNumber */
+#define SMBC_PRIMARY_HARD_MODE   0x076au /* smb.asm: PrimaryHardMode */
+#define SMBC_WORLD_SELECT_NUMBER 0x076bu /* smb.asm: WorldSelectNumber */
 #define SMBC_OPER_MODE           0x0770u /* smb.asm: OperMode */
 #define SMBC_OPER_MODE_TASK      0x0772u /* smb.asm: OperMode_Task */
 #define SMBC_VRAM_BUFFER_ADDR_CTRL 0x0773u /* smb.asm: VRAM_Buffer_AddrCtrl */
@@ -90,10 +96,14 @@ void state_init(CoreState *state);
 #define SMBC_NUMBER_OF_PLAYERS   0x077au /* smb.asm: NumberOfPlayers */
 #define SMBC_INTERVAL_TIMER_CONTROL 0x077fu /* smb.asm: IntervalTimerControl */
 #define SMBC_TIMERS              0x0780u /* smb.asm: Timers ($0780-$07a3) */
+#define SMBC_SELECT_TIMER        0x0780u /* smb.asm: SelectTimer */
 #define SMBC_SCREEN_TIMER        0x07a0u /* smb.asm: ScreenTimer */
+#define SMBC_DEMO_TIMER          0x07a2u /* smb.asm: DemoTimer */
 #define SMBC_PSEUDO_RANDOM_BIT_REG 0x07a7u /* smb.asm: PseudoRandomBitReg */
 #define SMBC_TOP_SCORE_DISPLAY   0x07d7u /* smb.asm: TopScoreDisplay (6 digits) */
 #define SMBC_PLAYER_SCORE_DISPLAY 0x07ddu /* smb.asm: PlayerScoreDisplay */
+#define SMBC_SCORE_AND_COIN_DISPLAY 0x07ddu /* smb.asm: ScoreAndCoinDisplay (24 bytes) */
+#define SMBC_WORLD_SELECT_ENABLE_FLAG 0x07fcu /* smb.asm: WorldSelectEnableFlag */
 #define SMBC_CONTINUE_WORLD      0x07fdu /* smb.asm: ContinueWorld */
 #define SMBC_WARM_BOOT_VALIDATION 0x07ffu /* smb.asm: WarmBootValidation */
 

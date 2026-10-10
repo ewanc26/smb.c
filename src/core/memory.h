@@ -16,8 +16,12 @@ struct Smbc;
  * skipping $0160-$01FF (the stack). */
 void initialize_memory(CoreState *state, uint8_t offset);
 
-/* smb.asm: InitializeNameTables — TODO(port): writes both name tables via
- * the VRAM buffer, pending UpdateScreen. Currently a no-op. */
+/* smb.asm: InitializeNameTables — select the pattern tables, then clear
+ * name table 1 ($2400) and name table 0 ($2000) with the blank tile, reset
+ * the VRAM buffer header and the scroll. Note the original clears exactly
+ * 768 tiles plus 64 trailing bytes per table, not the full 960+64; that is
+ * the cartridge's own behaviour (verified against the donor ROM), kept
+ * as-is. */
 void initialize_name_tables(struct Smbc *smbc);
 
 #endif /* SMBC_CORE_MEMORY_H */

@@ -34,7 +34,9 @@ int main(void) {
 
   assert(smbc.state.ram[SMBC_PSEUDO_RANDOM_BIT_REG] == 0xa5u);
   assert(smbc.state.ram[SMBC_DISABLE_SCREEN_FLAG] == 0x01u);
-  assert(smbc.state.ram[SMBC_MIRROR_PPU_CTRL1] == 0x80u);
+  /* $80 (NMIs on) | $10 (background pattern table, from
+   * InitializeNameTables) */
+  assert(smbc.state.ram[SMBC_MIRROR_PPU_CTRL1] == 0x90u);
   assert(smbc.state.ram[SMBC_OPER_MODE] == SMBC_MODE_TITLE);
   assert(apu_read(&smbc.apu, 0x4015u) == 0x0fu);
   assert(smbc.state.ram[SMBC_SPRITE_Y_POSITION] == 0xf8u);

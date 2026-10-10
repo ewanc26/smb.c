@@ -7,9 +7,12 @@ disassembly, that runs on any system.
 
 ## Status
 
-Early skeleton. The repository has the hardware abstraction layer, the RAM
-map and the frame loop scaffolding; game logic is translated from the
-disassembly routine by routine.
+The reset and NMI spine is translated and tested: boot, the interrupt
+handler, joypad reading, pause, timers, the pseudorandom register, sprite
+housekeeping, the VRAM buffer writer and name table initialisation. The
+CHR pattern tables are embedded (`src/data/chr.c`). Game logic beyond the
+spine — the mode execution tree, the sound engine, levels and enemies —
+is tracked in the open issues and translated routine by routine.
 
 The source of truth is `smb.asm` — doppelganger's comprehensive disassembly
 (x816 syntax), kept unmodified in the repository root. Every translated

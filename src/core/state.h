@@ -74,6 +74,15 @@ void state_init(CoreState *state);
 #define SMBC_SCREEN_RIGHT_PAGE_LOC 0x071bu /* smb.asm: ScreenRight_PageLoc */
 #define SMBC_AREA_PARSER_TASK_NUM 0x071fu /* smb.asm: AreaParserTaskNum */
 #define SMBC_COLUMN_SETS         0x071eu /* smb.asm: ColumnSets */
+#define SMBC_CURRENT_NT_ADDR_HIGH 0x0720u /* smb.asm: CurrentNTAddr_High — the
+                                           * high byte is first */
+#define SMBC_CURRENT_NT_ADDR_LOW  0x0721u /* smb.asm: CurrentNTAddr_Low */
+#define SMBC_CURRENT_PAGE_LOC    0x0725u /* smb.asm: CurrentPageLoc */
+#define SMBC_CURRENT_COLUMN_POS  0x0726u /* smb.asm: CurrentColumnPos */
+#define SMBC_BLOCK_BUFFER_COLUMN_POS 0x06a0u /* smb.asm: BlockBufferColumnPos */
+#define SMBC_ATTRIBUTE_BUFFER    0x03f9u /* smb.asm: AttributeBuffer
+                                          * ($03f9-$03ff) */
+#define SMBC_VRAM_BUFFER2        0x0341u /* smb.asm: VRAM_Buffer2 */
 #define SMBC_SPRITE0_HIT_FLAG    0x0722u /* smb.asm: Sprite0HitDetectFlag */
 #define SMBC_AREA_STYLE          0x0733u /* smb.asm: AreaStyle */
 #define SMBC_SCREEN_ROUTINE_TASK 0x073cu /* smb.asm: ScreenRoutineTask */

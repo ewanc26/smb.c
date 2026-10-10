@@ -1,6 +1,7 @@
 /* core/screen.c — see core/screen.h for the contract. */
 #include "screen.h"
 
+#include "parser.h"
 #include "../hw/ppu.h"
 #include "../data/gametext.h"
 #include "../data/messages.h"
@@ -443,7 +444,7 @@ void screen_routines(Smbc *smbc) {
     case 8: /* smb.asm: AreaParserTaskControl */
       st->ram[SMBC_DISABLE_SCREEN_FLAG]++; /* turn off screen */
       do {
-        /* TODO(port): smb.asm: AreaParserTaskHandler (core/areaparser) */
+        area_parser_task_handler(st);
       } while (st->ram[SMBC_AREA_PARSER_TASK_NUM] != 0x00); /* TaskLoop */
       st->ram[SMBC_COLUMN_SETS]--;
       if ((st->ram[SMBC_COLUMN_SETS] & 0x80u) != 0x00) {

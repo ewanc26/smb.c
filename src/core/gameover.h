@@ -21,4 +21,10 @@ void game_over_mode(struct Smbc *smbc);
  * when the players were swapped and the game continues. */
 bool transpose_players(struct Smbc *smbc);
 
+/* smb.asm: TerminateGame (with ContinueGame) — silences the music and
+ * either transposes the players and resumes the game, or saves the
+ * continue world and returns to the title screen. Called from
+ * RunGameOver and from PlayerEndWorld's B-button path. */
+void terminate_game(struct Smbc *smbc);
+
 #endif /* SMBC_CORE_GAMEOVER_H */

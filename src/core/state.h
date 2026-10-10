@@ -29,6 +29,10 @@ void state_init(CoreState *state);
 #define SMBC_UP_DOWN_BUTTONS    0x000bu /* smb.asm: Up_Down_Buttons */
 #define SMBC_PREV_A_B_BUTTONS   0x000du /* smb.asm: PreviousA_B_Buttons */
 #define SMBC_GAME_ENGINE_SUBROUTINE 0x000eu /* smb.asm: GameEngineSubroutine */
+#define SMBC_DESTINATION_PAGE_LOC 0x0034u /* smb.asm: DestinationPageLoc */
+#define SMBC_VICTORY_WALK_CONTROL 0x0035u /* smb.asm: VictoryWalkControl */
+#define SMBC_PLAYER_PAGE_LOC     0x006du /* smb.asm: Player_PageLoc */
+#define SMBC_PLAYER_X_POSITION   0x0086u /* smb.asm: Player_X_Position */
 
 /* $0700 page */
 #define SMBC_SAVED_JOYPAD1_BITS 0x06fcu /* smb.asm: SavedJoypad1Bits */
@@ -63,11 +67,15 @@ void state_init(CoreState *state);
 /* screen and mode state */
 #define SMBC_DEMO_ACTION         0x0717u /* smb.asm: DemoAction */
 #define SMBC_DEMO_ACTION_TIMER   0x0718u /* smb.asm: DemoActionTimer */
+#define SMBC_PRIMARY_MSG_COUNTER 0x0719u /* smb.asm: PrimaryMsgCounter */
+#define SMBC_SCREEN_LEFT_PAGE_LOC 0x071au /* smb.asm: ScreenLeft_PageLoc */
+#define SMBC_SCREEN_RIGHT_PAGE_LOC 0x071bu /* smb.asm: ScreenRight_PageLoc */
 #define SMBC_SPRITE0_HIT_FLAG    0x0722u /* smb.asm: Sprite0HitDetectFlag */
 #define SMBC_SCREEN_ROUTINE_TASK 0x073cu /* smb.asm: ScreenRoutineTask */
 #define SMBC_HORIZONTAL_SCROLL   0x073fu /* smb.asm: HorizontalScroll */
 #define SMBC_VERTICAL_SCROLL     0x0740u /* smb.asm: VerticalScroll */
 #define SMBC_TIMER_CONTROL       0x0747u /* smb.asm: TimerControl */
+#define SMBC_SECONDARY_MSG_COUNTER 0x0749u /* smb.asm: SecondaryMsgCounter */
 #define SMBC_AREA_TYPE           0x074eu /* smb.asm: AreaType */
 #define SMBC_AREA_POINTER        0x0750u /* smb.asm: AreaPointer */
 #define SMBC_CURRENT_PLAYER      0x0753u /* smb.asm: CurrentPlayer */
@@ -75,6 +83,8 @@ void state_init(CoreState *state);
 #define SMBC_PLAYER_STATUS       0x0756u /* smb.asm: PlayerStatus */
 #define SMBC_FETCH_NEW_GAME_TIMER_FLAG 0x0757u /* smb.asm: FetchNewGameTimerFlag */
 #define SMBC_ONSCREEN_PLAYER_INFO 0x075au /* smb.asm: OnscreenPlayerInfo (7 bytes) */
+#define SMBC_NUMBEROF_LIVES      0x075au /* smb.asm: NumberofLives (info byte 0) */
+#define SMBC_LEVEL_NUMBER        0x075cu /* smb.asm: LevelNumber */
 #define SMBC_HIDDEN_1UP_FLAG     0x075du /* smb.asm: Hidden1UpFlag */
 #define SMBC_WORLD_NUMBER        0x075fu /* smb.asm: WorldNumber */
 #define SMBC_AREA_NUMBER         0x0760u /* smb.asm: AreaNumber */
@@ -83,6 +93,7 @@ void state_init(CoreState *state);
 #define SMBC_OFFSCR_HIDDEN_1UP_FLAG 0x0764u /* smb.asm: OffScr_Hidden1UpFlag */
 #define SMBC_OFFSCR_WORLD_NUMBER 0x0766u /* smb.asm: OffScr_WorldNumber */
 #define SMBC_OFFSCR_AREA_NUMBER  0x0767u /* smb.asm: OffScr_AreaNumber */
+#define SMBC_SCROLL_FRACTIONAL   0x0768u /* smb.asm: ScrollFractional */
 #define SMBC_PRIMARY_HARD_MODE   0x076au /* smb.asm: PrimaryHardMode */
 #define SMBC_WORLD_SELECT_NUMBER 0x076bu /* smb.asm: WorldSelectNumber */
 #define SMBC_OPER_MODE           0x0770u /* smb.asm: OperMode */
@@ -98,6 +109,7 @@ void state_init(CoreState *state);
 #define SMBC_TIMERS              0x0780u /* smb.asm: Timers ($0780-$07a3) */
 #define SMBC_SELECT_TIMER        0x0780u /* smb.asm: SelectTimer */
 #define SMBC_SCREEN_TIMER        0x07a0u /* smb.asm: ScreenTimer */
+#define SMBC_WORLD_END_TIMER     0x07a1u /* smb.asm: WorldEndTimer */
 #define SMBC_DEMO_TIMER          0x07a2u /* smb.asm: DemoTimer */
 #define SMBC_PSEUDO_RANDOM_BIT_REG 0x07a7u /* smb.asm: PseudoRandomBitReg */
 #define SMBC_TOP_SCORE_DISPLAY   0x07d7u /* smb.asm: TopScoreDisplay (6 digits) */
@@ -106,6 +118,9 @@ void state_init(CoreState *state);
 #define SMBC_WORLD_SELECT_ENABLE_FLAG 0x07fcu /* smb.asm: WorldSelectEnableFlag */
 #define SMBC_CONTINUE_WORLD      0x07fdu /* smb.asm: ContinueWorld */
 #define SMBC_WARM_BOOT_VALIDATION 0x07ffu /* smb.asm: WarmBootValidation */
+
+/* world values */
+#define SMBC_WORLD_8             0x07u   /* smb.asm: World8 */
 
 /* controller bits in the game's saved-bit layout (smb.asm: A_Button etc.).
  * The serial read accumulates A first into d7, so this differs from the

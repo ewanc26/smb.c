@@ -5,6 +5,7 @@
 #include "gameover.h"
 #include "state.h"
 #include "title.h"
+#include "victory.h"
 
 void oper_mode_execution_tree(Smbc *smbc) {
   /* smb.asm: OperModeExecutionTree — jump table order:
@@ -12,7 +13,7 @@ void oper_mode_execution_tree(Smbc *smbc) {
   switch (smbc->state.ram[SMBC_OPER_MODE]) {
     case SMBC_MODE_TITLE:    title_screen_mode(smbc); break;
     case SMBC_MODE_GAME:     /* TODO(port): smb.asm: GameMode */ break;
-    case SMBC_MODE_VICTORY:  /* TODO(port): smb.asm: VictoryMode */ break;
+    case SMBC_MODE_VICTORY:  victory_mode(smbc); break;
     case SMBC_MODE_GAME_OVER: game_over_mode(smbc); break;
     default: break;
   }

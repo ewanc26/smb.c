@@ -16,15 +16,9 @@ static void setup_game_over(Smbc *smbc) {
   st->ram[SMBC_OPER_MODE_TASK] += 1u;        /* inc — set secondary mode */
 }
 
-/* smb.asm: RunGameOver (with TerminateGame and ContinueGame) */
-static void run_game_over(Smbc *smbc) {
+/* smb.asm: TerminateGame (with ContinueGame) */
+void terminate_game(Smbc *smbc) {
   CoreState *st = &smbc->state;
-  st->ram[SMBC_DISABLE_SCREEN_FLAG] = 0x00; /* reenable screen */
-  if ((st->ram[SMBC_SAVED_JOYPAD1_BITS] & SMBC_PAD_START) == 0 &&
-      st->ram[SMBC_SCREEN_TIMER] != 0) {
-    return; /* GameIsOn — wait for start or the screen timer */
-  }
-  /* TerminateGame */
   st->ram[SMBC_EVENT_MUSIC_QUEUE] = SMBC_MUSIC_SILENCE;
   if (!transpose_players(smbc)) {
     /* ContinueGame — the other player keeps going */
@@ -43,6 +37,17 @@ static void run_game_over(Smbc *smbc) {
   st->ram[SMBC_OPER_MODE_TASK] = 0x00;
   st->ram[SMBC_SCREEN_TIMER] = 0x00;
   st->ram[SMBC_OPER_MODE] = SMBC_MODE_TITLE;
+}
+
+/* smb.asm: RunGameOver */
+static void run_game_over(Smbc *smbc) {
+  CoreState *st = &smbc->state;
+  st->ram[SMBC_DISABLE_SCREEN_FLAG] = 0x00; /* reenable screen */
+  if ((st->ram[SMBC_SAVED_JOYPAD1_BITS] & SMBC_PAD_START) == 0 &&
+      st->ram[SMBC_SCREEN_TIMER] != 0) {
+    return; /* GameIsOn — wait for start or the screen timer */
+  }
+  terminate_game(smbc);
 }
 
 void game_over_mode(Smbc *smbc) {

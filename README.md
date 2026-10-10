@@ -52,8 +52,10 @@ tests/    host unit tests, mirrors src/ scopes
 
 ## Notes
 
-`smb.asm` is doppelganger's disassembly, provided as-is; it is not original
-work and is not covered by this project's licence. The character ROM data and
+`smb.asm` is doppelganger's disassembly (`SMBDIS.ASM`, assembles with
+x816), sourced from [this gist](https://gist.github.com/1wErt3r/4048722) and
+provided as-is; it is not original work and is not covered by this project's
+licence. The character ROM data and
 an iNES header are required to assemble the original — and, of course, the
 game itself remains Nintendo's.
 

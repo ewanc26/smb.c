@@ -3,7 +3,7 @@
 ## SMBC
 
 SMBC is a C port of doppelganger's Super Mario Bros. disassembly (`smb.asm`,
-x816 syntax). The port is a faithful translation, not a reimplementation: the
+x816 syntax), sourced from <https://gist.github.com/1wErt3r/4048722>. The port is a faithful translation, not a reimplementation: the
 disassembly is the specification, and the C code exists to make it readable,
 testable and hostable off the NES.
 

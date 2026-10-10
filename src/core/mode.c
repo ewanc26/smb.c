@@ -2,6 +2,7 @@
 #include "mode.h"
 
 #include "frame.h"
+#include "gameover.h"
 #include "state.h"
 
 void oper_mode_execution_tree(Smbc *smbc) {
@@ -11,7 +12,7 @@ void oper_mode_execution_tree(Smbc *smbc) {
     case SMBC_MODE_TITLE:    /* TODO(port): smb.asm: TitleScreenMode */ break;
     case SMBC_MODE_GAME:     /* TODO(port): smb.asm: GameMode */ break;
     case SMBC_MODE_VICTORY:  /* TODO(port): smb.asm: VictoryMode */ break;
-    case SMBC_MODE_GAME_OVER: /* TODO(port): smb.asm: GameOverMode */ break;
+    case SMBC_MODE_GAME_OVER: game_over_mode(smbc); break;
     default: break;
   }
 }

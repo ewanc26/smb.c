@@ -28,6 +28,7 @@ void state_init(CoreState *state);
 #define SMBC_A_B_BUTTONS        0x000au /* smb.asm: A_B_Buttons */
 #define SMBC_UP_DOWN_BUTTONS    0x000bu /* smb.asm: Up_Down_Buttons */
 #define SMBC_PREV_A_B_BUTTONS   0x000du /* smb.asm: PreviousA_B_Buttons */
+#define SMBC_GAME_ENGINE_SUBROUTINE 0x000eu /* smb.asm: GameEngineSubroutine */
 
 /* $0700 page */
 #define SMBC_SAVED_JOYPAD1_BITS 0x06fcu /* smb.asm: SavedJoypad1Bits */
@@ -61,10 +62,23 @@ void state_init(CoreState *state);
 
 /* screen and mode state */
 #define SMBC_SPRITE0_HIT_FLAG    0x0722u /* smb.asm: Sprite0HitDetectFlag */
+#define SMBC_SCREEN_ROUTINE_TASK 0x073cu /* smb.asm: ScreenRoutineTask */
 #define SMBC_HORIZONTAL_SCROLL   0x073fu /* smb.asm: HorizontalScroll */
 #define SMBC_VERTICAL_SCROLL     0x0740u /* smb.asm: VerticalScroll */
 #define SMBC_TIMER_CONTROL       0x0747u /* smb.asm: TimerControl */
 #define SMBC_AREA_TYPE           0x074eu /* smb.asm: AreaType */
+#define SMBC_AREA_POINTER        0x0750u /* smb.asm: AreaPointer */
+#define SMBC_CURRENT_PLAYER      0x0753u /* smb.asm: CurrentPlayer */
+#define SMBC_PLAYER_SIZE         0x0754u /* smb.asm: PlayerSize */
+#define SMBC_PLAYER_STATUS       0x0756u /* smb.asm: PlayerStatus */
+#define SMBC_FETCH_NEW_GAME_TIMER_FLAG 0x0757u /* smb.asm: FetchNewGameTimerFlag */
+#define SMBC_ONSCREEN_PLAYER_INFO 0x075au /* smb.asm: OnscreenPlayerInfo (7 bytes) */
+#define SMBC_WORLD_NUMBER        0x075fu /* smb.asm: WorldNumber */
+#define SMBC_AREA_NUMBER         0x0760u /* smb.asm: AreaNumber */
+#define SMBC_OFFSCREEN_PLAYER_INFO 0x0761u /* smb.asm: OffscreenPlayerInfo (7 bytes) */
+#define SMBC_OFFSCR_NUMBEROF_LIVES 0x0761u /* smb.asm: OffScr_NumberofLives (info byte 0) */
+#define SMBC_OFFSCR_WORLD_NUMBER 0x0766u /* smb.asm: OffScr_WorldNumber */
+#define SMBC_OFFSCR_AREA_NUMBER  0x0767u /* smb.asm: OffScr_AreaNumber */
 #define SMBC_OPER_MODE           0x0770u /* smb.asm: OperMode */
 #define SMBC_OPER_MODE_TASK      0x0772u /* smb.asm: OperMode_Task */
 #define SMBC_VRAM_BUFFER_ADDR_CTRL 0x0773u /* smb.asm: VRAM_Buffer_AddrCtrl */
@@ -73,11 +87,14 @@ void state_init(CoreState *state);
 #define SMBC_GAME_PAUSE_TIMER    0x0777u /* smb.asm: GamePauseTimer */
 #define SMBC_MIRROR_PPU_CTRL1    0x0778u /* smb.asm: Mirror_PPU_CTRL_REG1 */
 #define SMBC_MIRROR_PPU_CTRL2    0x0779u /* smb.asm: Mirror_PPU_CTRL_REG2 */
+#define SMBC_NUMBER_OF_PLAYERS   0x077au /* smb.asm: NumberOfPlayers */
 #define SMBC_INTERVAL_TIMER_CONTROL 0x077fu /* smb.asm: IntervalTimerControl */
 #define SMBC_TIMERS              0x0780u /* smb.asm: Timers ($0780-$07a3) */
+#define SMBC_SCREEN_TIMER        0x07a0u /* smb.asm: ScreenTimer */
 #define SMBC_PSEUDO_RANDOM_BIT_REG 0x07a7u /* smb.asm: PseudoRandomBitReg */
 #define SMBC_TOP_SCORE_DISPLAY   0x07d7u /* smb.asm: TopScoreDisplay (6 digits) */
 #define SMBC_PLAYER_SCORE_DISPLAY 0x07ddu /* smb.asm: PlayerScoreDisplay */
+#define SMBC_CONTINUE_WORLD      0x07fdu /* smb.asm: ContinueWorld */
 #define SMBC_WARM_BOOT_VALIDATION 0x07ffu /* smb.asm: WarmBootValidation */
 
 /* controller bits in the game's saved-bit layout (smb.asm: A_Button etc.).

@@ -116,11 +116,59 @@ static void area_graphics(void) {
   assert(smbc.state.ram[SMBC_CURRENT_NT_ADDR_HIGH] == 0x27u);
 }
 
+static void scenery_terrain(void) {
+  /* flat ground: the floor's two rows of ground metatile, stored into
+   * the block buffer with the low-bound drop */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_AREA_TYPE] = 0x01u;
+  smbc.state.ram[SMBC_TERRAIN_CONTROL] = 0x01u; /* no ceiling, floor 2 */
+  smbc.state.ram[SMBC_AREA_PARSER_TASK_NUM] = 0x08u; /* a decoder task */
+  area_parser_task_handler(&smbc.state);
+  for (int x = 0; x < 11; x++)
+    assert(smbc.state.ram[SMBC_METATILE_BUFFER + x] == 0x00u);
+  assert(smbc.state.ram[SMBC_METATILE_BUFFER + 11] == 0x54u);
+  assert(smbc.state.ram[SMBC_METATILE_BUFFER + 12] == 0x54u);
+  assert(smbc.state.ram[SMBC_BLOCK_BUFFER_1] == 0x00u); /* rows drop out */
+  assert(smbc.state.ram[SMBC_BLOCK_BUFFER_1 + 0xb0] == 0x54u);
+  assert(smbc.state.ram[SMBC_BLOCK_BUFFER_1 + 0xc0] == 0x54u);
+
+  /* clouds on the first page: a cloud right at buffer height nine */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_AREA_TYPE] = 0x01u;
+  smbc.state.ram[SMBC_BACKGROUND_SCENERY] = 0x01u;
+  smbc.state.ram[SMBC_AREA_PARSER_TASK_NUM] = 0x08u;
+  area_parser_task_handler(&smbc.state);
+  assert(smbc.state.ram[SMBC_METATILE_BUFFER + 9] == 0x82u);
+  assert(smbc.state.ram[SMBC_METATILE_BUFFER + 10] == 0x85u);
+
+  /* foreground water: surface, then water, then the water metatile */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_AREA_TYPE] = 0x00u;
+  smbc.state.ram[SMBC_FOREGROUND_SCENERY] = 0x01u;
+  smbc.state.ram[SMBC_AREA_PARSER_TASK_NUM] = 0x08u;
+  area_parser_task_handler(&smbc.state);
+  assert(smbc.state.ram[SMBC_METATILE_BUFFER] == 0x86u);
+  assert(smbc.state.ram[SMBC_METATILE_BUFFER + 5] == 0x87u);
+  assert(smbc.state.ram[SMBC_METATILE_BUFFER + 11] == 0x69u);
+
+  /* world 8's water uses the castle wall metatile throughout */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_AREA_TYPE] = 0x00u;
+  smbc.state.ram[SMBC_WORLD_NUMBER] = 0x07u;
+  smbc.state.ram[SMBC_TERRAIN_CONTROL] = 0x0fu; /* solid top to bottom */
+  smbc.state.ram[SMBC_AREA_PARSER_TASK_NUM] = 0x08u;
+  area_parser_task_handler(&smbc.state);
+  assert(smbc.state.ram[SMBC_METATILE_BUFFER] == 0x62u);
+  assert(smbc.state.ram[SMBC_METATILE_BUFFER + 12] == 0x62u);
+}
+
 int main(void) {
   task_counter();
   column_positions();
   attribute_flush();
   area_graphics();
+  scenery_terrain();
   printf("tests/core/parser: ok\n");
   return 0;
 }

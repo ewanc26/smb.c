@@ -2,6 +2,115 @@
 #include "parser.h"
 
 #include "../data/metatiles.h"
+#include "../data/scenery.h"
+
+#define SMBC_WORLD8 0x07u /* smb.asm: World8 */
+
+/* smb.asm: ProcessAreaData — pending the area object data atom */
+static void process_area_data(CoreState *st) {
+  (void)st; /* TODO(port): smb.asm: ProcessAreaData (data/areadata) */
+}
+
+/* smb.asm: GetBlockBufferAddr — the block buffer address for a column
+ * position: buffer 1 for columns $00-$0f, buffer 2 for $10-$1f */
+static uint16_t get_block_buffer_addr(uint8_t col_pos) {
+  return (uint16_t)(SMBC_BLOCK_BUFFER_1 + (col_pos & 0x10u) / 0x10u * 0xd0u +
+                    (col_pos & 0x0fu));
+}
+
+/* smb.asm: RenderSceneryTerrain — clear the metatile buffer, lay in the
+ * background scenery (chosen every third page), the foreground scenery,
+ * and the terrain ceiling/floor from the render bits; then the tail end
+ * runs the object decoder and stores the column into the block buffer,
+ * dropping metatiles under their attribute bound. */
+static void render_scenery_terrain(CoreState *st) {
+  for (uint8_t x = 0; x <= 0x0cu; x++) { /* ClrMTBuf */
+    st->ram[SMBC_METATILE_BUFFER + x] = 0x00u;
+  }
+  uint8_t bg = st->ram[SMBC_BACKGROUND_SCENERY];
+  if (bg != 0x00u) {
+    uint8_t page = st->ram[SMBC_CURRENT_PAGE_LOC];
+    while (page >= 0x03u) page = (uint8_t)(page - 0x03u); /* ThirdP */
+    uint8_t x = (uint8_t)((uint8_t)(page << 4) +
+                          SMBC_B_SCENE_DATA_OFFSETS[bg - 1u] +
+                          st->ram[SMBC_CURRENT_COLUMN_POS]);
+    uint8_t sd = SMBC_BACK_SCENERY_DATA[x];
+    if (sd != 0x00u) {
+      uint8_t low = (uint8_t)((sd & 0x0fu) - 1u); /* shapes are 1-based */
+      uint8_t sx = (uint8_t)(low * 3u);
+      uint8_t y = (uint8_t)(sd >> 4); /* the buffer height */
+      uint8_t count = 0x03u;
+      for (;;) { /* SceLoop1 */
+        st->ram[SMBC_METATILE_BUFFER + y] = SMBC_BACK_SCENERY_METATILES[sx];
+        sx++;
+        y++;
+        if (y == 0x0bu) break;
+        if (--count == 0x00u) break;
+      }
+    }
+  }
+  uint8_t fg = st->ram[SMBC_FOREGROUND_SCENERY];
+  if (fg != 0x00u) {
+    uint8_t y = SMBC_F_SCENE_DATA_OFFSETS[fg - 1u];
+    for (uint8_t x = 0x00u; x < 0x0du; x++) { /* SceLoop2 */
+      uint8_t d = SMBC_FORE_SCENERY_DATA[y];
+      y++;
+      if (d != 0x00u) st->ram[SMBC_METATILE_BUFFER + x] = d;
+    }
+  }
+  /* RendTerr: the terrain metatile — castle wall in world 8's water */
+  uint8_t terrain;
+  uint8_t area_type = st->ram[SMBC_AREA_TYPE];
+  if (area_type == 0x00u && st->ram[SMBC_WORLD_NUMBER] == SMBC_WORLD8) {
+    terrain = 0x62u;
+  } else {
+    terrain = SMBC_TERRAIN_METATILES[area_type];
+  }
+  if (st->ram[SMBC_CLOUD_TYPE_OVERRIDE] != 0x00u) {
+    terrain = 0x88u; /* the cloud block */
+  }
+  uint8_t x = 0x00u;
+  uint8_t y = (uint8_t)(st->ram[SMBC_TERRAIN_CONTROL] * 2u);
+  for (;;) { /* TerrLoop: the ceiling byte, then the floor byte */
+    uint8_t bits = SMBC_TERRAIN_RENDER_BITS[y];
+    y++;
+    if (st->ram[SMBC_CLOUD_TYPE_OVERRIDE] != 0x00u && x != 0x00u) {
+      bits &= 0x08u; /* clouds only keep the d3 floor edge */
+    }
+    for (uint8_t by = 0x00u; by < 0x08u; by++) { /* TerrBChk */
+      if ((SMBC_BITMASKS[by] & bits) != 0x00u) {
+        st->ram[SMBC_METATILE_BUFFER + x] = terrain;
+      }
+      x++;
+      if (x == 0x0du) break;
+      if (area_type == 0x02u && x == 0x0bu) {
+        terrain = 0x54u; /* underground: ground level at the bottom */
+      }
+    }
+    if (x == 0x0du) break; /* RendBBuf */
+  }
+  process_area_data(st); /* RendBBuf */
+  uint16_t addr = get_block_buffer_addr(st->ram[SMBC_BLOCK_BUFFER_COLUMN_POS]);
+  uint8_t by = 0x00u;
+  for (x = 0x00u; x < 0x0du; x++) { /* ChkMTLow */
+    uint8_t mt = st->ram[SMBC_METATILE_BUFFER + x];
+    if (mt < SMBC_BLOCK_BUFF_LOW_BOUNDS[(mt & 0xc0u) >> 6]) {
+      mt = 0x00u;
+    }
+    st->ram[addr + by] = mt;
+    by = (uint8_t)(by + 0x10u);
+  }
+}
+
+/* smb.asm: AreaParserCore — with the backloading flag set the decoder
+ * runs once to skip ahead, then the column renders as usual (the
+ * original falls through; there is no return between) */
+static void area_parser_core(CoreState *st) {
+  if (st->ram[SMBC_BACKLOADING_FLAG] != 0x00u) {
+    process_area_data(st);
+  }
+  render_scenery_terrain(st);
+}
 
 /* smb.asm: IncrementColumnPos */
 static void increment_column_pos(CoreState *st) {
@@ -67,11 +176,6 @@ static void render_area_graphics(CoreState *st) {
     st->ram[SMBC_CURRENT_NT_ADDR_HIGH] ^= 0x04u;
   }
   st->ram[SMBC_VRAM_BUFFER_ADDR_CTRL] = 0x06u; /* SetVRAMCtrl */
-}
-
-/* smb.asm: AreaParserCore — pending the area object data atom */
-static void area_parser_core(CoreState *st) {
-  (void)st; /* TODO(port): smb.asm: AreaParserCore (data/areadata) */
 }
 
 /* smb.asm: RenderAttributeTables — flush the attribute buffer into VRAM

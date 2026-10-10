@@ -82,6 +82,11 @@ void state_init(CoreState *state);
 #define SMBC_BLOCK_BUFFER_COLUMN_POS 0x06a0u /* smb.asm: BlockBufferColumnPos */
 #define SMBC_METATILE_BUFFER     0x06a1u /* smb.asm: MetatileBuffer
                                           * ($06a1-$06ad) */
+#define SMBC_BLOCK_BUFFER_1      0x0500u /* smb.asm: Block_Buffer_1 */
+#define SMBC_BLOCK_BUFFER_2      0x05d0u /* smb.asm: Block_Buffer_2 */
+#define SMBC_TERRAIN_CONTROL     0x0727u /* smb.asm: TerrainControl */
+#define SMBC_FOREGROUND_SCENERY  0x0741u /* smb.asm: ForegroundScenery */
+#define SMBC_BACKGROUND_SCENERY  0x0742u /* smb.asm: BackgroundScenery */
 #define SMBC_ATTRIBUTE_BUFFER    0x03f9u /* smb.asm: AttributeBuffer
                                           * ($03f9-$03ff) */
 #define SMBC_VRAM_BUFFER2        0x0341u /* smb.asm: VRAM_Buffer2 */

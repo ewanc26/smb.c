@@ -2,9 +2,10 @@
  *
  * Owns: the AreaParserTaskHandler task tree (smb.asm's eight-task cycle
  * of column position bookkeeping, area graphics and the object decoder),
- * IncrementColumnPos, RenderAreaGraphics and RenderAttributeTables.
- * AreaParserCore is pending its own atom — the area object data and
- * scenery tables — and its tasks skip their write.
+ * IncrementColumnPos, RenderAreaGraphics, RenderAttributeTables and
+ * AreaParserCore's scenery and terrain rendering. ProcessAreaData, the
+ * object decoder, is pending its own atom — the area object data — and
+ * its calls skip their write.
  *
  * Collaborators: core/screen runs AreaParserTaskControl as screen task 8
  * behind a disabled screen; data/metatiles supplies the attribute bits

@@ -1,0 +1,7 @@
+build/
+*.o
+*.elf
+*.map
+compile_commands.json
+.DS_Store
+.letta/

@@ -34,4 +34,17 @@ void update_screen(struct Smbc *smbc);
  * display when it exceeds it. */
 void update_top_score(CoreState *state);
 
+/* smb.asm: PrintStatusBarNumbers — print the status bar values selected by
+ * the two nybbles of `nybbles` into VRAM buffer 1: the low nybble selects
+ * one display (score, coin tally, game timer — see data/statusbar), the
+ * high nybble selects another. Selectors of six or more print nothing.
+ * Callers handle zero suppression. */
+void print_status_bar_numbers(CoreState *state, uint8_t nybbles);
+
+/* smb.asm: DigitsMathRoutine — apply the six digit modifiers to the six
+ * display digits ending at index `y`, borrowing and carrying between
+ * digits (digits stay 0-9), then erase the modifiers. On the title screen
+ * only the erase happens. */
+void digits_math_routine(CoreState *state, uint8_t y);
+
 #endif /* SMBC_CORE_SCREEN_H */

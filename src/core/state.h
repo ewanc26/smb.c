@@ -98,6 +98,22 @@ void state_init(CoreState *state);
 #define SMBC_MODE_VICTORY  2u
 #define SMBC_MODE_GAME_OVER 3u
 
+/* display digits and score arithmetic */
+#define SMBC_DIGIT_MODIFIER  0x0134u /* smb.asm: DigitModifier ($0134-$0139) */
+#define SMBC_DISPLAY_DIGITS  0x07d7u /* smb.asm: DisplayDigits — same base as
+                                      * TopScoreDisplay, used generically */
+
+/* game setup state */
+#define SMBC_PLAYER_ENTRANCE_CTRL 0x0710u /* smb.asm: PlayerEntranceCtrl */
+#define SMBC_SCREEN_LEFT_PAGE_LOC 0x071au /* smb.asm: ScreenLeft_PageLoc */
+#define SMBC_BACKLOADING_FLAG   0x0728u /* smb.asm: BackloadingFlag */
+#define SMBC_CLOUD_TYPE_OVERRIDE 0x0743u /* smb.asm: CloudTypeOverride */
+#define SMBC_ALT_ENTRANCE_CONTROL 0x0752u /* smb.asm: AltEntranceControl */
+#define SMBC_GAME_TIMER_EXPIRED_FLAG 0x0759u /* smb.asm: GameTimerExpiredFlag */
+#define SMBC_DISABLE_INTERMEDIATE 0x0769u /* smb.asm: DisableIntermediate */
+#define SMBC_BAL_PLATFORM_ALIGNMENT 0x03a0u /* smb.asm: BalPlatformAlignment */
+#define SMBC_AREA_MUSIC_QUEUE   0x00fbu /* smb.asm: AreaMusicQueue */
+
 /* zero page scratch used by the screen update path */
 #define SMBC_TEMP_VRAM_PTR 0x0000u /* smb.asm: $00/$01, the ($00),y indirect */
 

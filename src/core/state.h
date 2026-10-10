@@ -27,12 +27,14 @@ void state_init(CoreState *state);
 #define SMBC_FRAME_COUNTER      0x0009u /* smb.asm: FrameCounter */
 #define SMBC_A_B_BUTTONS        0x000au /* smb.asm: A_B_Buttons */
 #define SMBC_UP_DOWN_BUTTONS    0x000bu /* smb.asm: Up_Down_Buttons */
+#define SMBC_LEFT_RIGHT_BUTTONS 0x000cu /* smb.asm: Left_Right_Buttons */
 #define SMBC_PREV_A_B_BUTTONS   0x000du /* smb.asm: PreviousA_B_Buttons */
 #define SMBC_GAME_ENGINE_SUBROUTINE 0x000eu /* smb.asm: GameEngineSubroutine */
 #define SMBC_DESTINATION_PAGE_LOC 0x0034u /* smb.asm: DestinationPageLoc */
 #define SMBC_VICTORY_WALK_CONTROL 0x0035u /* smb.asm: VictoryWalkControl */
 #define SMBC_PLAYER_PAGE_LOC     0x006du /* smb.asm: Player_PageLoc */
 #define SMBC_PLAYER_X_POSITION   0x0086u /* smb.asm: Player_X_Position */
+#define SMBC_PLAYER_Y_HIGH_POS   0x00b5u /* smb.asm: Player_Y_HighPos */
 
 /* $0700 page */
 #define SMBC_SAVED_JOYPAD1_BITS 0x06fcu /* smb.asm: SavedJoypad1Bits */
@@ -70,8 +72,10 @@ void state_init(CoreState *state);
 #define SMBC_PRIMARY_MSG_COUNTER 0x0719u /* smb.asm: PrimaryMsgCounter */
 #define SMBC_SCREEN_LEFT_PAGE_LOC 0x071au /* smb.asm: ScreenLeft_PageLoc */
 #define SMBC_SCREEN_RIGHT_PAGE_LOC 0x071bu /* smb.asm: ScreenRight_PageLoc */
+#define SMBC_AREA_PARSER_TASK_NUM 0x071fu /* smb.asm: AreaParserTaskNum */
 #define SMBC_SPRITE0_HIT_FLAG    0x0722u /* smb.asm: Sprite0HitDetectFlag */
 #define SMBC_SCREEN_ROUTINE_TASK 0x073cu /* smb.asm: ScreenRoutineTask */
+#define SMBC_SCROLL_THIRTY_TWO   0x073du /* smb.asm: ScrollThirtyTwo */
 #define SMBC_HORIZONTAL_SCROLL   0x073fu /* smb.asm: HorizontalScroll */
 #define SMBC_VERTICAL_SCROLL     0x0740u /* smb.asm: VerticalScroll */
 #define SMBC_TIMER_CONTROL       0x0747u /* smb.asm: TimerControl */
@@ -108,6 +112,7 @@ void state_init(CoreState *state);
 #define SMBC_INTERVAL_TIMER_CONTROL 0x077fu /* smb.asm: IntervalTimerControl */
 #define SMBC_TIMERS              0x0780u /* smb.asm: Timers ($0780-$07a3) */
 #define SMBC_SELECT_TIMER        0x0780u /* smb.asm: SelectTimer */
+#define SMBC_STAR_INVINCIBLE_TIMER 0x079fu /* smb.asm: StarInvincibleTimer */
 #define SMBC_SCREEN_TIMER        0x07a0u /* smb.asm: ScreenTimer */
 #define SMBC_WORLD_END_TIMER     0x07a1u /* smb.asm: WorldEndTimer */
 #define SMBC_DEMO_TIMER          0x07a2u /* smb.asm: DemoTimer */

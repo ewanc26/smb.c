@@ -63,7 +63,8 @@ void nmi_run(Smbc *smbc) {
   ppu_write(ppu, 3, 0x00u);     /* sta PPU_SPR_ADDR */
   ppu_oam_dma(ppu, 0x02u);      /* lda #$02; sta SPR_DMA */
 
-  update_screen(smbc);          /* smb.asm: UpdateScreen (pending) */
+  load_vram_addr_table(state);  /* smb.asm: set the $00/$01 indirect */
+  update_screen(smbc);
 
   /* smb.asm: InitBuffer — clear the active VRAM buffer's header via the
    * VRAM_Buffer_Offset table ($00, or $40 when AddrCtrl is $06) */

@@ -19,9 +19,15 @@ void write_ppu_reg1(struct Smbc *smbc, uint8_t value);
 /* smb.asm: InitScroll — write the same value to $2005 twice. */
 void init_scroll(struct Smbc *smbc, uint8_t value);
 
-/* smb.asm: UpdateScreen — TODO(port): the VRAM buffer writer, pending the
- * VRAM buffer data tables. Currently a no-op; the NMI's surrounding buffer
- * bookkeeping is already in place. */
+/* smb.asm: the NMI's pointer load — sets the $00/$01 indirect from
+ * VRAM_AddrTable_Low/High indexed by VRAM_Buffer_AddrCtrl. ROM-backed
+ * entries (palettes, messages) are pending their data tables and read as
+ * empty update sets until then. */
+void load_vram_addr_table(CoreState *state);
+
+/* smb.asm: UpdateScreen / WriteBufferToScreen — walk the update sets at
+ * the $00/$01 indirect, writing each to VRAM through $2006/$2007, until a
+ * zero high byte. Falls through to InitScroll either way. */
 void update_screen(struct Smbc *smbc);
 
 /* smb.asm: UpdateTopScore — copy either player's score into the top score

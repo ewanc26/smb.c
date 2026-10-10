@@ -98,6 +98,9 @@ void state_init(CoreState *state);
 #define SMBC_MODE_VICTORY  2u
 #define SMBC_MODE_GAME_OVER 3u
 
+/* zero page scratch used by the screen update path */
+#define SMBC_TEMP_VRAM_PTR 0x0000u /* smb.asm: $00/$01, the ($00),y indirect */
+
 /* boot entry offsets, low bytes into the RAM page (smb.asm: constants) */
 #define SMBC_WARM_BOOT_OFFSET 0xd6u /* smb.asm: WarmBootOffset = <$07d6 */
 #define SMBC_COLD_BOOT_OFFSET 0xfeu /* smb.asm: ColdBootOffset = <$07fe */

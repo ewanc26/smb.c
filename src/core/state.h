@@ -179,6 +179,48 @@ void state_init(CoreState *state);
 #define SMBC_PLAYER_ENTRANCE_CTRL 0x0710u /* smb.asm: PlayerEntranceCtrl */
 #define SMBC_GAME_TIMER_SETTING   0x0715u /* smb.asm: GameTimerSetting */
 #define SMBC_AREA_ADDRS_L_OFFSET  0x074fu /* smb.asm: AreaAddrsLOffset */
+
+/* area object decoder state (smb.asm: ProcessAreaData/DecodeAreaData) */
+#define SMBC_SCROLL_LOCK 0x0723u         /* smb.asm: ScrollLock */
+#define SMBC_BEHIND_AREA_PARSER_FLAG 0x0729u /* smb.asm: BehindAreaParserFlag */
+#define SMBC_AREA_OBJECT_PAGE_LOC 0x072au /* smb.asm: AreaObjectPageLoc */
+#define SMBC_AREA_OBJECT_PAGE_SEL 0x072bu /* smb.asm: AreaObjectPageSel */
+#define SMBC_AREA_DATA_OFFSET 0x072cu    /* smb.asm: AreaDataOffset */
+#define SMBC_AREA_OBJ_OFFSET_BUFFER 0x072du /* smb.asm: AreaObjOffsetBuffer */
+#define SMBC_AREA_OBJECT_LENGTH 0x0730u  /* smb.asm: AreaObjectLength */
+#define SMBC_STAIRCASE_CONTROL 0x0734u   /* smb.asm: StaircaseControl */
+#define SMBC_AREA_OBJECT_HEIGHT 0x0735u  /* smb.asm: AreaObjectHeight */
+#define SMBC_MUSHROOM_LEDGE_HALF_LEN 0x0736u /* smb.asm: MushroomLedgeHalfLen */
+#define SMBC_LOOP_COMMAND 0x0745u        /* smb.asm: LoopCommand */
+#define SMBC_HIDDEN_1UP_FLAG 0x075du     /* smb.asm: Hidden1UpFlag */
+#define SMBC_WARP_ZONE_CONTROL 0x06d6u   /* smb.asm: WarpZoneControl */
+
+/* enemy/cannon/whirlpool buffers touched by the object handlers */
+#define SMBC_ENEMY_FLAG 0x000fu          /* smb.asm: Enemy_Flag */
+#define SMBC_ENEMY_ID 0x0016u            /* smb.asm: Enemy_ID */
+#define SMBC_ENEMY_STATE 0x001eu         /* smb.asm: Enemy_State */
+#define SMBC_JUMPSPRING_FIXED_Y_POS 0x58u /* smb.asm: Jumpspring_FixedYPos */
+#define SMBC_PIRANHA_PLANT_Y_SPEED 0x58u /* smb.asm: PiranhaPlant_Y_Speed
+                                          * (shares $58 with Jumpspring) */
+#define SMBC_ENEMY_PAGE_LOC 0x006eu      /* smb.asm: Enemy_PageLoc */
+#define SMBC_ENEMY_X_POSITION 0x0087u    /* smb.asm: Enemy_X_Position */
+#define SMBC_PIRANHA_PLANT_MOVE_FLAG 0xa0u /* smb.asm: PiranhaPlant_MoveFlag */
+#define SMBC_ENEMY_Y_HIGH_POS 0x00b6u    /* smb.asm: Enemy_Y_HighPos */
+#define SMBC_ENEMY_Y_POSITION 0x00cfu    /* smb.asm: Enemy_Y_Position */
+#define SMBC_FLAGPOLE_FNUM_Y_POS 0x010du /* smb.asm: FlagpoleFNum_Y_Pos */
+#define SMBC_PIRANHA_PLANT_UP_Y_POS 0x0417u /* smb.asm: PiranhaPlantUpYPos */
+#define SMBC_PIRANHA_PLANT_DOWN_Y_POS 0x0434u /* smb.asm: PiranhaPlantDownYPos */
+#define SMBC_CANNON_OFFSET 0x046au       /* smb.asm: Cannon_Offset */
+#define SMBC_CANNON_PAGE_LOC 0x046bu     /* smb.asm: Cannon_PageLoc */
+#define SMBC_CANNON_X_POSITION 0x0471u   /* smb.asm: Cannon_X_Position */
+#define SMBC_CANNON_Y_POSITION 0x0477u   /* smb.asm: Cannon_Y_Position */
+#define SMBC_WHIRLPOOL_OFFSET 0x046au    /* smb.asm: Whirlpool_Offset */
+#define SMBC_WHIRLPOOL_PAGE_LOC 0x046bu  /* smb.asm: Whirlpool_PageLoc */
+#define SMBC_WHIRLPOOL_LEFT_EXTENT 0x0471u /* smb.asm: Whirlpool_LeftExtent */
+#define SMBC_WHIRLPOOL_LENGTH 0x0477u    /* smb.asm: Whirlpool_Length */
+#define SMBC_ENEMY_BOUND_BOX_CTRL 0x049au /* smb.asm: Enemy_BoundBoxCtrl */
+#define SMBC_BRICK_COIN_TIMER_FLAG 0x06bcu /* smb.asm: BrickCoinTimerFlag */
+#define SMBC_ENEMY_FRENZY_QUEUE 0x06cdu  /* smb.asm: EnemyFrenzyQueue */
 #define SMBC_SCREEN_LEFT_PAGE_LOC 0x071au /* smb.asm: ScreenLeft_PageLoc */
 #define SMBC_BACKLOADING_FLAG   0x0728u /* smb.asm: BackloadingFlag */
 #define SMBC_CLOUD_TYPE_OVERRIDE 0x0743u /* smb.asm: CloudTypeOverride */

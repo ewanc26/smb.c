@@ -1,6 +1,7 @@
 # SMBC
 
-A C port of the Super Mario Bros. (NES) disassembly.
+A C port of the entire Super Mario Bros. (NES) game, built from the
+disassembly, that runs on any system.
 
 ---
 

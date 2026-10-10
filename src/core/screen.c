@@ -477,8 +477,14 @@ void screen_routines(Smbc *smbc) {
         st->ram[SMBC_OPER_MODE_TASK]++; /* IncModeTask_B */
         break;
       }
-      /* TODO(port): the $1ec0 CHR copy through $2007 — 314 bytes into the
-       * $0300 buffer page (hw/ppu CPU reads) */
+      /* smb.asm: read the title screen data ($1ec0 in the CHR) through
+       * $2007 into the $0300 buffer page — 314 bytes, one priming read */
+      ppu_write(&smbc->ppu, 6, 0x1eu); /* smb.asm: PPU_ADDRESS hi/lo */
+      ppu_write(&smbc->ppu, 6, 0xc0u);
+      (void)ppu_read(&smbc->ppu, 7); /* the garbage read */
+      for (uint16_t i = 0; i < 0x13au; i++) { /* OutputTScr */
+        st->ram[SMBC_VRAM_BUFFER1 - 1 + i] = ppu_read(&smbc->ppu, 7);
+      }
       st->ram[SMBC_VRAM_BUFFER_ADDR_CTRL] = 0x05u; /* SetVRAMAddr_B */
       st->ram[SMBC_SCREEN_ROUTINE_TASK]++;
       break;

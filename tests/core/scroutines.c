@@ -9,6 +9,7 @@
 #include "../../src/core/mode.h"
 #include "../../src/core/screen.h"
 #include "../../src/core/state.h"
+#include "../../src/data/chr.h"
 #include "../../src/data/title.h"
 
 #define BUF SMBC_VRAM_BUFFER1
@@ -247,13 +248,17 @@ static void title_tasks(void) {
   assert(smbc.state.ram[SMBC_OPER_MODE_TASK] == 0x02u);
   assert(smbc.state.ram[SMBC_SCREEN_ROUTINE_TASK] == 0x0cu);
 
-  /* task 12 in title mode: buffer control 5, task forward */
+  /* task 12 in title mode: the CHR title data lands in the buffer page,
+   * buffer control 5, task forward */
   smbc_init(&smbc);
   smbc.state.ram[SMBC_OPER_MODE] = SMBC_MODE_TITLE;
   smbc.state.ram[SMBC_SCREEN_ROUTINE_TASK] = 0x0cu;
   screen_routines(&smbc);
   assert(smbc.state.ram[SMBC_VRAM_BUFFER_ADDR_CTRL] == 0x05u);
   assert(smbc.state.ram[SMBC_SCREEN_ROUTINE_TASK] == 0x0du);
+  assert(smbc.state.ram[BUF - 1] == SMBC_CHR_ROM[0x1ec0]);
+  assert(smbc.state.ram[BUF - 1 + 0x100] == SMBC_CHR_ROM[0x1fc0]);
+  assert(smbc.state.ram[BUF - 1 + 0x139] == SMBC_CHR_ROM[0x1ff9]);
 
   /* task 13: the buffer pages cleared, icon drawn, task forward */
   smbc.state.ram[BUF - 1] = 0xaau; /* the offset byte itself */

@@ -2,10 +2,9 @@
  *
  * Owns: the small PPU-writing subroutines the reset and NMI paths share,
  * the top-score bookkeeping, WriteGameText, and the ScreenRoutines task
- * tree with its palette and colour subroutines. The title screen CHR
- * copy (hw/ppu CPU reads), DrawPlayer_Intermediate and the area parser
- * are pending their own atoms — the tasks that need them run their
- * control flow and skip the write.
+ * tree with its palette and colour subroutines. DrawPlayer_Intermediate
+ * and the area parser are pending their own atoms — the tasks that need
+ * them run their control flow and skip the write.
  */
 #ifndef SMBC_CORE_SCREEN_H
 #define SMBC_CORE_SCREEN_H

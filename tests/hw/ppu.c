@@ -129,6 +129,25 @@ int main(void) {
   assert(ppu.vram[0x3f21] == 0x00); /* the mirror carries no storage */
   assert(ppu.vram[0x3f20] == 0x00);
 
+  /* $2007 with a nominated CHR: the pattern tables read from it behind
+   * the one-access buffer */
+  static uint8_t chr[0x2000];
+  ppu_init(&ppu);
+  ppu_set_chr(&ppu, chr);
+  chr[0x1ec0] = 0xaau;
+  chr[0x1ec1] = 0xbbu;
+  ppu_write(&ppu, 6, 0x1eu);
+  ppu_write(&ppu, 6, 0xc0u);
+  (void)ppu_read(&ppu, 7); /* the priming read returns garbage */
+  assert(ppu_read(&ppu, 7) == 0xaau);
+  assert(ppu_read(&ppu, 7) == 0xbbu);
+  /* without a CHR the flat image answers */
+  ppu_init(&ppu);
+  ppu_write(&ppu, 6, 0x1eu);
+  ppu_write(&ppu, 6, 0xc0u);
+  (void)ppu_read(&ppu, 7);
+  assert(ppu_read(&ppu, 7) == 0x00u);
+
   printf("tests/hw/ppu: ok\n");
   return 0;
 }

@@ -1,6 +1,7 @@
 /* core/frame.c — see core/frame.h for the contract. */
 #include "frame.h"
 
+#include "../data/chr.h"
 #include "boot.h"
 #include "nmi.h"
 
@@ -9,6 +10,7 @@ void smbc_init(Smbc *smbc) {
   joypad_init(&smbc->joypad1);
   joypad_init(&smbc->joypad2);
   ppu_init(&smbc->ppu);
+  ppu_set_chr(&smbc->ppu, SMBC_CHR_ROM); /* the donor cartridge's pattern tables */
   apu_init(&smbc->apu);
   boot_run(smbc);
 }

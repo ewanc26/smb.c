@@ -6,12 +6,18 @@
  */
 #include "ppu.h"
 
+#include <stddef.h>
+
 void ppu_init(Ppu *ppu) {
   *ppu = (Ppu){0};
 }
 
 void ppu_set_vblank(Ppu *ppu, bool active) {
   ppu->vblank = active;
+}
+
+void ppu_set_chr(Ppu *ppu, const uint8_t *chr) {
+  ppu->chr = chr;
 }
 
 void ppu_oam_dma(Ppu *ppu, uint8_t page) {
@@ -117,7 +123,11 @@ uint8_t ppu_read(Ppu *ppu, uint8_t reg) {
         return palette;
       }
       uint8_t buffered = ppu->read_buffer;
-      ppu->read_buffer = ppu->vram[ppu_vram_addr(addr)];
+      /* the pattern tables read from the cartridge's CHR when one is
+       * nominated; the flat image answers otherwise */
+      ppu->read_buffer = (addr < 0x2000u && ppu->chr != NULL)
+                             ? ppu->chr[addr]
+                             : ppu->vram[ppu_vram_addr(addr)];
       ppu->vram_addr = (uint16_t)(addr + ppu_data_increment(ppu));
       return buffered;
     }

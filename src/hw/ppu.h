@@ -19,6 +19,10 @@
 #include <stdint.h>
 
 typedef struct {
+  const uint8_t *chr; /* CHR ROM for the pattern tables ($0000-$1FFF),
+                       * supplied by the host like a cartridge's; $2007
+                       * reads consult it, writes still land in the flat
+                       * image */
   uint8_t ctrl1;      /* $2000 writes, and the game's mirror lives in RAM */
   uint8_t ctrl2;      /* $2001 */
   uint8_t spr_addr;   /* $2003 */
@@ -42,6 +46,9 @@ uint8_t ppu_read(Ppu *ppu, uint8_t reg);
 /* Driven by the frame loop: entering vblank sets the flag, and a $2002 read
  * observes then clears it. */
 void ppu_set_vblank(Ppu *ppu, bool active);
+
+/* Nominate the cartridge's CHR ROM for pattern-table reads. */
+void ppu_set_chr(Ppu *ppu, const uint8_t *chr);
 
 /* $4014 OAM DMA: page is the high byte of the source address ($02 for the
  * $0200-$02FF sprite page). OAM contents are that RAM page itself in the

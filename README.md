@@ -10,7 +10,11 @@ disassembly, that runs on any system.
 The reset and NMI spine is translated and tested: boot, the interrupt
 handler, joypad reading, pause, timers, the pseudorandom register, sprite
 housekeeping, the VRAM buffer writer and name table initialisation. The
-CHR pattern tables are embedded (`src/data/chr.c`). Game logic beyond the
+game-setup tasks (`SecondaryGameSetup`, `GetAreaMusic`), the status-bar
+writer and digit arithmetic, and the ROM-backed VRAM update sets (palettes
+and messages) are in, with the CHR pattern tables embedded
+(`src/data/chr.c`). The PPU model decodes the donor cartridge's name-table
+mirroring and models palette-region `$2007` reads. Game logic beyond the
 spine — the mode execution tree, the sound engine, levels and enemies —
 is tracked in the open issues and translated routine by routine.
 

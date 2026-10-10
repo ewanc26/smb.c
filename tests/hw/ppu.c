@@ -62,6 +62,73 @@ int main(void) {
   assert(ppu_read(&ppu, 7) == 0x00); /* stale buffer */
   assert(ppu_read(&ppu, 7) == 0x5a);
 
+  /* name-table mirroring: the donor cartridge is vertical mirroring /
+   * horizontal arrangement, so A11 decodes to the duplicate and A10
+   * selects the physical 1KB bank */
+  (void)ppu_read(&ppu, 2);
+  ppu_write(&ppu, 0, 0x00);
+  ppu_write(&ppu, 6, 0x20);
+  ppu_write(&ppu, 6, 0x00);
+  ppu_write(&ppu, 7, 0x11); /* $2000 -> storage $2000 */
+  assert(ppu.vram[0x2000] == 0x11);
+  assert(ppu.vram[0x2800] == 0x00); /* name table 2 is a mirror */
+
+  /* a write through the mirror lands on the same storage */
+  ppu_write(&ppu, 6, 0x28);
+  ppu_write(&ppu, 6, 0x07);
+  ppu_write(&ppu, 7, 0x33); /* $2807 -> storage $2007 */
+  assert(ppu.vram[0x2007] == 0x33);
+  assert(ppu.vram[0x2807] == 0x00);
+
+  /* name table 1 is a distinct bank */
+  ppu_write(&ppu, 6, 0x24);
+  ppu_write(&ppu, 6, 0x00);
+  ppu_write(&ppu, 7, 0x22); /* $2400 -> storage $2400 */
+  assert(ppu.vram[0x2400] == 0x22);
+  assert(ppu.vram[0x2000] == 0x11);
+
+  /* $2C00 is name table 3, the mirror of name table 1 */
+  ppu_write(&ppu, 6, 0x2c);
+  ppu_write(&ppu, 6, 0x00);
+  ppu_write(&ppu, 7, 0x44);
+  assert(ppu.vram[0x2400] == 0x44);
+  assert(ppu.vram[0x2c00] == 0x00);
+
+  /* $3000-$3EFF is a bus mirror of $2000-$2EFF: no extra storage */
+  ppu_write(&ppu, 6, 0x30);
+  ppu_write(&ppu, 6, 0x00);
+  ppu_write(&ppu, 7, 0x55);
+  assert(ppu.vram[0x2000] == 0x55);
+  assert(ppu.vram[0x3000] == 0x00);
+
+  /* palette-region reads return the palette byte immediately — no priming
+   * read — and fill the buffer with the byte "underneath" at $2Fxx (the
+   * $3000-$3EFF mirror of the name tables) */
+  (void)ppu_read(&ppu, 2);
+  ppu_write(&ppu, 0, 0x00);
+  ppu_write(&ppu, 6, 0x3f);
+  ppu_write(&ppu, 6, 0x00);
+  ppu_write(&ppu, 7, 0x2a); /* palette byte at $3F00 */
+  ppu_write(&ppu, 6, 0x2f);
+  ppu_write(&ppu, 6, 0x00);
+  ppu_write(&ppu, 7, 0x5b); /* underlying $2F00 -> storage at $2700 */
+  ppu_write(&ppu, 6, 0x3f);
+  ppu_write(&ppu, 6, 0x00);
+  assert(ppu_read(&ppu, 7) == 0x2a); /* immediate palette byte */
+  /* the read buffer now holds the shadowed $2700 byte; a buffered read
+   * outside the palette region returns it */
+  ppu_write(&ppu, 6, 0x20);
+  ppu_write(&ppu, 6, 0x00);
+  assert(ppu_read(&ppu, 7) == 0x5b);
+
+  /* palette RAM is 32 bytes: $3F20-$3FFF aliases $3F00-$3F1F */
+  ppu_write(&ppu, 6, 0x3f);
+  ppu_write(&ppu, 6, 0x21);
+  ppu_write(&ppu, 7, 0x7e);
+  assert(ppu.vram[0x3f01] == 0x7e); /* $3F21 folds onto $3F01 */
+  assert(ppu.vram[0x3f21] == 0x00); /* the mirror carries no storage */
+  assert(ppu.vram[0x3f20] == 0x00);
+
   printf("tests/hw/ppu: ok\n");
   return 0;
 }

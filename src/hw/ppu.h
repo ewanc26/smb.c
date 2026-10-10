@@ -3,8 +3,11 @@
  * Owns: the CPU-visible state of the picture processing unit's eight
  * mirrored registers, including the $2005/$2006 write-pair latch and the
  * status flags reads can clear, and a flat VRAM image written through
- * $2006/$2007. Rendering is not modelled; a host frontend consumes the
- * VRAM image later.
+ * $2006/$2007. Reads and writes reach actual storage through the donor
+ * cartridge's address decoding: name-table mirroring ($2800/$2C00 alias
+ * $2000/$2400), the $3000-$3EFF bus mirror of the name tables, and the
+ * 32-byte palette RAM at $3F00-$3FFF. Rendering is not modelled; a host
+ * frontend consumes the VRAM image later.
  *
  * Collaborators: core/frame drives vblank; translated game code touches the
  * registers exactly as the original does.
@@ -20,7 +23,7 @@ typedef struct {
   uint8_t ctrl2;      /* $2001 */
   uint8_t spr_addr;   /* $2003 */
   uint16_t vram_addr; /* assembled by the $2006 write pair */
-  uint8_t vram[0x4000]; /* flat VRAM image; name table mirroring comes later */
+  uint8_t vram[0x4000]; /* flat VRAM image; mirroring applied on access */
   uint8_t scroll_x;   /* first $2005 write */
   uint8_t scroll_y;   /* second $2005 write */
   uint8_t read_buffer; /* buffered $2007 data */

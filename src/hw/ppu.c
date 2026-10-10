@@ -38,6 +38,33 @@ static uint16_t ppu_data_increment(const Ppu *ppu) {
   return (ppu->ctrl1 & 0x04u) ? 32u : 1u;
 }
 
+/* Map a 14-bit PPU address onto its actual storage byte in the flat 16KB
+ * image, per the donor cartridge (vertical mirroring / horizontal
+ * arrangement per its iNES header):
+ *   - name tables ($2000-$2FFF): A11 decodes to the duplicate, A10 selects
+ *     the physical 1KB bank, so $2800/$2C00 alias $2000/$2400;
+ *   - the bus mirrors $3000-$3EFF back onto $2000-$2EFF (only PA13
+ *     distinguishes them), then the name-table rule applies;
+ *   - palette RAM ($3F00-$3FFF) occupies 32 bytes: address bits 5+ are
+ *     ignored, so $3F20-$3FFF alias $3F00-$3F1F. (The additional backdrop
+ *     mirroring of $3F00/04/08/0C into $3F10/14/18/1C is not modelled; the
+ *     game writes the same value to both.)
+ * The rest of the space ($0000-$1FFF) is stored flat; the port keeps its
+ * CHR tables separately in src/data/chr. */
+static uint16_t ppu_vram_addr(uint16_t addr) {
+  addr &= 0x3fffu;
+  if (addr >= 0x3f00u) {
+    return (uint16_t)(0x3f00u | (addr & 0x1fu));
+  }
+  if (addr >= 0x3000u) {
+    addr = (uint16_t)(addr & 0x2fffu); /* $3000-$3EFF <-> $2000-$2EFF */
+  }
+  if (addr >= 0x2000u) {
+    addr = (uint16_t)(0x2000u | (addr & 0x07ffu)); /* drop A11, keep A10 */
+  }
+  return addr;
+}
+
 void ppu_write(Ppu *ppu, uint8_t reg, uint8_t value) {
   switch (reg & 0x7u) {
     case 0: ppu->ctrl1 = value; break;
@@ -60,7 +87,7 @@ void ppu_write(Ppu *ppu, uint8_t reg, uint8_t value) {
       ppu->latch = !ppu->latch;
       break;
     case 7: /* $2007: write at the address, then increment by 1 or 32 */
-      ppu->vram[ppu->vram_addr & 0x3fffu] = value;
+      ppu->vram[ppu_vram_addr(ppu->vram_addr)] = value;
       ppu->vram_addr = (uint16_t)(ppu->vram_addr + ppu_data_increment(ppu));
       break;
     default: break; /* $2002 is read-only; $2004 OAM data comes later */
@@ -76,12 +103,22 @@ uint8_t ppu_read(Ppu *ppu, uint8_t reg) {
       ppu->latch = false;
       return status;
     }
-    case 7: { /* $2007: reads are buffered one access behind. The palette
-               * region ($3F00+) reads immediately on hardware; that special
-               * case comes with palette work. */
+    case 7: { /* $2007: reads outside the palette are buffered one access
+               * behind. The palette region ($3F00+) returns its byte
+               * immediately — no priming read — and the read buffer is
+               * filled with the byte "underneath" (the $2Fxx bus mirror of
+               * the name tables), which a later buffered read can observe. */
+      uint16_t addr = (uint16_t)(ppu->vram_addr & 0x3fffu);
+      if (addr >= 0x3f00u) {
+        uint8_t palette = ppu->vram[ppu_vram_addr(addr)];
+        ppu->read_buffer =
+            ppu->vram[ppu_vram_addr((uint16_t)(addr & 0x2fffu))];
+        ppu->vram_addr = (uint16_t)(addr + ppu_data_increment(ppu));
+        return palette;
+      }
       uint8_t buffered = ppu->read_buffer;
-      ppu->read_buffer = ppu->vram[ppu->vram_addr & 0x3fffu];
-      ppu->vram_addr = (uint16_t)(ppu->vram_addr + ppu_data_increment(ppu));
+      ppu->read_buffer = ppu->vram[ppu_vram_addr(addr)];
+      ppu->vram_addr = (uint16_t)(addr + ppu_data_increment(ppu));
       return buffered;
     }
     default:

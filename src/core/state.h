@@ -228,6 +228,27 @@ void state_init(CoreState *state);
 #define SMBC_GAME_TIMER_EXPIRED_FLAG 0x0759u /* smb.asm: GameTimerExpiredFlag */
 #define SMBC_DISABLE_INTERMEDIATE 0x0769u /* smb.asm: DisableIntermediate */
 #define SMBC_BAL_PLATFORM_ALIGNMENT 0x03a0u /* smb.asm: BalPlatformAlignment */
+
+/* enemy data interpreter state (smb.asm: ProcessEnemyData region) */
+#define SMBC_PLAYER_STATE 0x001du         /* smb.asm: Player_State */
+#define SMBC_PLAYER_Y_POSITION 0x00ceu    /* smb.asm: Player_Y_Position */
+#define SMBC_FLOATEY_NUM_CONTROL 0x0110u  /* smb.asm: FloateyNum_Control */
+#define SMBC_SHELL_CHAIN_COUNTER 0x0125u  /* smb.asm: ShellChainCounter */
+#define SMBC_VINE_FLAG_OFFSET 0x0398u     /* smb.asm: VineFlagOffset */
+#define SMBC_ENEMY_SPR_ATTRIB 0x03c5u     /* smb.asm: Enemy_SprAttrib */
+#define SMBC_ENEMY_OFFSCR_BITS_MASKED 0x03d8u /* smb.asm: EnemyOffscrBitsMasked */
+#define SMBC_ENEMY_FRENZY_BUFFER 0x06cbu  /* smb.asm: EnemyFrenzyBuffer */
+#define SMBC_SECONDARY_HARD_MODE 0x06ccu  /* smb.asm: SecondaryHardMode */
+#define SMBC_NUMBER_OF_GROUP_ENEMIES 0x06d3u /* smb.asm: NumberofGroupEnemies */
+#define SMBC_MULTI_LOOP_CORRECT_CNTR 0x06d9u /* smb.asm: MultiLoopCorrectCntr */
+#define SMBC_MULTI_LOOP_PASS_CNTR 0x06dau /* smb.asm: MultiLoopPassCntr */
+#define SMBC_SCREEN_RIGHT_X_POS 0x071du   /* smb.asm: ScreenRight_X_Pos */
+#define SMBC_ENEMY_DATA_OFFSET 0x0739u    /* smb.asm: EnemyDataOffset */
+#define SMBC_ENEMY_OBJECT_PAGE_LOC 0x073au /* smb.asm: EnemyObjectPageLoc */
+#define SMBC_ENEMY_OBJECT_PAGE_SEL 0x073bu /* smb.asm: EnemyObjectPageSel */
+#define SMBC_ENTRANCE_PAGE 0x0751u        /* smb.asm: EntrancePage */
+#define SMBC_ENEMY_FRAME_TIMER 0x078au    /* smb.asm: EnemyFrameTimer */
+#define SMBC_ENEMY_INTERVAL_TIMER 0x0796u /* smb.asm: EnemyIntervalTimer */
 #define SMBC_AREA_MUSIC_QUEUE   0x00fbu /* smb.asm: AreaMusicQueue */
 
 /* zero page scratch used by the screen update path */

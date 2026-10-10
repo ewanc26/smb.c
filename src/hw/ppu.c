@@ -14,6 +14,25 @@ void ppu_set_vblank(Ppu *ppu, bool active) {
   ppu->vblank = active;
 }
 
+void ppu_oam_dma(Ppu *ppu, uint8_t page) {
+  ppu->oam_page = page;
+}
+
+void ppu_await_vblank(Ppu *ppu) {
+  /* satisfied immediately: present, then consumed as a $2002 read would */
+  ppu->vblank = true;
+  ppu->vblank = false;
+  ppu->latch = false;
+}
+
+void ppu_await_sprite0_clear(Ppu *ppu) {
+  ppu->sprite0 = false;
+}
+
+void ppu_await_sprite0_set(Ppu *ppu) {
+  ppu->sprite0 = true;
+}
+
 void ppu_write(Ppu *ppu, uint8_t reg, uint8_t value) {
   switch (reg & 0x7u) {
     case 0: ppu->ctrl1 = value; break;

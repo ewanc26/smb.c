@@ -24,6 +24,8 @@ typedef struct {
   uint8_t read_buffer; /* buffered $2007 data */
   bool latch;         /* $2005/$2006 first/second-write toggle */
   bool vblank;        /* status bit 7, set by the frame loop */
+  bool sprite0;       /* status bit 6, driven by the frame loop like vblank */
+  uint8_t oam_page;   /* last page nominated by a $4014 OAM DMA write */
 } Ppu;
 
 void ppu_init(Ppu *ppu);
@@ -35,5 +37,19 @@ uint8_t ppu_read(Ppu *ppu, uint8_t reg);
 /* Driven by the frame loop: entering vblank sets the flag, and a $2002 read
  * observes then clears it. */
 void ppu_set_vblank(Ppu *ppu, bool active);
+
+/* $4014 OAM DMA: page is the high byte of the source address ($02 for the
+ * $0200-$02FF sprite page). OAM contents are that RAM page itself in the
+ * port, so this only records which page was nominated. */
+void ppu_oam_dma(Ppu *ppu, uint8_t page);
+
+/* Host synchronisation points. The original spins on $2002 until the
+ * hardware reaches vblank / the sprite-0 hit; in this single-threaded port
+ * the frame driver owns timing, so the waits are satisfied immediately and
+ * exist to keep the translated code's shape. A cycle-faithful frontend may
+ * give them real duration; game logic must not depend on it. */
+void ppu_await_vblank(Ppu *ppu);
+void ppu_await_sprite0_clear(Ppu *ppu);
+void ppu_await_sprite0_set(Ppu *ppu);
 
 #endif /* SMBC_HW_PPU_H */

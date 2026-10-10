@@ -1,33 +1,31 @@
-/* core/frame.h — the frame loop.
+/* core/frame.h — the frame loop and the console state bundle.
  *
- * Owns: one frame of emulated time, derived from the disassembly's
- * NonMaskableInterrupt routine (smb.asm: NonMaskableInterrupt) and the
- * reset entry (smb.asm: Start). The skeleton polls the joypad into the
- * saved-bits RAM locations, advances the frame counter and toggles vblank;
- * translated game routines slot into the marked gap as they are ported.
+ * Owns: the Smbc struct (RAM, both joypads, PPU, APU) and one frame of
+ * emulated time: vblank begins, the translated NMI handler runs, vblank
+ * ends. Initialisation runs the disassembly's reset sequence.
  *
- * Collaborators: hw/joypad, hw/ppu, core/state. Deterministic — no
- * wall-clock reads.
+ * Deterministic — no wall-clock reads anywhere below the frontend.
  */
 #ifndef SMBC_CORE_FRAME_H
 #define SMBC_CORE_FRAME_H
 
+#include "../hw/apu.h"
 #include "../hw/joypad.h"
 #include "../hw/ppu.h"
 #include "state.h"
 
-typedef struct {
+typedef struct Smbc {
   CoreState state;
   Joypad joypad1;
   Joypad joypad2;
   Ppu ppu;
+  Apu apu;
 } Smbc;
 
+/* Zero all state, then run the reset sequence (smb.asm: Start). */
 void smbc_init(Smbc *smbc);
 
-/* Run one frame: latch and read both joypads into SavedJoypad1Bits /
- * SavedJoypad2Bits (smb.asm: the NMI's joypad poll), then advance
- * FrameCounter and vblank. */
+/* Run one frame: vblank in, NMI (smb.asm: NonMaskableInterrupt), vblank out. */
 void smbc_frame(Smbc *smbc);
 
 #endif /* SMBC_CORE_FRAME_H */

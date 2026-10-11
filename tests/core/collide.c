@@ -954,6 +954,78 @@ static void jump_and_hammer_bro_bg(void) {
   assert(smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] == 0x48u);
 }
 
+
+static void bg_collision_entry(void) {
+  /* d6 or out of range: nothing */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_STATE + 0] = 0x20u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x40u;
+  enemy_to_bg_collision_det(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] == 0x00u);
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x05u;
+  enemy_to_bg_collision_det(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] == 0x00u);
+
+  /* an id >= $07 leaves */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_BLOOBER;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x40u;
+  enemy_to_bg_collision_det(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] == 0x00u);
+
+  /* a walking green koopa over solid ground lands: outside
+   * the window it edge-checks, and the state maps through */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_GREEN_KOOPA;
+  smbc.state.ram[SMBC_ENEMY_STATE + 0] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x40u;
+  smbc.state.ram[SMBC_SPROBJ_X_POSITION + 1] = 0x84u;
+  smbc.state.ram[SMBC_SPROBJ_Y_POSITION + 1] = 0x40u;
+  smbc.state.ram[0x0508u + 0x30u] = 0x24u;
+  enemy_to_bg_collision_det(&smbc.state, 0x00u);
+  /* y $40: +0x18 = $58&f0 = $50-0x20 = $30 row; low nybble of
+   * the vertical coordinate is 0, outside $08-$0c, so the
+   * state maps through EnemyBGCStateData[1] */
+  assert(smbc.state.ram[SMBC_ENEMY_STATE + 0] == 0x01u);
+
+  /* over the $23 blank, a goomba dies above the block with the
+   * cell erased — the $fc from KillEnemyAboveBlock is
+   * immediately clobbered by SetStun's $fd, matching the asm's
+   * fall-through into ChkToStunEnemies */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_GOOMBA;
+  smbc.state.ram[SMBC_AREA_TYPE] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x40u;
+  smbc.state.ram[SMBC_SPROBJ_X_POSITION + 1] = 0x84u;
+  smbc.state.ram[SMBC_SPROBJ_Y_POSITION + 1] = 0x40u;
+  smbc.state.ram[0x0508u + 0x30u] = 0x23u;
+  enemy_to_bg_collision_det(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_STATE + 0] == 0x22u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_SPEED + 0] == 0xfdu);
+  assert(smbc.state.ram[0x0508u + 0x30u] == 0x00u);
+  assert(smbc.state.ram[SMBC_FLOATEY_NUM_CONTROL + 0] == 0x01u);
+
+  /* a power-up over a coin falls through to the edge check */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_POWER_UP_OBJECT;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x40u;
+  smbc.state.ram[SMBC_SPROBJ_X_POSITION + 1] = 0x84u;
+  smbc.state.ram[SMBC_SPROBJ_Y_POSITION + 1] = 0x40u;
+  smbc.state.ram[0x0508u + 0x30u] = 0xc2u;
+  enemy_to_bg_collision_det(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_STATE + 0] == 0x01u);
+
+  /* with nothing underneath, the edge check runs */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_GREEN_KOOPA;
+  smbc.state.ram[SMBC_ENEMY_STATE + 0] = 0x04u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x40u;
+  enemy_to_bg_collision_det(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_STATE + 0] == 0x02u);
+}
+
 int main(void) {
   masked_bits_park_the_box();
   corners_from_ctrl_data();
@@ -977,6 +1049,7 @@ int main(void) {
   block_buffer_primitives();
   landing_family();
   jump_and_hammer_bro_bg();
+  bg_collision_entry();
   puts("collide: ok");
   return 0;
 }

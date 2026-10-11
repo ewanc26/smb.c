@@ -792,3 +792,50 @@ void hammer_bro_bg_coll(CoreState *st, uint8_t x) {
   enemy_landing(st, x);
   do_enemy_side_check(st, x);
 }
+
+void handle_e_to_bg_collision(CoreState *st, uint8_t x, uint8_t metatile) {
+  if (!chk_for_non_solids(metatile)) {
+    /* smb.asm: NoEToBGCollision — blank, coins and hidden blocks
+     * fall through */
+    chk_for_red_koopa(st, x);
+    return;
+  }
+  if (metatile != 0x23u) {
+    land_enemy_properly(st, x);
+    return;
+  }
+  /* smb.asm: erase the $23 blank so this does not retrigger */
+  uint16_t ptr =
+      (uint16_t)(st->ram[SMBC_BB_PTR_LO] | (st->ram[SMBC_BB_PTR_HI] << 8u));
+  st->ram[ptr + st->ram[SMBC_BB_Y_COORD]] = 0x00u;
+  uint8_t id = st->ram[SMBC_ENEMY_ID + x];
+  if (id < 0x15u) {
+    if (id == SMBC_GOOMBA) kill_enemy_above_block(st, x);
+    /* smb.asm: GiveOEPoints — 100 points for hitting the block
+     * beneath the enemy */
+    setup_floatey_number(st, x, 0x01u);
+  }
+  chk_to_stun_enemies(st, x, id);
+}
+
+void enemy_to_bg_collision_det(CoreState *st, uint8_t x) {
+  if ((st->ram[SMBC_ENEMY_STATE + x] & 0x20u) != 0x00u) return;
+  if (!subt_enemy_y_pos(st, x)) return;
+  uint8_t id = st->ram[SMBC_ENEMY_ID + x];
+  if (id == SMBC_SPINY && st->ram[SMBC_ENEMY_Y_POSITION + x] < 0x25u) return;
+  if (id == SMBC_GREEN_PARATROOPA_JUMP) {
+    enemy_jump(st, x);
+    return;
+  }
+  if (id == SMBC_HAMMER_BRO) {
+    hammer_bro_bg_coll(st, x);
+    return;
+  }
+  if (id != SMBC_SPINY && id != SMBC_POWER_UP_OBJECT && id >= 0x07u) return;
+  uint8_t metatile = chk_under_enemy(st, x);
+  if (metatile != 0x00u) {
+    handle_e_to_bg_collision(st, x, metatile);
+    return;
+  }
+  chk_for_red_koopa(st, x);
+}

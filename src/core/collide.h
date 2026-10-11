@@ -248,4 +248,19 @@ void kill_enemy_above_block(CoreState *state, uint8_t x);
  * nothing underneath d0 sets for jumping or falling */
 void hammer_bro_bg_coll(CoreState *state, uint8_t x);
 
+/* smb.asm: HandleEToBGCollision — solid ground under the enemy:
+ * non-solids fall through to the red koopa check, other solids
+ * land through LandEnemyProperly, and the $23 blank gets
+ * erased from the buffer, defeats a goomba above the block,
+ * awards 100 points to anything below $15, and runs the
+ * stun-enemies comparisons */
+void handle_e_to_bg_collision(CoreState *state, uint8_t x, uint8_t metatile);
+
+/* smb.asm: EnemyToBGCollisionDet — the enemy background
+ * collision entry: d6 states leave, the +62/68 range check
+ * leaves, a spiny above $24 leaves, the jumping paratroopa and
+ * the hammer bro take their own routines, ids >= $07 leave, and
+ * the rest check underneath and land or edge-check */
+void enemy_to_bg_collision_det(CoreState *state, uint8_t x);
+
 #endif

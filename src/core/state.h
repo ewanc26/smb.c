@@ -259,6 +259,7 @@ void state_init(CoreState *state);
  * locations per object type */
 #define SMBC_POWER_UP_TYPE 0x0039u        /* smb.asm: PowerUpType */
 #define SMBC_ENEMY_MOVING_DIR 0x0046u     /* smb.asm: Enemy_MovingDir */
+#define SMBC_X_MOVE_PRIMARY_COUNTER 0x00a0u /* smb.asm: XMovePrimaryCounter */
 #define SMBC_ENEMY_X_SPEED 0x0058u        /* smb.asm: Enemy_X_Speed (shared) */
 #define SMBC_ENEMY_Y_SPEED 0x00a0u        /* smb.asm: Enemy_Y_Speed (shared) */
 #define SMBC_BLOOPER_MOVE_SPEED 0x0058u   /* smb.asm: BlooperMoveSpeed */

@@ -124,6 +124,55 @@ void proc_move_red_p_troopa(CoreState *st, uint8_t x) {
   }
 }
 
+/* smb.asm: XMoveCntr_Platform — every fourth frame, the secondary
+ * counter (the enemy X speed, shared at $58) ramps towards the
+ * maximum or back down to zero by the primary counter's d0; hitting
+ * a limit advances the primary counter instead. XMoveCntr_GreenPTroopa
+ * is this routine with a $13 maximum */
+static void x_move_cntr(CoreState *st, uint8_t x, uint8_t max) {
+  if ((st->ram[SMBC_FRAME_COUNTER] & 0x03u) != 0x00u) return;
+  uint8_t secondary = st->ram[SMBC_ENEMY_X_SPEED + x];
+  if ((st->ram[SMBC_X_MOVE_PRIMARY_COUNTER + x] & 0x01u) != 0x00u) {
+    if (secondary == 0x00u) {
+      st->ram[SMBC_X_MOVE_PRIMARY_COUNTER + x]++;
+    } else {
+      st->ram[SMBC_ENEMY_X_SPEED + x]--;
+    }
+  } else {
+    if (secondary == max) {
+      st->ram[SMBC_X_MOVE_PRIMARY_COUNTER + x]++;
+    } else {
+      st->ram[SMBC_ENEMY_X_SPEED + x]++;
+    }
+  }
+}
+
+/* smb.asm: MoveWithXMCntrs — the secondary counter is negated for
+ * leftward movement by the primary counter's d1, the moving
+ * direction is stored, and the counter is restored after the move */
+static void move_with_xm_cntrs(CoreState *st, uint8_t x) {
+  uint8_t saved = st->ram[SMBC_ENEMY_X_SPEED + x];
+  uint8_t dir = 0x01u;
+  if ((st->ram[SMBC_X_MOVE_PRIMARY_COUNTER + x] & 0x02u) == 0x00u) {
+    st->ram[SMBC_ENEMY_X_SPEED + x] = (uint8_t)(~saved + 1u);
+    dir = 0x02u;
+  }
+  st->ram[SMBC_ENEMY_MOVING_DIR + x] = dir;
+  move_enemy_horizontally(st, x);
+  st->ram[SMBC_ENEMY_X_SPEED + x] = saved;
+}
+
+void move_fly_green_p_troopa(CoreState *st, uint8_t x) {
+  x_move_cntr(st, x, 0x13u);
+  move_with_xm_cntrs(st, x);
+  uint8_t adder = 0x01u; /* sway down */
+  if ((st->ram[SMBC_FRAME_COUNTER] & 0x03u) != 0x00u) return;
+  if ((st->ram[SMBC_FRAME_COUNTER] & 0x40u) == 0x00u) {
+    adder = 0xffu; /* sway up */
+  }
+  st->ram[SMBC_ENEMY_Y_POSITION + x] += adder;
+}
+
 /* smb.asm: OffscreenBoundsCheck. The asm's carry chain is emulated
  * exactly: the cpy comparisons feed the adc/sbc pairs, so hammer bros
  * and piranha plants effectively add $39 before subtracting $48 (or

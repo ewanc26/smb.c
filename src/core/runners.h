@@ -35,4 +35,11 @@ void move_jumping_enemy(CoreState *state, uint8_t x);
  * coordinate */
 void proc_move_red_p_troopa(CoreState *state, uint8_t x);
 
+/* smb.asm: MoveFlyGreenPTroopa — the flying green paratroopa: the
+ * primary/secondary movement counters ramp and reflect the X speed
+ * for its sine-like horizontal flight (XMoveCntr_GreenPTroopa,
+ * MoveWithXMCntrs), and every fourth frame it sways one pixel down
+ * or up by the frame counter's d6 */
+void move_fly_green_p_troopa(CoreState *state, uint8_t x);
+
 #endif /* SMBC_CORE_RUNNERS_H */

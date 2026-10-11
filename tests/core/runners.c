@@ -264,6 +264,72 @@ static void red_p_troopa_seeks_centre(void) {
 }
 
 
+
+static void fly_green_counter_ramps(void) {
+  /* every fourth frame the secondary counter (the X speed) ramps
+   * towards $13 while the primary's d0 is clear; the mover negates
+   * it for leftward flight and restores it afterwards */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_FRAME_COUNTER] = 0x40u; /* fourth frame, sway down */
+  move_fly_green_p_troopa(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] == 0x01u);
+  assert(smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] == 0x02u); /* left */
+  /* the move ran with the negated speed ($ff): one pixel left */
+  assert(smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] == 0xffu);
+  assert(smbc.state.ram[SMBC_ENEMY_PAGE_LOC + 0] == 0xffu);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] == 0x01u); /* swayed */
+
+  /* off the fourth frame nothing changes but the movement itself */
+  uint8_t speed = smbc.state.ram[SMBC_ENEMY_X_SPEED + 0];
+  uint8_t ypos = smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0];
+  smbc.state.ram[SMBC_FRAME_COUNTER] = 0x41u;
+  move_fly_green_p_troopa(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] == speed);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] == ypos);
+}
+
+static void fly_green_counter_limits(void) {
+  /* the secondary at $13 with d0 clear advances the primary instead;
+   * with d0 set the secondary counts back down, and at zero the
+   * primary advances again */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_FRAME_COUNTER] = 0x00u;
+  smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] = 0x13u;
+  move_fly_green_p_troopa(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_X_MOVE_PRIMARY_COUNTER + 0] == 0x01u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] == 0x13u);
+
+  smbc.state.ram[SMBC_FRAME_COUNTER] = 0x04u;
+  move_fly_green_p_troopa(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] == 0x12u);
+  assert(smbc.state.ram[SMBC_X_MOVE_PRIMARY_COUNTER + 0] == 0x01u);
+
+  smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] = 0x00u;
+  smbc.state.ram[SMBC_FRAME_COUNTER] = 0x08u;
+  move_fly_green_p_troopa(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_X_MOVE_PRIMARY_COUNTER + 0] == 0x02u);
+}
+
+static void fly_green_rightward_leg(void) {
+  /* the primary's d1 selects rightward flight: no negation, and the
+   * moving direction is one */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_FRAME_COUNTER] = 0x00u;
+  smbc.state.ram[SMBC_X_MOVE_PRIMARY_COUNTER + 0] = 0x02u;
+  smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] = 0x00u;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] = 0x10u;
+  move_fly_green_p_troopa(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] == 0x01u);
+  /* d0 of the primary is clear here, so the counter ramped to one
+   * and the move used it rightward */
+  assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] == 0x01u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] == 0x10u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_MOVE_FORCE + 0] == 0x10u);
+}
+
 int main(void) {
   onscreen_survives();
   too_far_left_erased();
@@ -280,6 +346,9 @@ int main(void) {
   jumping_enemy_moves();
   red_p_troopa_resting_nudge();
   red_p_troopa_seeks_centre();
+  fly_green_counter_ramps();
+  fly_green_counter_limits();
+  fly_green_rightward_leg();
   puts("tests/core/runners: ok");
   return 0;
 }

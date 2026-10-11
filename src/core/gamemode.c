@@ -1,6 +1,7 @@
 /* core/gamemode.c — see core/gamemode.h for the contract. */
 #include "gamemode.h"
 #include "fball.h"
+#include "flagpole.h"
 
 #include "blocks.h"
 #include "cannon.h"
@@ -46,13 +47,12 @@ static void game_routines(Smbc *smbc) {
 
 /* smb.asm: GameEngine — the per-frame object and music processing. The
  * fireball/bubble, enemy, translation, offscreen, block, cannon,
- * whirlpool and timer calls run, as do the music check, palette-cycle
- * control computation and the SaveAB tail; the player-graphics,
- * misc-object and flagpole calls still wait on their atoms. */
+ * whirlpool, flagpole and timer calls run, as do the music check,
+ * palette-cycle control computation and the SaveAB tail; the
+ * player-graphics and misc-object calls still wait on their atoms. */
 static void game_engine(Smbc *smbc) {
   CoreState *st = &smbc->state;
-  /* TODO(port): smb.asm: PlayerGfxHandler, MiscObjectsCore,
-   * FlagpoleRoutine */
+  /* TODO(port): smb.asm: PlayerGfxHandler, MiscObjectsCore */
   /* smb.asm: ProcFireball_Bubble */
   proc_fireball_bubble(st);
   /* smb.asm: ProcELoop — the enemy and floatey-number passes over all
@@ -78,6 +78,8 @@ static void game_engine(Smbc *smbc) {
   process_cannons(st);
   /* smb.asm: ProcessWhirlpools */
   process_whirlpools(st);
+  /* smb.asm: FlagpoleRoutine */
+  flagpole_routine(st);
   /* smb.asm: RunGameTimer */
   run_game_timer(st);
   /* smb.asm: ColorRotation */

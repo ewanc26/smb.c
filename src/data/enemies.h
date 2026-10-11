@@ -47,3 +47,34 @@ extern const uint8_t SMBC_FIREBAR_SPIN_DIR_DATA[5];
  * platform spawn positions */
 extern const uint8_t SMBC_PLAT_POS_DATA_LOW[3];
 extern const uint8_t SMBC_PLAT_POS_DATA_HIGH[3];
+
+/* smb.asm: LakituDiffAdj — the difference adjusters for lakitu's own
+ * movement */
+extern const uint8_t SMBC_LAKITU_DIFF_ADJ_DATA[3];
+
+/* smb.asm: PRDiffAdjustData — pseudorandom difference adjusters for
+ * thrown spinys, four groups of four indexed by two LSFR bits */
+extern const uint8_t SMBC_PR_DIFF_ADJUST_DATA[12];
+
+/* smb.asm: FlyCCXPositionData / FlyCCXSpeedData / FlyCCTimerData —
+ * the flying cheep-cheep's position offsets, horizontal speeds and
+ * respawn timers */
+extern const uint8_t SMBC_FLYCC_X_POSITION_DATA[16];
+extern const uint8_t SMBC_FLYCC_X_SPEED_DATA[12];
+extern const uint8_t SMBC_FLYCC_TIMER_DATA[4];
+
+/* smb.asm: FlameYPosData / FlameYMFAdderData / FlameTimerData —
+ * bowser's flame heights, movement forces and respawn timers */
+extern const uint8_t SMBC_FLAME_Y_POS_DATA[4];
+extern const uint8_t SMBC_FLAME_YMF_ADDER_DATA[2];
+extern const uint8_t SMBC_FLAME_TIMER_DATA[8];
+
+/* smb.asm: FireworksXPosData / FireworksYPosData */
+extern const uint8_t SMBC_FIREWORKS_X_POS_DATA[6];
+extern const uint8_t SMBC_FIREWORKS_Y_POS_DATA[6];
+
+/* smb.asm: Enemy17YPosData / SwimCC_IDData — the bullet bill /
+ * cheep-cheep frenzy generator's vertical position filter. The
+ * Bitmasks table itself lives in data/scenery */
+extern const uint8_t SMBC_ENEMY17_Y_POS_DATA[8];
+extern const uint8_t SMBC_SWIMCC_ID_DATA[2];

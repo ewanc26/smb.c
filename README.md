@@ -1,4 +1,4 @@
-# SMBC
+# SMB.C
 
 A native C port of the original NES *Super Mario Bros.*, translated routine by routine from its disassembly. The goal is to run the game as a normal native program on supported host systems—not to emulate a NES console or require a ROM at runtime.
 

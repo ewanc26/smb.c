@@ -2,30 +2,10 @@
 #include "enemies.h"
 
 #include "../data/enemies.h"
+#include "enemyinit.h"
 
 /* smb.asm: World7 — world numbers are zero-based */
 #define SMBC_WORLD_7 0x06u
-
-/* smb.asm: InitEnemyRoutines — the jump engine table for newly loaded
- * enemy objects. The per-id initialisers are pending their own atom;
- * every entry currently behaves as NoInitCode:
- *
- *   $00-$0f: InitNormalEnemy ×3, InitRedKoopa, NoInitCode,
- *            InitHammerBro, InitGoomba, InitBloober, InitBulletBill,
- *            NoInitCode, InitCheepCheep ×2, InitPodoboo,
- *            InitPiranhaPlant, InitJumpGPTroopa, InitRedPTroopa
- *   $10-$1f: InitHorizFlySwimEnemy, InitLakitu, InitEnemyFrenzy,
- *            NoInitCode, InitEnemyFrenzy ×4, EndFrenzy, NoInitCode ×2,
- *            InitShortFirebar ×4, InitLongFirebar
- *   $20-$2f: NoInitCode ×4, InitBalPlatform, InitVertPlatform,
- *            LargeLiftUp, LargeLiftDown, InitHoriPlatform,
- *            InitDropPlatform, InitHoriPlatform, PlatLiftUp,
- *            PlatLiftDown, InitBowser, PwrUpJmp, Setup_Vine
- *   $30-$36: NoInitCode ×5, InitRetainerObj, EndOfEnemyInitCode */
-static void run_init_enemy_routines(CoreState *st, uint8_t x) {
-  (void)st;
-  (void)x;
-}
 
 /* smb.asm: CheckpointEnemyID — identifiers below $15 get eight pixels
  * added to their vertical coordinate (the cmp leaves the carry clear

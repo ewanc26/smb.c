@@ -249,6 +249,44 @@ void state_init(CoreState *state);
 #define SMBC_ENTRANCE_PAGE 0x0751u        /* smb.asm: EntrancePage */
 #define SMBC_ENEMY_FRAME_TIMER 0x078au    /* smb.asm: EnemyFrameTimer */
 #define SMBC_ENEMY_INTERVAL_TIMER 0x0796u /* smb.asm: EnemyIntervalTimer */
+
+/* enemy init state (smb.asm: InitEnemyRoutines region). Several of
+ * these deliberately share addresses — the asm reuses enemy buffer
+ * locations per object type */
+#define SMBC_POWER_UP_TYPE 0x0039u        /* smb.asm: PowerUpType */
+#define SMBC_ENEMY_MOVING_DIR 0x0046u     /* smb.asm: Enemy_MovingDir */
+#define SMBC_ENEMY_X_SPEED 0x0058u        /* smb.asm: Enemy_X_Speed (shared) */
+#define SMBC_ENEMY_Y_SPEED 0x00a0u        /* smb.asm: Enemy_Y_Speed (shared) */
+#define SMBC_BLOOPER_MOVE_SPEED 0x0058u   /* smb.asm: BlooperMoveSpeed */
+#define SMBC_RED_PTROOPA_CENTER_Y_POS 0x0058u /* smb.asm: RedPTroopaCenterYPos */
+#define SMBC_CHEEP_CHEEP_MOVE_M_FLAG 0x0058u /* smb.asm: CheepCheepMoveMFlag */
+#define SMBC_X_MOVE_SECONDARY_COUNTER 0x0058u /* smb.asm: XMoveSecondaryCounter */
+#define SMBC_FIREBAR_SPIN_STATE_LOW 0x0058u /* smb.asm: FirebarSpinState_Low */
+#define SMBC_Y_PLATFORM_CENTER_Y_POS 0x0058u /* smb.asm: YPlatformCenterYPos */
+#define SMBC_BLOCK_PAGE_LOC 0x0076u       /* smb.asm: Block_PageLoc */
+#define SMBC_BLOCK_X_POSITION 0x008fu     /* smb.asm: Block_X_Position */
+#define SMBC_BLOCK_Y_POSITION 0x00d7u     /* smb.asm: Block_Y_Position */
+#define SMBC_FIREBAR_SPIN_DIRECTION 0x0034u /* smb.asm: FirebarSpinDirection */
+#define SMBC_BOWSER_BODY_CONTROLS 0x0363u /* smb.asm: BowserBodyControls */
+#define SMBC_BOWSER_FEET_COUNTER 0x0364u  /* smb.asm: BowserFeetCounter */
+#define SMBC_BOWSER_MOVEMENT_SPEED 0x0365u /* smb.asm: BowserMovementSpeed */
+#define SMBC_BOWSER_ORIG_X_POS 0x0366u    /* smb.asm: BowserOrigXPos */
+#define SMBC_BOWSER_FRONT_OFFSET 0x0368u  /* smb.asm: BowserFront_Offset */
+#define SMBC_BRIDGE_COLLAPSE_OFFSET 0x0369u /* smb.asm: BridgeCollapseOffset */
+#define SMBC_FIREBAR_SPIN_SPEED 0x0388u   /* smb.asm: FirebarSpinSpeed */
+#define SMBC_VINE_OBJ_OFFSET 0x039au      /* smb.asm: VineObjOffset */
+#define SMBC_VINE_START_Y_POSITION 0x039du /* smb.asm: VineStart_Y_Position */
+#define SMBC_PLATFORM_COLLISION_FLAG 0x03a2u /* smb.asm: PlatformCollisionFlag */
+#define SMBC_HAMMER_THROWING_TIMER 0x03a2u /* smb.asm: HammerThrowingTimer */
+#define SMBC_ENEMY_X_MOVE_FORCE 0x0401u   /* smb.asm: Enemy_X_MoveForce (shared) */
+#define SMBC_RED_PTROOPA_ORIG_X_POS 0x0401u /* smb.asm: RedPTroopaOrigXPos */
+#define SMBC_Y_PLATFORM_TOP_Y_POS 0x0401u /* smb.asm: YPlatformTopYPos */
+#define SMBC_ENEMY_Y_MOVE_FORCE 0x0434u   /* smb.asm: Enemy_Y_MoveForce (shared) */
+#define SMBC_CHEEP_CHEEP_ORIG_Y_POS 0x0434u /* smb.asm: CheepCheepOrigYPos */
+#define SMBC_BOWSER_HIT_POINTS 0x0483u    /* smb.asm: BowserHitPoints */
+#define SMBC_DUPLICATE_OBJ_OFFSET 0x06cfu /* smb.asm: DuplicateObj_Offset */
+#define SMBC_LAKITU_REAPPEAR_TIMER 0x06d1u /* smb.asm: LakituReappearTimer */
+#define SMBC_BOWSER_FIRE_BREATH_TIMER 0x0790u /* smb.asm: BowserFireBreathTimer */
 #define SMBC_AREA_MUSIC_QUEUE   0x00fbu /* smb.asm: AreaMusicQueue */
 
 /* zero page scratch used by the screen update path */

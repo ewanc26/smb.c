@@ -294,15 +294,16 @@ static void group_enemies_no_slots(void) {
 
 static void vine_from_frenzy_check(void) {
   /* smb.asm: CheckFrenzyBuffer — a vine flag offset of one puts the
-   * vine in the identifier without setting the enemy flag */
+   * vine in the identifier without setting the enemy flag; the
+   * InitEnemyRoutines table entry then sets the object up */
   static const uint8_t stream[] = {0xffu};
   Smbc smbc;
   init_interp(&smbc, stream);
   smbc.state.ram[SMBC_VINE_FLAG_OFFSET] = 0x01u;
   enemies_and_loops_core(&smbc.state, 0x00u);
   assert(smbc.state.ram[SMBC_ENEMY_ID + 0] == 0x2fu);
-  assert(smbc.state.ram[SMBC_ENEMY_FLAG + 0] == 0x00u);
-  assert(smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] == 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_FLAG + 0] == 0x01u);
+  assert(smbc.state.ram[SMBC_SQUARE2_SOUND_QUEUE] == 0x04u);
 }
 
 static void loop_command_pass(void) {

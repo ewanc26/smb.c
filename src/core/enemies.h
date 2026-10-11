@@ -6,10 +6,9 @@
  * page control and right-boundary logic, HandleGroupEnemies,
  * CheckFrenzyBuffer, InitEnemyObject and CheckpointEnemyID.
  *
- * Pending their own atoms: RunEnemyObjectsCore (the per-frame runners,
- * jumped to when a slot's flag is already set) and the InitEnemyRoutines
- * jump table (per-id initialisers — the dispatch stands, every entry
- * behaves as NoInitCode).
+ * Pending its own atom: RunEnemyObjectsCore (the per-frame runners,
+ * jumped to when a slot's flag is already set). The InitEnemyRoutines
+ * jump table lives in core/enemyinit.
  *
  * Collaborators: the game engine and victory mode will call
  * enemies_and_loops_core once per enemy slot; data/enemies supplies the

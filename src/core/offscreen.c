@@ -171,6 +171,26 @@ void get_bubble_offscreen_bits(CoreState *st, uint8_t x) {
       (uint8_t)((ybits << 4) | (xbits >> 4));
 }
 
+/* smb.asm: RelativeMiscPosition — ObjOffsetData[2] puts the misc
+ * object $0d bytes into the spr-object arrays; the relative pair is
+ * row 6 of the spr-object coordinates */
+void relative_misc_position(CoreState *st, uint8_t x) {
+  st->ram[SMBC_MISC_REL_YPOS] = st->ram[SMBC_MISC_Y_POSITION + x];
+  st->ram[SMBC_MISC_REL_XPOS] =
+      (uint8_t)(st->ram[SMBC_MISC_X_POSITION + x] -
+                st->ram[SMBC_SCREEN_LEFT_X_POS]);
+}
+
+/* smb.asm: GetMiscOffscreenBits — the combined bits for a misc
+ * object, stored in Misc_OffscreenBits */
+void get_misc_offscreen_bits(CoreState *st, uint8_t x) {
+  uint8_t i = (uint8_t)(x + 0x0du);
+  uint8_t xbits = get_x_offscreen_bits(st, i);
+  uint8_t ybits = get_y_offscreen_bits(st, i);
+  st->ram[SMBC_MISC_OFFSCREEN_BITS] =
+      (uint8_t)((ybits << 4) | (xbits >> 4));
+}
+
 /* smb.asm: PlayerEnemyDiff — the low byte is discarded by callers;
  * the sign of the page difference is what branches on */
 int8_t player_enemy_diff(CoreState *st, uint8_t x) {

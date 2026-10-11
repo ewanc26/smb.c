@@ -22,6 +22,10 @@ void get_enemy_bound_box(CoreState *state, uint8_t x);
  * its relative coordinates and control row */
 void get_fireball_bound_box(CoreState *state, uint8_t x);
 
+/* smb.asm: GetMiscBoundBox — nine bytes into the SprObject arrays,
+ * the misc object's row of the relative coordinates. */
+void get_misc_bound_box(CoreState *state, uint8_t x);
+
 /* smb.asm: FireballBGCollision — bounce once off solid ground, or
  * explode when rising or already bouncing */
 void fireball_bg_collision(CoreState *state, uint8_t x);

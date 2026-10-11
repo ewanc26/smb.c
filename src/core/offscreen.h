@@ -58,6 +58,14 @@ void get_fireball_offscreen_bits(CoreState *state, uint8_t x);
  * an air bubble, stored in Bubble_OffscreenBits */
 void get_bubble_offscreen_bits(CoreState *state, uint8_t x);
 
+/* smb.asm: RelativeMiscPosition — ObjOffsetData[2] puts the misc object
+ * $0d bytes into the spr-object arrays; the relative pair is row 6. */
+void relative_misc_position(CoreState *state, uint8_t x);
+
+/* smb.asm: GetMiscOffscreenBits — the combined bits for a misc object,
+ * stored in Misc_OffscreenBits. */
+void get_misc_offscreen_bits(CoreState *state, uint8_t x);
+
 /* smb.asm: GetXOffscreenBits — the horizontal offscreen bits for
  * one object, exposed for the platform bound boxes */
 /* smb.asm: GetXOffscreenBits — the raw horizontal offscreen mask for

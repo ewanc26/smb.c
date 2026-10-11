@@ -104,6 +104,14 @@ void get_fireball_bound_box(CoreState *st, uint8_t x) {
   check_right_screen_bbox(st, slot, (uint8_t)(slot * 4u));
 }
 
+/* smb.asm: GetMiscBoundBox — nine bytes into the SprObject arrays,
+ * the misc object's row of the relative coordinates */
+void get_misc_bound_box(CoreState *st, uint8_t x) {
+  uint8_t slot = (uint8_t)(x + 0x09u);
+  bounding_box_core(st, slot, 0x06u);
+  check_right_screen_bbox(st, slot, (uint8_t)(slot * 4u));
+}
+
 /* smb.asm: FireballBGCollision — solid ground under a falling
  * fireball bounces it once; rising or already bouncing explodes it */
 void fireball_bg_collision(CoreState *st, uint8_t x) {

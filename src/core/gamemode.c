@@ -8,6 +8,7 @@
 #include "colour.h"
 #include "enemies.h"
 #include "frame.h"
+#include "miscobj.h"
 #include "initialize.h"
 #include "offscreen.h"
 #include "parser.h"
@@ -49,10 +50,10 @@ static void game_routines(Smbc *smbc) {
  * fireball/bubble, enemy, translation, offscreen, block, cannon,
  * whirlpool, flagpole and timer calls run, as do the music check,
  * palette-cycle control computation and the SaveAB tail; the
- * player-graphics and misc-object calls still wait on their atoms. */
+ * player-graphics call still waits on its atom. */
 static void game_engine(Smbc *smbc) {
   CoreState *st = &smbc->state;
-  /* TODO(port): smb.asm: PlayerGfxHandler, MiscObjectsCore */
+  /* TODO(port): smb.asm: PlayerGfxHandler */
   /* smb.asm: ProcFireball_Bubble */
   proc_fireball_bubble(st);
   /* smb.asm: ProcELoop — the enemy and floatey-number passes over all
@@ -74,6 +75,8 @@ static void game_engine(Smbc *smbc) {
   block_objects_core(st, 0x01u);
   st->ram[SMBC_OBJECT_OFFSET] = 0x00u;
   block_objects_core(st, 0x00u);
+  /* smb.asm: MiscObjectsCore */
+  misc_objects_core(st);
   /* smb.asm: ProcessCannons */
   process_cannons(st);
   /* smb.asm: ProcessWhirlpools */

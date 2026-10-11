@@ -284,6 +284,108 @@ static void collision_core_wraps(void) {
   assert(spr_object_collision_core(&smbc.state, 0x00u, 0x08u) == 0x00u);
 }
 
+
+static void turn_around_rules(void) {
+  /* a goomba turns: speed negated, direction inverted */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_GOOMBA;
+  smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] = 0x10u;
+  smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] = 0x01u;
+  enemy_turn_around(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] == 0xf0u);
+  assert(smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] == 0x02u);
+
+  /* a spiny turns despite being >= $07 */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_SPINY;
+  smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] = 0xf0u;
+  smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] = 0x02u;
+  enemy_turn_around(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] == 0x10u);
+  assert(smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] == 0x01u);
+
+  /* a bloober (>= $07, not spiny/paratroopa) does not */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_BLOOBER;
+  smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] = 0x10u;
+  smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] = 0x01u;
+  enemy_turn_around(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] == 0x10u);
+  assert(smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] == 0x01u);
+
+  /* nor a hammer bro */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_HAMMER_BRO;
+  smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] = 0x10u;
+  smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] = 0x01u;
+  enemy_turn_around(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] == 0x10u);
+}
+
+static void enemy_collision_reactions(void) {
+  /* two walkers: both turn around */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_GOOMBA;
+  smbc.state.ram[SMBC_ENEMY_ID + 1] = SMBC_GOOMBA;
+  smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] = 0x10u;
+  smbc.state.ram[SMBC_ENEMY_X_SPEED + 1] = 0xf0u;
+  smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 1] = 0x02u;
+  proc_enemy_collisions(&smbc.state, 0x00u, 0x01u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] == 0xf0u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 1] == 0x10u);
+
+  /* d5 in either state: nothing happens */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_GOOMBA;
+  smbc.state.ram[SMBC_ENEMY_ID + 1] = SMBC_GOOMBA;
+  smbc.state.ram[SMBC_ENEMY_STATE + 1] = 0x20u;
+  smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] = 0x10u;
+  proc_enemy_collisions(&smbc.state, 0x00u, 0x01u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] == 0x10u);
+
+  /* the second enemy a shell: the first dies, the chain counter
+   * feeds the score and increments */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_GOOMBA;
+  smbc.state.ram[SMBC_ENEMY_ID + 1] = 0x00u; /* koopa shell */
+  smbc.state.ram[SMBC_ENEMY_STATE + 1] = 0x06u;
+  smbc.state.ram[SMBC_AREA_TYPE] = 0x01u;
+  smbc.state.ram[SMBC_SHELL_CHAIN_COUNTER + 1] = 0x02u;
+  proc_enemy_collisions(&smbc.state, 0x00u, 0x01u);
+  assert((smbc.state.ram[SMBC_ENEMY_STATE + 0] & 0x20u) != 0x00u);
+  assert(smbc.state.ram[SMBC_FLOATEY_NUM_CONTROL + 0] == 0x06u);
+  assert(smbc.state.ram[SMBC_SHELL_CHAIN_COUNTER + 1] == 0x03u);
+
+  /* shell versus moving shell: the asm's 1000-point floatey for
+   * the x enemy is immediately overwritten by ShellOrBlockDefeat's
+   * own score call, so it keeps the koopa default, and the y
+   * enemy dies with the chain score */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = 0x00u;
+  smbc.state.ram[SMBC_ENEMY_ID + 1] = 0x00u;
+  smbc.state.ram[SMBC_ENEMY_STATE + 0] = 0x86u; /* d7 + >= 6 */
+  smbc.state.ram[SMBC_ENEMY_STATE + 1] = 0x86u;
+  smbc.state.ram[SMBC_AREA_TYPE] = 0x01u;
+  proc_enemy_collisions(&smbc.state, 0x00u, 0x01u);
+  assert(smbc.state.ram[SMBC_FLOATEY_NUM_CONTROL + 0] == 0x02u);
+  assert(smbc.state.ram[SMBC_FLOATEY_NUM_CONTROL + 1] == 0x04u);
+  assert((smbc.state.ram[SMBC_ENEMY_STATE + 0] & 0x20u) != 0x00u);
+  assert((smbc.state.ram[SMBC_ENEMY_STATE + 1] & 0x20u) != 0x00u);
+  assert(smbc.state.ram[SMBC_SHELL_CHAIN_COUNTER + 0] == 0x01u);
+
+  /* a hammer bro in an alt state kills nothing */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_GOOMBA;
+  smbc.state.ram[SMBC_ENEMY_ID + 1] = SMBC_HAMMER_BRO;
+  smbc.state.ram[SMBC_ENEMY_STATE + 1] = 0x07u;
+  smbc.state.ram[SMBC_AREA_TYPE] = 0x01u;
+  proc_enemy_collisions(&smbc.state, 0x00u, 0x01u);
+  assert((smbc.state.ram[SMBC_ENEMY_STATE + 0] & 0x20u) == 0x00u);
+}
+
 int main(void) {
   masked_bits_park_the_box();
   corners_from_ctrl_data();
@@ -295,6 +397,8 @@ int main(void) {
   shell_defeat_scores_and_stuns();
   collision_core_overlaps();
   collision_core_wraps();
+  turn_around_rules();
+  enemy_collision_reactions();
   puts("collide: ok");
   return 0;
 }

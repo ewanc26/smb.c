@@ -52,4 +52,18 @@ void shell_or_block_defeat(CoreState *state, uint8_t x);
 uint8_t spr_object_collision_core(CoreState *state, uint8_t x, uint8_t y);
 uint8_t player_collision_core(CoreState *state, uint8_t y);
 
+/* smb.asm: EnemyTurnAround — reverse the horizontal speed and
+ * invert the moving direction. Piranha plants, lakitus, hammer
+ * bros and any other id >= $07 leave as-is; spinys and jumping
+ * green paratroopas always turn */
+void enemy_turn_around(CoreState *state, uint8_t x);
+
+/* smb.asm: ProcEnemyCollisions — the reaction to an enemy-enemy
+ * collision. With d5 set in either state nothing happens. A shell
+ * (either state >= $06) kills the other enemy and chains the
+ * shell chain counter into the score, unless the victim is a
+ * hammer bro in an alt state; otherwise both enemies turn
+ * around */
+void proc_enemy_collisions(CoreState *state, uint8_t x, uint8_t y);
+
 #endif

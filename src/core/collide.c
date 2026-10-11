@@ -194,3 +194,53 @@ uint8_t spr_object_collision_core(CoreState *st, uint8_t x, uint8_t y) {
 uint8_t player_collision_core(CoreState *st, uint8_t y) {
   return spr_object_collision_core(st, 0x00u, y);
 }
+
+void enemy_turn_around(CoreState *st, uint8_t x) {
+  uint8_t id = st->ram[SMBC_ENEMY_ID + x];
+  if (id == SMBC_PIRANHA_PLANT || id == SMBC_LAKITU ||
+      id == SMBC_HAMMER_BRO) {
+    return;
+  }
+  if (id != SMBC_SPINY && id != SMBC_GREEN_PARATROOPA_JUMP && id >= 0x07u) {
+    return;
+  }
+  st->ram[SMBC_ENEMY_X_SPEED + x] =
+      (uint8_t)(~st->ram[SMBC_ENEMY_X_SPEED + x] + 1u);
+  st->ram[SMBC_ENEMY_MOVING_DIR + x] ^= 0x03u;
+}
+
+void proc_enemy_collisions(CoreState *st, uint8_t x, uint8_t y) {
+  if (((st->ram[SMBC_ENEMY_STATE + y] | st->ram[SMBC_ENEMY_STATE + x]) &
+       0x20u) != 0x00u) {
+    return;
+  }
+  if (st->ram[SMBC_ENEMY_STATE + x] >= 0x06u) {
+    /* the second enemy is a shell or stunned: it kills the first */
+    if (st->ram[SMBC_ENEMY_ID + x] == SMBC_HAMMER_BRO) return;
+    if ((st->ram[SMBC_ENEMY_STATE + y] & 0x80u) != 0x00u) {
+      /* smb.asm: the colliding enemy is itself a moving shell —
+       * kill this one too, then fall through for it below */
+      setup_floatey_number(st, x, 0x06u); /* 1000 points */
+      shell_or_block_defeat(st, x);
+    }
+    shell_or_block_defeat(st, y);
+    uint8_t score =
+        (uint8_t)(st->ram[SMBC_SHELL_CHAIN_COUNTER + x] + 0x04u);
+    setup_floatey_number(st, y, score);
+    st->ram[SMBC_SHELL_CHAIN_COUNTER + x]++;
+    return;
+  }
+  if (st->ram[SMBC_ENEMY_STATE + y] >= 0x06u) {
+    /* smb.asm: ProcSecondEnemyColl — the first is the shell */
+    if (st->ram[SMBC_ENEMY_ID + y] == SMBC_HAMMER_BRO) return;
+    shell_or_block_defeat(st, x);
+    uint8_t score =
+        (uint8_t)(st->ram[SMBC_SHELL_CHAIN_COUNTER + y] + 0x04u);
+    setup_floatey_number(st, x, score);
+    st->ram[SMBC_SHELL_CHAIN_COUNTER + y]++;
+    return;
+  }
+  /* smb.asm: MoveEOfs — two walking enemies turn around */
+  enemy_turn_around(st, y);
+  enemy_turn_around(st, x);
+}

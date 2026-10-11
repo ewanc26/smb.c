@@ -246,6 +246,7 @@ void state_init(CoreState *state);
 #define SMBC_ENEMY_REL_YPOS 0x03b9u      /* smb.asm: Enemy_Rel_YPos */
 #define SMBC_ENEMY_OFFSCREEN_BITS 0x03d1u /* smb.asm: Enemy_OffscreenBits */
 #define SMBC_ENEMY_OFFSCR_MASKED 0x03d8u  /* smb.asm: EnemyOffscrBitsMasked */
+#define SMBC_ENEMY_COLLISION_BITS 0x0491u /* smb.asm: Enemy_CollisionBits */
 #define SMBC_ENEMY_OFFSCR_BITS_MASKED 0x03d8u /* smb.asm: EnemyOffscrBitsMasked */
 #define SMBC_ENEMY_FRENZY_BUFFER 0x06cbu  /* smb.asm: EnemyFrenzyBuffer */
 #define SMBC_SECONDARY_HARD_MODE 0x06ccu  /* smb.asm: SecondaryHardMode */

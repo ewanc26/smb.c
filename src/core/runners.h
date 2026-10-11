@@ -123,4 +123,13 @@ void run_retainer_obj(CoreState *state, uint8_t x);
  * and the offscreen bounds check */
 void run_normal_enemies(CoreState *state, uint8_t x);
 
+/* smb.asm: ProcBowserFlame — the flame's movement and its
+ * three-sprite draw */
+void proc_bowser_flame(CoreState *state, uint8_t x);
+
+/* smb.asm: RunBowserFlame — process the flame, then offscreen
+ * bits, relative position, bounding box, player collision, and
+ * the offscreen bounds check */
+void run_bowser_flame(CoreState *state, uint8_t x);
+
 #endif /* SMBC_CORE_RUNNERS_H */

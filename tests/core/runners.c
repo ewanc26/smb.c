@@ -992,6 +992,90 @@ static void run_normal_family(void) {
   assert(smbc.state.ram[SMBC_BOUNDING_BOX_UL_CORNER + 4] == 0x00u);
 }
 
+
+static void bowser_flame_family(void) {
+  /* the flame drifts left: the borrow from the move force chains
+   * through the position into the page */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = 0x15u; /* BowserFlame */
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] = 0x40u;
+  smbc.state.ram[SMBC_ENEMY_PAGE_LOC + 0] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_X_MOVE_FORCE + 0] = 0x20u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x90u;
+  smbc.state.ram[SMBC_BOWSER_FLAME_PRANDOM_OFS + 0] = 0x00u;
+  smbc.state.ram[SMBC_ENEMY_Y_MOVE_FORCE + 0] = 0x02u;
+  proc_bowser_flame(&smbc.state, 0x00u);
+  /* move force 0x20 - 0x40 borrows: x 0x40 - 1 - 1 = 0x3e */
+  assert(smbc.state.ram[SMBC_ENEMY_X_MOVE_FORCE + 0] == 0xe0u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] == 0x3eu);
+  assert(smbc.state.ram[SMBC_ENEMY_PAGE_LOC + 0] == 0x01u); /* 0x40 > 2:
+                                                            no borrow */
+  /* already at the target: no bob */
+  assert(smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] == 0x90u);
+
+  /* off target it bobs by the y move force; the secondary hard
+   * mode uses the faster $60 force */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = 0x15u;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] = 0x40u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x80u;
+  smbc.state.ram[SMBC_BOWSER_FLAME_PRANDOM_OFS + 0] = 0x00u;
+  smbc.state.ram[SMBC_ENEMY_Y_MOVE_FORCE + 0] = 0x02u;
+  smbc.state.ram[SMBC_SECONDARY_HARD_MODE] = 0x01u;
+  proc_bowser_flame(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_MOVE_FORCE + 0] == 0xa0u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] == 0x82u);
+
+  /* the draw: three tiles $51-$53, eight pixels apart, with the
+   * vertical flip alternating every second frame */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = 0x15u;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] = 0x40u;
+  smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0xa0u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x90u;
+  smbc.state.ram[SMBC_ENEMY_REL_YPOS] = 0x00u;
+  smbc.state.ram[SMBC_FRAME_COUNTER] = 0x02u;
+  proc_bowser_flame(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_SPRITE_TILENUMBER] == 0x51u);
+  assert(smbc.state.ram[SMBC_SPRITE_TILENUMBER + 4u] == 0x52u);
+  assert(smbc.state.ram[SMBC_SPRITE_TILENUMBER + 8u] == 0x53u);
+  assert(smbc.state.ram[SMBC_SPRITE_ATTRIBUTES] == 0x82u);
+  assert(smbc.state.ram[SMBC_SPRITE_X_POSITION + 4u] == 0x46u); /* drift first */
+
+  /* the d2 offscreen bit parks the middle sprite only */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = 0x15u;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] = 0x40u;
+  smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0xa0u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x90u;
+  smbc.state.ram[SMBC_ENEMY_OFFSCREEN_BITS] = 0x04u;
+  proc_bowser_flame(&smbc.state, 0x00u);
+  /* the offscreen bits are recomputed, so check the draw ran */
+  assert(smbc.state.ram[SMBC_SPRITE_TILENUMBER] == 0x51u);
+
+  /* the master timer control freezes the drift but still draws */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = 0x15u;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] = 0x40u;
+  smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0xa0u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x90u;
+  smbc.state.ram[SMBC_TIMER_CONTROL] = 0x01u;
+  proc_bowser_flame(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] == 0x40u);
+  assert(smbc.state.ram[SMBC_SPRITE_TILENUMBER] == 0x51u);
+
+  /* run_bowser_flame chains the shared pipeline */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = 0x15u;
+  smbc.state.ram[SMBC_ENEMY_FLAG + 0] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] = 0x40u;
+  smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0xa0u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x90u;
+  run_bowser_flame(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_SPRITE_TILENUMBER] == 0x51u);
+}
+
 int main(void) {
   onscreen_survives();
   too_far_left_erased();
@@ -1032,6 +1116,7 @@ int main(void) {
   defeated_flying_cheep_cheep();
   movement_subs_dispatches();
   run_normal_family();
+  bowser_flame_family();
   puts("tests/core/runners: ok");
   return 0;
 }

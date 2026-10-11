@@ -686,3 +686,66 @@ void run_normal_enemies(CoreState *st, uint8_t x) {
   if (st->ram[SMBC_TIMER_CONTROL] == 0x00u) enemy_movement_subs(st, x);
   offscreen_bounds_check(st, x);
 }
+
+/* smb.asm: ProcBowserFlame — drift the flame left with the borrow
+ * chaining from the move force through the page, bob toward the
+ * random target, and draw the three flame sprites */
+void proc_bowser_flame(CoreState *st, uint8_t x) {
+  if (st->ram[SMBC_TIMER_CONTROL] == 0x00u) {
+    uint8_t force = st->ram[SMBC_SECONDARY_HARD_MODE] != 0x00u ? 0x60u : 0x40u;
+    uint16_t sub = (uint16_t)st->ram[SMBC_ENEMY_X_MOVE_FORCE + x] - force;
+    st->ram[SMBC_ENEMY_X_MOVE_FORCE + x] = (uint8_t)sub;
+    sub = (uint16_t)st->ram[SMBC_ENEMY_X_POSITION + x] - 0x01u -
+          ((sub & 0xff00u) != 0x0000u ? 0x01u : 0x00u);
+    st->ram[SMBC_ENEMY_X_POSITION + x] = (uint8_t)sub;
+    sub = (uint16_t)st->ram[SMBC_ENEMY_PAGE_LOC + x] -
+          ((sub & 0xff00u) != 0x0000u ? 0x01u : 0x00u);
+    st->ram[SMBC_ENEMY_PAGE_LOC + x] = (uint8_t)sub;
+    uint8_t y_pos = st->ram[SMBC_ENEMY_Y_POSITION + x];
+    if (y_pos !=
+        SMBC_FLAME_Y_POS_DATA[st->ram[SMBC_BOWSER_FLAME_PRANDOM_OFS + x]]) {
+      st->ram[SMBC_ENEMY_Y_POSITION + x] =
+          (uint8_t)(y_pos + st->ram[SMBC_ENEMY_Y_MOVE_FORCE + x]);
+    }
+  }
+  /* smb.asm: SetGfxF */
+  relative_enemy_position(st, x);
+  if (st->ram[SMBC_ENEMY_STATE + x] != 0x00u) return;
+  uint8_t tile = 0x51u;
+  uint8_t attr = (st->ram[SMBC_FRAME_COUNTER] & 0x02u) != 0x00u ? 0x82u : 0x02u;
+  uint8_t y = st->ram[SMBC_ENEMY_SPR_DATA_OFFSET + x];
+  for (uint8_t i = 0x00u; i < 0x03u; i++) {
+    st->ram[SMBC_SPRITE_Y_POSITION + y] = st->ram[SMBC_ENEMY_REL_YPOS];
+    st->ram[SMBC_SPRITE_TILENUMBER + y] = tile;
+    tile++;
+    st->ram[SMBC_SPRITE_ATTRIBUTES + y] = attr;
+    st->ram[SMBC_SPRITE_X_POSITION + y] = st->ram[SMBC_ENEMY_REL_XPOS];
+    st->ram[SMBC_ENEMY_REL_XPOS] += 0x08u;
+    y = (uint8_t)(y + 0x04u);
+  }
+  get_enemy_offscreen_bits(st, x);
+  y = st->ram[SMBC_ENEMY_SPR_DATA_OFFSET + x];
+  uint8_t bits = st->ram[SMBC_ENEMY_OFFSCREEN_BITS];
+  if ((bits & 0x01u) != 0x00u) {
+    st->ram[SMBC_SPRITE_Y_POSITION + 12u + y] = 0xf8u; /* residual */
+  }
+  if ((bits & 0x02u) != 0x00u) {
+    st->ram[SMBC_SPRITE_Y_POSITION + 8u + y] = 0xf8u;
+  }
+  if ((bits & 0x04u) != 0x00u) {
+    st->ram[SMBC_SPRITE_Y_POSITION + 4u + y] = 0xf8u;
+  }
+  if ((bits & 0x08u) != 0x00u) {
+    st->ram[SMBC_SPRITE_Y_POSITION + y] = 0xf8u;
+  }
+}
+
+/* smb.asm: RunBowserFlame — process, then the shared pipeline */
+void run_bowser_flame(CoreState *st, uint8_t x) {
+  proc_bowser_flame(st, x);
+  get_enemy_offscreen_bits(st, x);
+  relative_enemy_position(st, x);
+  get_enemy_bound_box(st, x);
+  player_enemy_collision(st, x);
+  offscreen_bounds_check(st, x);
+}

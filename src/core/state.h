@@ -287,6 +287,18 @@ void state_init(CoreState *state);
 #define SMBC_DUPLICATE_OBJ_OFFSET 0x06cfu /* smb.asm: DuplicateObj_Offset */
 #define SMBC_LAKITU_REAPPEAR_TIMER 0x06d1u /* smb.asm: LakituReappearTimer */
 #define SMBC_BOWSER_FIRE_BREATH_TIMER 0x0790u /* smb.asm: BowserFireBreathTimer */
+#define SMBC_PLAYER_X_SPEED 0x0057u       /* smb.asm: Player_X_Speed */
+#define SMBC_LAKITU_MOVE_SPEED 0x0058u    /* smb.asm: LakituMoveSpeed (shared) */
+#define SMBC_EXPLOSION_GFX_COUNTER 0x0058u /* smb.asm: ExplosionGfxCounter (shared) */
+#define SMBC_LAKITU_MOVE_DIRECTION 0x00a0u /* smb.asm: LakituMoveDirection (shared) */
+#define SMBC_EXPLOSION_TIMER_COUNTER 0x00a0u /* smb.asm: ExplosionTimerCounter (shared) */
+#define SMBC_BOWSER_FLAME_TIMER_CTRL 0x0367u /* smb.asm: BowserFlameTimerCtrl */
+#define SMBC_ENEMY_YMF_DUMMY 0x0417u      /* smb.asm: Enemy_YMF_Dummy (shared) */
+#define SMBC_BOWSER_FLAME_PRANDOM_OFS 0x0417u /* smb.asm: BowserFlamePRandomOfs */
+#define SMBC_FIREWORKS_COUNTER 0x06d7u    /* smb.asm: FireworksCounter */
+#define SMBC_BITM_FILTER 0x06ddu          /* smb.asm: BitMFilter */
+#define SMBC_SCROLL_AMOUNT 0x0775u        /* smb.asm: ScrollAmount */
+#define SMBC_FRENZY_ENEMY_TIMER 0x078fu   /* smb.asm: FrenzyEnemyTimer */
 #define SMBC_AREA_MUSIC_QUEUE   0x00fbu /* smb.asm: AreaMusicQueue */
 
 /* zero page scratch used by the screen update path */

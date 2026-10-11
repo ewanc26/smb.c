@@ -11,7 +11,7 @@
  * added to their vertical coordinate (the cmp leaves the carry clear
  * on this path, so the adc adds exactly eight) and the offscreen
  * masked bit set, then the init jump engine runs */
-static void checkpoint_enemy_id(CoreState *st, uint8_t x) {
+void checkpoint_enemy_id(CoreState *st, uint8_t x) {
   if (st->ram[SMBC_ENEMY_ID + x] < 0x15u) {
     st->ram[SMBC_ENEMY_Y_POSITION + x] += 0x08u;
     st->ram[SMBC_ENEMY_OFFSCR_BITS_MASKED + x] = 0x01u;

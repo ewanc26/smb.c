@@ -2,6 +2,7 @@
 #include "enemyinit.h"
 
 #include "../data/enemies.h"
+#include "../data/scenery.h" /* SMBC_BITMASKS */
 #include "enemies.h"
 
 /* smb.asm's sound effect constants used here */
@@ -10,7 +11,14 @@
 
 /* smb.asm's enemy object constants used here (see core/enemies.h for
  * the rest) */
-#define SMBC_LAKITU 0x11u /* smb.asm: Lakitu */
+#define SMBC_LAKITU 0x11u                /* smb.asm: Lakitu */
+#define SMBC_SPINY 0x12u                 /* smb.asm: Spiny */
+#define SMBC_BOWSER 0x2du                /* smb.asm: Bowser */
+#define SMBC_STAR_FLAG_OBJECT 0x31u      /* smb.asm: StarFlagObject */
+#define SMBC_BULLET_BILL_FRENZY_VAR 0x08u /* smb.asm: BulletBill_FrenzyVar */
+#define SMBC_WORLD_2 0x01u               /* smb.asm: World2 (zero-based) */
+#define SMBC_SFX_BLAST 0x08u             /* smb.asm: Sfx_Blast */
+#define SMBC_SFX_BOWSER_FLAME 0x02u      /* smb.asm: Sfx_BowserFlame */
 
 /* --- shared helpers ------------------------------------------------ */
 
@@ -382,6 +390,337 @@ static void end_frenzy(CoreState *st, uint8_t x) {
   st->ram[SMBC_ENEMY_FLAG + x] = 0x00u;
 }
 
+/* --- the frenzy generators ----------------------------------------- */
+
+/* smb.asm: PlayerEnemyDiff — the sixteen-bit horizontal difference,
+ * enemy minus player; the low byte goes to *diff and the high byte is
+ * returned (its d7 is the sign the callers test) */
+static uint8_t player_enemy_diff(CoreState *st, uint8_t x, uint8_t *diff) {
+  uint16_t enemy = ((uint16_t)st->ram[SMBC_ENEMY_PAGE_LOC + x] << 8) |
+                   st->ram[SMBC_ENEMY_X_POSITION + x];
+  uint16_t player = ((uint16_t)st->ram[SMBC_PLAYER_PAGE_LOC] << 8) |
+                    st->ram[SMBC_PLAYER_X_POSITION];
+  uint16_t d = (uint16_t)(enemy - player);
+  *diff = (uint8_t)d;
+  return (uint8_t)(d >> 8);
+}
+
+/* smb.asm: PlayerLakituDiff — returns an adjusted difference value.
+ * The adjusters live in $01-$03 of zero page on the NES, filled by the
+ * callers from LakituDiffAdj or PRDiffAdjustData; the port takes them
+ * as a three-byte array. The lakitu speed side effects only apply when
+ * the slot holds lakitu itself */
+static uint8_t player_lakitu_diff(CoreState *st, uint8_t x,
+                                  const uint8_t adj[3]) {
+  uint8_t diff;
+  uint8_t side = ((player_enemy_diff(st, x, &diff) & 0x80u) != 0x00u)
+                     ? 0x01u /* left of the player */
+                     : 0x00u;
+  if (side != 0x00u) diff = (uint8_t)(~diff + 1u); /* two's complement */
+  if (diff >= 0x3cu) {
+    diff = 0x3cu;
+    if (st->ram[SMBC_ENEMY_ID + x] == SMBC_LAKITU &&
+        side != st->ram[SMBC_LAKITU_MOVE_DIRECTION + x]) {
+      if (st->ram[SMBC_LAKITU_MOVE_DIRECTION + x] == 0x00u) {
+        st->ram[SMBC_LAKITU_MOVE_DIRECTION + x] = side;
+      } else {
+        st->ram[SMBC_LAKITU_MOVE_SPEED + x]--;
+        if (st->ram[SMBC_LAKITU_MOVE_SPEED + x] != 0x00u) {
+          return st->ram[SMBC_LAKITU_MOVE_SPEED + x]; /* ExMoveLak */
+        }
+        st->ram[SMBC_LAKITU_MOVE_DIRECTION + x] = side; /* SetLMovD */
+      }
+    }
+  }
+  /* ChkPSpeed — the middle four bits of the difference, divided by
+   * four, with the adjuster offset from the player's speed and the
+   * scroll amount */
+  diff = (diff & 0x3cu) >> 2;
+  uint8_t y = 0x00u;
+  if (st->ram[SMBC_PLAYER_X_SPEED] != 0x00u &&
+      st->ram[SMBC_SCROLL_AMOUNT] != 0x00u) {
+    y = 0x01u;
+    if (st->ram[SMBC_PLAYER_X_SPEED] >= 0x19u &&
+        st->ram[SMBC_SCROLL_AMOUNT] >= 0x02u) {
+      y = 0x02u;
+    }
+  }
+  if (st->ram[SMBC_ENEMY_ID + x] == SMBC_SPINY) {
+    /* a thrown spiny keeps the offset while the player is moving */
+    if (st->ram[SMBC_PLAYER_X_SPEED] == 0x00u &&
+        st->ram[SMBC_ENEMY_Y_SPEED + x] == 0x00u) {
+      y = 0x00u;
+    }
+  } else if (st->ram[SMBC_ENEMY_Y_SPEED + x] == 0x00u) {
+    y = 0x00u;
+  }
+  /* SubDifAdj / SPixelLak — one subtraction per pixel of difference,
+   * plus one (the asm's loop runs once for y = 0) */
+  uint8_t a = adj[y];
+  for (int i = diff; i >= 0; i--) a--;
+  return a;
+}
+
+/* smb.asm: FinishFlame — the shared tail of PutAtRightExtent: bounding
+ * box $08, the vertical high byte and buffer flag set, the horizontal
+ * movement force and enemy state cleared. Returns zero (A after the
+ * lsr), which the bullet bill path stores */
+static uint8_t finish_flame(CoreState *st, uint8_t x) {
+  st->ram[SMBC_ENEMY_BOUND_BOX_CTRL + x] = 0x08u;
+  st->ram[SMBC_ENEMY_Y_HIGH_POS + x] = 0x01u;
+  st->ram[SMBC_ENEMY_FLAG + x] = 0x01u;
+  st->ram[SMBC_ENEMY_X_MOVE_FORCE + x] = 0x00u;
+  st->ram[SMBC_ENEMY_STATE + x] = 0x00u;
+  return 0x00u;
+}
+
+/* smb.asm: PutAtRightExtent — the vertical coordinate in ypos and the
+ * horizontal position thirty-two pixels beyond the screen's right
+ * edge, then the shared tail */
+static uint8_t put_at_right_extent(CoreState *st, uint8_t x,
+                                   uint8_t ypos) {
+  st->ram[SMBC_ENEMY_Y_POSITION + x] = ypos;
+  uint16_t xsum = (uint16_t)st->ram[SMBC_SCREEN_RIGHT_X_POS] + 0x20u;
+  st->ram[SMBC_ENEMY_X_POSITION + x] = (uint8_t)xsum;
+  st->ram[SMBC_ENEMY_PAGE_LOC + x] =
+      (uint8_t)(st->ram[SMBC_SCREEN_RIGHT_PAGE_LOC] + (xsum >> 8));
+  return finish_flame(st, x); /* the asm tail-jumps here */
+}
+
+/* smb.asm: LakituAndSpinyHandler — respawns lakitu after the
+ * reappearance timer, or turns this frenzy object's own slot into a
+ * spiny thrown from the live lakitu */
+static void lakitu_and_spiny_handler(CoreState *st, uint8_t x) {
+  if (st->ram[SMBC_FRENZY_ENEMY_TIMER] != 0x00u) return;
+  if (x >= 0x05u) return; /* not on the special use slot */
+  st->ram[SMBC_FRENZY_ENEMY_TIMER] = 0x80u;
+  int lakitu = -1;
+  for (int y = 0x04; y >= 0; y--) {
+    if (st->ram[SMBC_ENEMY_ID + y] == SMBC_LAKITU) {
+      lakitu = y;
+      break;
+    }
+  }
+  if (lakitu < 0) {
+    /* no lakitu onscreen — count towards a reappearance */
+    st->ram[SMBC_LAKITU_REAPPEAR_TIMER]++;
+    if (st->ram[SMBC_LAKITU_REAPPEAR_TIMER] < 0x07u) return;
+    int slot = -1;
+    for (int y = 0x04; y >= 0; y--) {
+      if (st->ram[SMBC_ENEMY_FLAG + y] == 0x00u) {
+        slot = y;
+        break;
+      }
+    }
+    if (slot < 0) return;
+    uint8_t lx = (uint8_t)slot;
+    st->ram[SMBC_ENEMY_STATE + lx] = 0x00u;
+    st->ram[SMBC_ENEMY_ID + lx] = SMBC_LAKITU;
+    setup_lakitu(st, lx);
+    put_at_right_extent(st, lx, 0x20u);
+    return;
+  }
+  /* smb.asm: CreateSpiny — the spiny hatches in this object's slot.
+   * The adjusted difference the asm computes is discarded on the NES
+   * too (SmallBBox leaves zero in A), but the call is kept for its
+   * faithful structure */
+  uint8_t ly = (uint8_t)lakitu;
+  if (st->ram[SMBC_PLAYER_Y_POSITION] < 0x2cu) return;
+  if (st->ram[SMBC_ENEMY_STATE + ly] != 0x00u) return;
+  st->ram[SMBC_ENEMY_PAGE_LOC + x] = st->ram[SMBC_ENEMY_PAGE_LOC + ly];
+  st->ram[SMBC_ENEMY_X_POSITION + x] = st->ram[SMBC_ENEMY_X_POSITION + ly];
+  st->ram[SMBC_ENEMY_Y_HIGH_POS + x] = 0x01u;
+  st->ram[SMBC_ENEMY_Y_POSITION + x] =
+      (uint8_t)(st->ram[SMBC_ENEMY_Y_POSITION + ly] - 0x08u);
+  uint8_t ofs = st->ram[SMBC_PSEUDO_RANDOM_BIT_REG + x] & 0x03u;
+  const uint8_t adj[3] = {SMBC_PR_DIFF_ADJUST_DATA[ofs + 8u],
+                          SMBC_PR_DIFF_ADJUST_DATA[ofs + 4u],
+                          SMBC_PR_DIFF_ADJUST_DATA[ofs]};
+  (void)player_lakitu_diff(st, x, adj);
+  small_bbox(st, x); /* SmallBBox / SetSpSpd */
+  st->ram[SMBC_ENEMY_X_SPEED + x] = 0x00u; /* A was stomped to zero */
+  st->ram[SMBC_ENEMY_MOVING_DIR + x] = 0x01u;
+  st->ram[SMBC_ENEMY_Y_SPEED + x] = 0xfdu;
+  st->ram[SMBC_ENEMY_FLAG + x] = 0x01u;
+  st->ram[SMBC_ENEMY_STATE + x] = 0x05u; /* the egg state */
+}
+
+/* smb.asm: InitFlyingCheepCheep — spawn a flying cheep-cheep from off
+ * the screen, position and speed chosen by the LSFR and the player's
+ * motion */
+static void init_flying_cheep_cheep(CoreState *st, uint8_t x) {
+  if (st->ram[SMBC_FRENZY_ENEMY_TIMER] != 0x00u) return;
+  small_bbox(st, x);
+  uint8_t y = st->ram[SMBC_PSEUDO_RANDOM_BIT_REG + 1u + x] & 0x03u;
+  st->ram[SMBC_FRENZY_ENEMY_TIMER] = SMBC_FLYCC_TIMER_DATA[y];
+  y = 0x03u; /* three onscreen normally, four in secondary hard mode */
+  if (st->ram[SMBC_SECONDARY_HARD_MODE] != 0x00u) y = 0x04u;
+  if (x >= y) return;
+  uint8_t s00 = st->ram[SMBC_PSEUDO_RANDOM_BIT_REG + x] & 0x03u;
+  st->ram[SMBC_ENEMY_Y_SPEED + x] = 0xfbu;
+  uint8_t a = 0x00u;
+  uint8_t pxs = st->ram[SMBC_PLAYER_X_SPEED];
+  if (pxs != 0x00u) {
+    a = 0x04u;
+    if (pxs >= 0x19u) a <<= 1;
+  }
+  uint8_t saved = a;               /* the asm's pha */
+  s00 = (uint8_t)(s00 + a);        /* clc; adc $00 */
+  if ((st->ram[SMBC_PSEUDO_RANDOM_BIT_REG + 1u + x] & 0x03u) != 0x00u) {
+    /* RSeed — the third LSFR part's lower nybble overwrites $00 */
+    s00 = st->ram[SMBC_PSEUDO_RANDOM_BIT_REG + 2u + x] & 0x0fu;
+  }
+  uint8_t idx = (uint8_t)(saved +
+      (st->ram[SMBC_PSEUDO_RANDOM_BIT_REG + x] & 0x03u)); /* adc $01 */
+  st->ram[SMBC_ENEMY_X_SPEED + x] = SMBC_FLYCC_X_SPEED_DATA[idx];
+  st->ram[SMBC_ENEMY_MOVING_DIR + x] = 0x01u;
+  uint8_t posidx = idx;
+  if (pxs == 0x00u) {
+    /* a still player: d1 of $00 reverses the cheep-cheep */
+    posidx = s00;
+    if ((s00 & 0x02u) != 0x00u) {
+      st->ram[SMBC_ENEMY_X_SPEED + x] =
+          (uint8_t)(~st->ram[SMBC_ENEMY_X_SPEED + x] + 1u);
+      st->ram[SMBC_ENEMY_MOVING_DIR + x]++;
+    }
+  }
+  uint16_t px = ((uint16_t)st->ram[SMBC_PLAYER_PAGE_LOC] << 8) |
+                st->ram[SMBC_PLAYER_X_POSITION];
+  uint16_t ex = ((posidx & 0x02u) != 0x00u)
+                    ? (uint16_t)(px + SMBC_FLYCC_X_POSITION_DATA[posidx])
+                    : (uint16_t)(px - SMBC_FLYCC_X_POSITION_DATA[posidx]);
+  st->ram[SMBC_ENEMY_X_POSITION + x] = (uint8_t)ex;
+  st->ram[SMBC_ENEMY_PAGE_LOC + x] = (uint8_t)(ex >> 8);
+  st->ram[SMBC_ENEMY_FLAG + x] = 0x01u;
+  st->ram[SMBC_ENEMY_Y_HIGH_POS + x] = 0x01u;
+  st->ram[SMBC_ENEMY_Y_POSITION + x] = 0xf8u; /* below the screen */
+}
+
+/* smb.asm: SetFlameTimer — the next timer value from the table, with
+ * the control counter wrapped to three bits */
+static uint8_t set_flame_timer(CoreState *st) {
+  uint8_t y = st->ram[SMBC_BOWSER_FLAME_TIMER_CTRL];
+  st->ram[SMBC_BOWSER_FLAME_TIMER_CTRL] = (uint8_t)((y + 1u) & 0x07u);
+  return SMBC_FLAME_TIMER_DATA[y];
+}
+
+/* smb.asm: InitBowserFlame — with bowser onscreen the flame comes from
+ * his mouth, otherwise from beyond the right extent after a timer */
+static void init_bowser_flame(CoreState *st, uint8_t x) {
+  if (st->ram[SMBC_FRENZY_ENEMY_TIMER] != 0x00u) return;
+  st->ram[SMBC_ENEMY_Y_MOVE_FORCE + x] = 0x00u;
+  st->ram[SMBC_NOISE_SOUND_QUEUE] |= SMBC_SFX_BOWSER_FLAME;
+  uint8_t by = st->ram[SMBC_BOWSER_FRONT_OFFSET];
+  if (st->ram[SMBC_ENEMY_ID + by] == SMBC_BOWSER) {
+    /* SpawnFromMouth */
+    st->ram[SMBC_ENEMY_X_POSITION + x] =
+        (uint8_t)(st->ram[SMBC_ENEMY_X_POSITION + by] - 0x0eu);
+    st->ram[SMBC_ENEMY_PAGE_LOC + x] = st->ram[SMBC_ENEMY_PAGE_LOC + by];
+    st->ram[SMBC_ENEMY_Y_POSITION + x] =
+        (uint8_t)(st->ram[SMBC_ENEMY_Y_POSITION + by] + 0x08u);
+    uint8_t y = st->ram[SMBC_PSEUDO_RANDOM_BIT_REG + x] & 0x03u;
+    st->ram[SMBC_ENEMY_YMF_DUMMY + x] = y;
+    uint8_t target = SMBC_FLAME_Y_POS_DATA[y];
+    /* the movement force pulls toward the target height */
+    st->ram[SMBC_ENEMY_Y_MOVE_FORCE + x] =
+        SMBC_FLAME_YMF_ADDER_DATA[
+            (target < st->ram[SMBC_ENEMY_Y_POSITION + x]) ? 0x00u : 0x01u];
+    st->ram[SMBC_ENEMY_FRENZY_BUFFER] = 0x00u;
+    (void)finish_flame(st, x);
+    return;
+  }
+  uint8_t timer = (uint8_t)(set_flame_timer(st) + 0x20u);
+  if (st->ram[SMBC_SECONDARY_HARD_MODE] != 0x00u) timer -= 0x10u;
+  st->ram[SMBC_FRENZY_ENEMY_TIMER] = timer;
+  uint8_t y = st->ram[SMBC_PSEUDO_RANDOM_BIT_REG + x] & 0x03u;
+  st->ram[SMBC_BOWSER_FLAME_PRANDOM_OFS + x] = y;
+  (void)put_at_right_extent(st, x, SMBC_FLAME_Y_POS_DATA[y]);
+}
+
+/* smb.asm: InitFireworks — an explosion near the star flag object; the
+ * asm spins forever when none exists, so the port just leaves */
+static void init_fireworks(CoreState *st, uint8_t x) {
+  if (st->ram[SMBC_FRENZY_ENEMY_TIMER] != 0x00u) return;
+  st->ram[SMBC_FRENZY_ENEMY_TIMER] = 0x20u;
+  st->ram[SMBC_FIREWORKS_COUNTER]--;
+  int star = -1;
+  for (int y = 0x05; y >= 0; y--) {
+    if (st->ram[SMBC_ENEMY_ID + y] == SMBC_STAR_FLAG_OBJECT) {
+      star = y;
+      break;
+    }
+  }
+  if (star < 0) return;
+  uint16_t starx = (((uint16_t)st->ram[SMBC_ENEMY_PAGE_LOC + star] << 8) |
+                    st->ram[SMBC_ENEMY_X_POSITION + star]) -
+                   0x30u;
+  uint8_t y = (uint8_t)(st->ram[SMBC_FIREWORKS_COUNTER] +
+                        st->ram[SMBC_ENEMY_STATE + star]);
+  y &= 0x07u; /* the asm reads out of bounds past five; never in-game */
+  uint16_t fx = starx + SMBC_FIREWORKS_X_POS_DATA[y];
+  st->ram[SMBC_ENEMY_X_POSITION + x] = (uint8_t)fx;
+  st->ram[SMBC_ENEMY_PAGE_LOC + x] = (uint8_t)(fx >> 8);
+  st->ram[SMBC_ENEMY_Y_POSITION + x] = SMBC_FIREWORKS_Y_POS_DATA[y];
+  st->ram[SMBC_ENEMY_Y_HIGH_POS + x] = 0x01u;
+  st->ram[SMBC_ENEMY_FLAG + x] = 0x01u;
+  st->ram[SMBC_EXPLOSION_GFX_COUNTER + x] = 0x00u;
+  st->ram[SMBC_EXPLOSION_TIMER_COUNTER + x] = 0x08u;
+}
+
+/* smb.asm: BulletBillCheepCheep — a swimming cheep-cheep in water
+ * levels, a bullet bill (with the blast sound, at most one frenzy
+ * variant onscreen) elsewhere; the BitMFilter spreads the vertical
+ * positions */
+static void bullet_bill_cheep_cheep(CoreState *st, uint8_t x) {
+  if (st->ram[SMBC_FRENZY_ENEMY_TIMER] != 0x00u) return;
+  if (st->ram[SMBC_AREA_TYPE] == 0x00u) {
+    if (x >= 0x03u) return; /* the first three slots only */
+    uint8_t y = (st->ram[SMBC_PSEUDO_RANDOM_BIT_REG + x] >= 0xaau)
+                    ? 0x01u
+                    : 0x00u;
+    if (st->ram[SMBC_WORLD_NUMBER] != SMBC_WORLD_2) y++;
+    y &= 0x01u;
+    st->ram[SMBC_ENEMY_ID + x] = SMBC_SWIMCC_ID_DATA[y];
+  } else {
+    for (int y = 0x00; y < 0x05; y++) {
+      if (st->ram[SMBC_ENEMY_FLAG + y] != 0x00u &&
+          st->ram[SMBC_ENEMY_ID + y] == SMBC_BULLET_BILL_FRENZY_VAR) {
+        return;
+      }
+    }
+    st->ram[SMBC_SQUARE2_SOUND_QUEUE] |= SMBC_SFX_BLAST;
+    st->ram[SMBC_ENEMY_ID + x] = SMBC_BULLET_BILL_FRENZY_VAR;
+  }
+  /* Set17ID */
+  if (st->ram[SMBC_BITM_FILTER] == 0xffu) {
+    st->ram[SMBC_BITM_FILTER] = 0x00u;
+  }
+  uint8_t y = st->ram[SMBC_PSEUDO_RANDOM_BIT_REG + x] & 0x07u;
+  while ((st->ram[SMBC_BITM_FILTER] & SMBC_BITMASKS[y]) != 0x00u) {
+    y = (uint8_t)((y + 1u) & 0x07u);
+  }
+  st->ram[SMBC_BITM_FILTER] |= SMBC_BITMASKS[y];
+  uint8_t a = put_at_right_extent(st, x, SMBC_ENEMY17_Y_POS_DATA[y]);
+  st->ram[SMBC_ENEMY_YMF_DUMMY + x] = a; /* zero after the lsr */
+  st->ram[SMBC_FRENZY_ENEMY_TIMER] = 0x20u;
+  checkpoint_enemy_id(st, x); /* the new enemy gets its own init */
+}
+
+/* smb.asm: InitEnemyFrenzy — the identifier goes into the frenzy
+ * buffer, then the generator indexed by identifier minus $12 */
+static void init_enemy_frenzy(CoreState *st, uint8_t x) {
+  uint8_t id = st->ram[SMBC_ENEMY_ID + x];
+  st->ram[SMBC_ENEMY_FRENZY_BUFFER] = id;
+  switch ((uint8_t)(id - 0x12u)) {
+  case 0x00u: lakitu_and_spiny_handler(st, x); break;
+  case 0x02u: init_flying_cheep_cheep(st, x); break;
+  case 0x03u: init_bowser_flame(st, x); break;
+  case 0x04u: init_fireworks(st, x); break;
+  case 0x05u: bullet_bill_cheep_cheep(st, x); break;
+  default: break; /* NoFrenzyCode */
+  }
+}
+
 void run_init_enemy_routines(CoreState *st, uint8_t x) {
   /* smb.asm's jump engine table, fifty-four entries by identifier:
    *
@@ -396,9 +735,7 @@ void run_init_enemy_routines(CoreState *st, uint8_t x) {
    *            LargeLiftUp, LargeLiftDown, InitHoriPlatform,
    *            InitDropPlatform, InitHoriPlatform, PlatLiftUp,
    *            PlatLiftDown, InitBowser, PwrUpJmp, Setup_Vine
-   *   $30-$36: NoInitCode ×5, InitRetainerObj, EndOfEnemyInitCode
-   *
-   * The InitEnemyFrenzy entries are pending the frenzy atom. */
+   *   $30-$36: NoInitCode ×5, InitRetainerObj, EndOfEnemyInitCode */
   switch (st->ram[SMBC_ENEMY_ID + x]) {
   case 0x00u:
   case 0x01u:
@@ -416,6 +753,11 @@ void run_init_enemy_routines(CoreState *st, uint8_t x) {
   case 0x0fu: init_red_p_troopa(st, x); break;
   case 0x10u: init_horiz_fly_swim_enemy(st, x); break;
   case 0x11u: init_lakitu(st, x); break;
+  case 0x12u:
+  case 0x14u:
+  case 0x15u:
+  case 0x16u:
+  case 0x17u: init_enemy_frenzy(st, x); break;
   case 0x18u: end_frenzy(st, x); break;
   case 0x1bu:
   case 0x1cu:
@@ -440,6 +782,6 @@ void run_init_enemy_routines(CoreState *st, uint8_t x) {
     setup_vine(st, x, 0x00u);
     break;
   case 0x35u: init_retainer_obj(st, x); break;
-  default: break; /* NoInitCode / EndOfEnemyInitCode / pending frenzy */
+  default: break; /* NoInitCode / EndOfEnemyInitCode */
   }
 }

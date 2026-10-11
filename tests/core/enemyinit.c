@@ -411,16 +411,265 @@ static void end_frenzy_wakes_lakitu(void) {
 }
 
 static void no_init_leaves_everything(void) {
-  /* smb.asm: NoInitCode and the pending frenzy entries */
+  /* smb.asm: NoInitCode */
   Smbc smbc;
   init_at(&smbc, 0x00u, 0x04u);
   smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] = 0x55u;
   run_init_enemy_routines(&smbc.state, 0x00u);
   assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] == 0x55u);
+}
 
-  init_at(&smbc, 0x00u, 0x12u); /* pending: spiny via InitEnemyFrenzy */
+static void frenzy_buffer_and_timer(void) {
+  /* smb.asm: InitEnemyFrenzy — the identifier always goes into the
+   * frenzy buffer; a live timer stops the generators there */
+  Smbc smbc;
+  init_at(&smbc, 0x00u, 0x12u);
+  smbc.state.ram[SMBC_FRENZY_ENEMY_TIMER] = 0x30u;
   run_init_enemy_routines(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_FRENZY_BUFFER] == 0x12u);
+  assert(smbc.state.ram[SMBC_FRENZY_ENEMY_TIMER] == 0x30u);
+  assert(smbc.state.ram[SMBC_LAKITU_REAPPEAR_TIMER] == 0x00u);
+
+  /* smb.asm: LakituAndSpinyHandler — the timer sets to $80 and the
+   * reappearance timer counts up while lakitu is absent */
+  init_at(&smbc, 0x00u, 0x12u);
+  run_init_enemy_routines(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_FRENZY_ENEMY_TIMER] == 0x80u);
+  assert(smbc.state.ram[SMBC_LAKITU_REAPPEAR_TIMER] == 0x01u);
+
+  /* the special use slot is excluded */
+  init_at(&smbc, 0x05u, 0x12u);
+  run_init_enemy_routines(&smbc.state, 0x05u);
+  assert(smbc.state.ram[SMBC_FRENZY_ENEMY_TIMER] == 0x00u);
+}
+
+static void lakitu_respawn(void) {
+  /* smb.asm: LakituAndSpinyHandler — after seven counts lakitu is
+   * created in the first empty slot from the top, at the right
+   * extent with the FinishFlame tail */
+  Smbc smbc;
+  init_at(&smbc, 0x00u, 0x12u);
+  smbc.state.ram[SMBC_LAKITU_REAPPEAR_TIMER] = 0x06u;
+  smbc.state.ram[SMBC_ENEMY_FLAG + 4] = 0x01u; /* slot 4 busy, 3 free */
+  smbc.state.ram[SMBC_SCREEN_RIGHT_X_POS] = 0xf0u;
+  smbc.state.ram[SMBC_SCREEN_RIGHT_PAGE_LOC] = 0x01u;
+  run_init_enemy_routines(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_ID + 3] == 0x11u);
+  assert(smbc.state.ram[SMBC_LAKITU_REAPPEAR_TIMER] == 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_POSITION + 3] == 0x20u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_POSITION + 3] == 0x10u);
+  assert(smbc.state.ram[SMBC_ENEMY_PAGE_LOC + 3] == 0x02u);
+  assert(smbc.state.ram[SMBC_ENEMY_BOUND_BOX_CTRL + 3] == 0x08u);
+  assert(smbc.state.ram[SMBC_ENEMY_FLAG + 3] == 0x01u);
+  assert(smbc.state.ram[SMBC_ENEMY_STATE + 3] == 0x00u);
+}
+
+static void spiny_hatch(void) {
+  /* smb.asm: CreateSpiny — the frenzy object's own slot becomes the
+   * spiny, eight pixels above lakitu */
+  Smbc smbc;
+  init_at(&smbc, 0x00u, 0x12u);
+  smbc.state.ram[SMBC_PLAYER_Y_POSITION] = 0x60u;
+  smbc.state.ram[SMBC_ENEMY_ID + 2] = 0x11u; /* lakitu in slot 2 */
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 2] = 0x70u;
+  smbc.state.ram[SMBC_ENEMY_PAGE_LOC + 2] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 2] = 0x50u;
+  run_init_enemy_routines(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] == 0x70u);
+  assert(smbc.state.ram[SMBC_ENEMY_PAGE_LOC + 0] == 0x01u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] == 0x48u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_HIGH_POS + 0] == 0x01u);
+  assert(smbc.state.ram[SMBC_ENEMY_BOUND_BOX_CTRL + 0] == 0x09u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] == 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] == 0x01u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_SPEED + 0] == 0xfdu);
+  assert(smbc.state.ram[SMBC_ENEMY_FLAG + 0] == 0x01u);
+  assert(smbc.state.ram[SMBC_ENEMY_STATE + 0] == 0x05u);
+
+  /* a player above $2c stops the throw */
+  init_at(&smbc, 0x00u, 0x12u);
+  smbc.state.ram[SMBC_PLAYER_Y_POSITION] = 0x20u;
+  smbc.state.ram[SMBC_ENEMY_ID + 2] = 0x11u;
+  run_init_enemy_routines(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_FLAG + 0] == 0x00u);
+
+  /* a non-normal lakitu state stops the throw */
+  init_at(&smbc, 0x00u, 0x12u);
+  smbc.state.ram[SMBC_PLAYER_Y_POSITION] = 0x60u;
+  smbc.state.ram[SMBC_ENEMY_ID + 2] = 0x11u;
+  smbc.state.ram[SMBC_ENEMY_STATE + 2] = 0x01u;
+  run_init_enemy_routines(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_FLAG + 0] == 0x00u);
+}
+
+static void flying_cheep_cheep(void) {
+  /* smb.asm: InitFlyingCheepCheep — timer, speed and position from the
+   * LSFR parts and the player's motion */
+  Smbc smbc;
+  init_at(&smbc, 0x00u, 0x14u);
+  smbc.state.ram[SMBC_PSEUDO_RANDOM_BIT_REG + 0] = 0x00u;
+  smbc.state.ram[SMBC_PSEUDO_RANDOM_BIT_REG + 1] = 0x01u;
+  smbc.state.ram[SMBC_PSEUDO_RANDOM_BIT_REG + 2] = 0x05u;
+  smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0x80u;
+  run_init_enemy_routines(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_FRENZY_ENEMY_TIMER] == 0x60u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_SPEED + 0] == 0xfbu);
+  assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] == 0x0eu);
+  assert(smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] == 0x01u);
+  /* $00 = 5 from the third LSFR part; d1 clear so the position
+   * subtracts FlyCCXPositionData[5] = $50 from the player's $80 */
+  assert(smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] == 0x30u);
+  assert(smbc.state.ram[SMBC_ENEMY_PAGE_LOC + 0] == 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_FLAG + 0] == 0x01u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] == 0xf8u);
+  assert(smbc.state.ram[SMBC_ENEMY_BOUND_BOX_CTRL + 0] == 0x09u);
+
+  /* the slot cap: three onscreen without secondary hard mode */
+  init_at(&smbc, 0x03u, 0x14u);
+  run_init_enemy_routines(&smbc.state, 0x03u);
+  assert(smbc.state.ram[SMBC_ENEMY_FLAG + 3] == 0x00u);
+
+  /* secondary hard mode allows the fourth slot */
+  init_at(&smbc, 0x03u, 0x14u);
+  smbc.state.ram[SMBC_SECONDARY_HARD_MODE] = 0x01u;
+  run_init_enemy_routines(&smbc.state, 0x03u);
+  assert(smbc.state.ram[SMBC_ENEMY_FLAG + 3] == 0x01u);
+}
+
+static void bowser_flame_from_mouth(void) {
+  /* smb.asm: InitBowserFlame / SpawnFromMouth — fourteen pixels ahead
+   * of bowser, eight below, with the movement force pulling toward the
+   * pseudorandom target height */
+  Smbc smbc;
+  init_at(&smbc, 0x00u, 0x15u);
+  smbc.state.ram[SMBC_BOWSER_FRONT_OFFSET] = 0x02u;
+  smbc.state.ram[SMBC_ENEMY_ID + 2] = 0x2du;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 2] = 0x60u;
+  smbc.state.ram[SMBC_ENEMY_PAGE_LOC + 2] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 2] = 0x40u;
+  smbc.state.ram[SMBC_PSEUDO_RANDOM_BIT_REG + 0] = 0x03u;
+  run_init_enemy_routines(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] == 0x52u);
+  assert(smbc.state.ram[SMBC_ENEMY_PAGE_LOC + 0] == 0x01u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] == 0x48u);
+  assert(smbc.state.ram[SMBC_ENEMY_YMF_DUMMY + 0] == 0x03u);
+  /* target $90 >= current $48, so the force pulls down */
+  assert(smbc.state.ram[SMBC_ENEMY_Y_MOVE_FORCE + 0] == 0x01u);
   assert(smbc.state.ram[SMBC_ENEMY_FRENZY_BUFFER] == 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_BOUND_BOX_CTRL + 0] == 0x08u);
+  assert(smbc.state.ram[SMBC_ENEMY_FLAG + 0] == 0x01u);
+  assert(smbc.state.ram[SMBC_NOISE_SOUND_QUEUE] == 0x02u);
+}
+
+static void bowser_flame_from_extent(void) {
+  /* smb.asm: InitBowserFlame — without bowser, the flame waits on the
+   * timer table then spawns at the right extent */
+  Smbc smbc;
+  init_at(&smbc, 0x00u, 0x15u);
+  smbc.state.ram[SMBC_PSEUDO_RANDOM_BIT_REG + 0] = 0x01u;
+  smbc.state.ram[SMBC_SCREEN_RIGHT_X_POS] = 0xf0u;
+  smbc.state.ram[SMBC_SCREEN_RIGHT_PAGE_LOC] = 0x01u;
+  run_init_enemy_routines(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_FRENZY_ENEMY_TIMER] == 0xdfu); /* $bf+$20 */
+  assert(smbc.state.ram[SMBC_BOWSER_FLAME_TIMER_CTRL] == 0x01u);
+  assert(smbc.state.ram[SMBC_BOWSER_FLAME_PRANDOM_OFS + 0] == 0x01u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] == 0x80u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] == 0x10u);
+  assert(smbc.state.ram[SMBC_ENEMY_PAGE_LOC + 0] == 0x02u);
+  assert(smbc.state.ram[SMBC_ENEMY_BOUND_BOX_CTRL + 0] == 0x08u);
+  assert(smbc.state.ram[SMBC_ENEMY_FLAG + 0] == 0x01u);
+
+  /* secondary hard mode shortens the timer by sixteen */
+  init_at(&smbc, 0x00u, 0x15u);
+  smbc.state.ram[SMBC_SECONDARY_HARD_MODE] = 0x01u;
+  run_init_enemy_routines(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_FRENZY_ENEMY_TIMER] == 0xcfu);
+}
+
+static void fireworks(void) {
+  /* smb.asm: InitFireworks — the counter indexes the offset tables;
+   * the position anchors forty-eight pixels left of the star flag */
+  Smbc smbc;
+  init_at(&smbc, 0x00u, 0x16u);
+  smbc.state.ram[SMBC_FIREWORKS_COUNTER] = 0x06u;
+  smbc.state.ram[SMBC_ENEMY_ID + 1] = 0x31u; /* star flag object */
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 1] = 0x90u;
+  smbc.state.ram[SMBC_ENEMY_PAGE_LOC + 1] = 0x01u;
+  run_init_enemy_routines(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_FRENZY_ENEMY_TIMER] == 0x20u);
+  assert(smbc.state.ram[SMBC_FIREWORKS_COUNTER] == 0x05u);
+  /* $190 - $30 + FireworksXPosData[5] ($20) = $180 */
+  assert(smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] == 0x80u);
+  assert(smbc.state.ram[SMBC_ENEMY_PAGE_LOC + 0] == 0x01u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] == 0x30u);
+  assert(smbc.state.ram[SMBC_ENEMY_FLAG + 0] == 0x01u);
+  assert(smbc.state.ram[SMBC_EXPLOSION_GFX_COUNTER + 0] == 0x00u);
+  assert(smbc.state.ram[SMBC_EXPLOSION_TIMER_COUNTER + 0] == 0x08u);
+
+  /* no star flag object: the port leaves instead of the asm's spin */
+  init_at(&smbc, 0x00u, 0x16u);
+  run_init_enemy_routines(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_FLAG + 0] == 0x00u);
+}
+
+static void bullet_bill_on_land(void) {
+  /* smb.asm: BulletBillCheepCheep — outside water, one frenzy bullet
+   * bill at a time, with the blast sound and the identifier
+   * checkpoint's own init running afterwards */
+  Smbc smbc;
+  init_at(&smbc, 0x00u, 0x17u);
+  smbc.state.ram[SMBC_AREA_TYPE] = 0x01u;
+  smbc.state.ram[SMBC_PSEUDO_RANDOM_BIT_REG + 0] = 0x00u;
+  smbc.state.ram[SMBC_SCREEN_RIGHT_X_POS] = 0x20u;
+  smbc.state.ram[SMBC_SCREEN_RIGHT_PAGE_LOC] = 0x00u;
+  run_init_enemy_routines(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_ID + 0] == 0x08u);
+  assert(smbc.state.ram[SMBC_SQUARE2_SOUND_QUEUE] == 0x08u);
+  assert(smbc.state.ram[SMBC_BITM_FILTER] == 0x01u);
+  /* Enemy17YPosData[0] = $40, then eight pixels from the checkpoint */
+  assert(smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] == 0x48u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] == 0x40u);
+  assert(smbc.state.ram[SMBC_ENEMY_OFFSCR_BITS_MASKED + 0] == 0x01u);
+  assert(smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] == 0x02u);
+  assert(smbc.state.ram[SMBC_ENEMY_BOUND_BOX_CTRL + 0] == 0x09u);
+  assert(smbc.state.ram[SMBC_FRENZY_ENEMY_TIMER] == 0x20u);
+
+  /* a live frenzy bullet bill blocks another */
+  init_at(&smbc, 0x00u, 0x17u);
+  smbc.state.ram[SMBC_AREA_TYPE] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_FLAG + 2] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_ID + 2] = 0x08u;
+  run_init_enemy_routines(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_ID + 0] == 0x17u);
+  assert(smbc.state.ram[SMBC_SQUARE2_SOUND_QUEUE] == 0x00u);
+}
+
+static void swim_cheep_cheep_in_water(void) {
+  /* smb.asm: BulletBillCheepCheep — water levels spawn a swimming
+   * cheep-cheep, the identifier from the LSFR and the world number */
+  Smbc smbc;
+  init_at(&smbc, 0x00u, 0x17u);
+  smbc.state.ram[SMBC_AREA_TYPE] = 0x00u;
+  smbc.state.ram[SMBC_WORLD_NUMBER] = 0x00u;
+  smbc.state.ram[SMBC_PSEUDO_RANDOM_BIT_REG + 0] = 0xaau;
+  smbc.state.ram[SMBC_SCREEN_RIGHT_X_POS] = 0x00u;
+  run_init_enemy_routines(&smbc.state, 0x00u);
+  /* $aa >= $aa and not world two: y = 2, masked to 0 — first id */
+  assert(smbc.state.ram[SMBC_ENEMY_ID + 0] == 0x0au);
+  /* $aa & 7 = 2: Enemy17YPosData[2] = $90, then eight from the
+   * checkpoint */
+  assert(smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] == 0x98u);
+  assert(smbc.state.ram[SMBC_BITM_FILTER] == 0x04u);
+  /* then the cheep-cheep init ran through the checkpoint */
+  assert(smbc.state.ram[SMBC_ENEMY_BOUND_BOX_CTRL + 0] == 0x09u);
+  assert(smbc.state.ram[SMBC_CHEEP_CHEEP_ORIG_Y_POS + 0] == 0x98u);
+
+  /* past the third slot in water: nothing */
+  init_at(&smbc, 0x03u, 0x17u);
+  smbc.state.ram[SMBC_AREA_TYPE] = 0x00u;
+  run_init_enemy_routines(&smbc.state, 0x03u);
+  assert(smbc.state.ram[SMBC_ENEMY_ID + 3] == 0x17u);
+  assert(smbc.state.ram[SMBC_ENEMY_FLAG + 3] == 0x00u);
 }
 
 static void interpreter_runs_init(void) {
@@ -462,6 +711,15 @@ int main(void) {
   vine_setup();
   end_frenzy_wakes_lakitu();
   no_init_leaves_everything();
+  frenzy_buffer_and_timer();
+  lakitu_respawn();
+  spiny_hatch();
+  flying_cheep_cheep();
+  bowser_flame_from_mouth();
+  bowser_flame_from_extent();
+  fireworks();
+  bullet_bill_on_land();
+  swim_cheep_cheep_in_water();
   interpreter_runs_init();
   printf("tests/core/enemyinit: ok\n");
   return 0;

@@ -32,4 +32,10 @@
  * the data stream. */
 void enemies_and_loops_core(CoreState *state, uint8_t x);
 
+/* smb.asm: CheckpointEnemyID — identifiers below $15 get eight pixels
+ * added to their vertical coordinate and the offscreen masked bit set,
+ * then the init jump engine runs. Exported for the frenzy generators
+ * in core/enemyinit, whose bullet bill / cheep-cheep path jumps here */
+void checkpoint_enemy_id(CoreState *state, uint8_t x);
+
 #endif /* SMBC_CORE_ENEMIES_H */

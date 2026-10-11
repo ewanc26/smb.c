@@ -466,3 +466,42 @@ void proc_hammer_bro(CoreState *st, uint8_t x) {
   }
   st->ram[SMBC_ENEMY_MOVING_DIR + x] = dir;
 }
+
+void move_piranha_plant(CoreState *st, uint8_t x) {
+  if (st->ram[SMBC_ENEMY_STATE + x] == 0x00u &&
+      st->ram[SMBC_ENEMY_FRAME_TIMER + x] == 0x00u) {
+    if (st->ram[SMBC_PIRANHA_PLANT_MOVE_FLAG + x] == 0x00u) {
+      if ((int8_t)st->ram[SMBC_PIRANHA_PLANT_Y_SPEED + x] >= 0) {
+        /* smb.asm: ChkPlayerNearPipe — the saved low byte of
+         * PlayerEnemyDiff, two's complemented when the plant is
+         * left of the player */
+        uint8_t diff = (uint8_t)(st->ram[SMBC_ENEMY_X_POSITION + x] -
+                                 st->ram[SMBC_PLAYER_X_POSITION]);
+        if (player_enemy_diff(st, x) < 0) diff = (uint8_t)(~diff + 1u);
+        if (diff < 0x21u) goto put_in_pipe;
+      }
+      /* smb.asm: ReversePlantSpeed */
+      st->ram[SMBC_PIRANHA_PLANT_Y_SPEED + x] =
+          (uint8_t)(~st->ram[SMBC_PIRANHA_PLANT_Y_SPEED + x] + 1u);
+      st->ram[SMBC_PIRANHA_PLANT_MOVE_FLAG + x]++;
+    }
+    /* smb.asm: SetupToMovePPlant — the down coordinate when moving
+     * down, the up coordinate when rising */
+    uint8_t target = (int8_t)st->ram[SMBC_PIRANHA_PLANT_Y_SPEED + x] >= 0
+                         ? st->ram[SMBC_PIRANHA_PLANT_DOWN_Y_POS + x]
+                         : st->ram[SMBC_PIRANHA_PLANT_UP_Y_POS + x];
+    /* smb.asm: RiseFallPiranhaPlant — every other frame, and never
+     * under the master timer control */
+    if ((st->ram[SMBC_FRAME_COUNTER] & 0x01u) != 0x00u &&
+        st->ram[SMBC_TIMER_CONTROL] == 0x00u) {
+      st->ram[SMBC_ENEMY_Y_POSITION + x] +=
+          st->ram[SMBC_PIRANHA_PLANT_Y_SPEED + x];
+      if (st->ram[SMBC_ENEMY_Y_POSITION + x] == target) {
+        st->ram[SMBC_PIRANHA_PLANT_MOVE_FLAG + x] = 0x00u;
+        st->ram[SMBC_ENEMY_FRAME_TIMER + x] = 0x40u;
+      }
+    }
+  }
+put_in_pipe:
+  st->ram[SMBC_ENEMY_SPR_ATTRIB + x] = 0x20u;
+}

@@ -79,4 +79,14 @@ void move_podoboo(CoreState *state, uint8_t x);
  * left at them when the walking timer expires */
 void proc_hammer_bro(CoreState *state, uint8_t x);
 
+/* smb.asm: MovePiranhaPlant — any state or an unexpired frame
+ * timer keeps the plant in its pipe; a resting plant reverses its
+ * speed to emerge, but only when the player is at least $21 pixels
+ * away horizontally (the low byte of PlayerEnemyDiff, negated when
+ * the plant is left of the player). The plant then rises or falls
+ * one pixel every other frame towards its up or down coordinate,
+ * resting for $40 frames at each end. The background priority bit
+ * is always set, for the inside-the-pipe illusion */
+void move_piranha_plant(CoreState *state, uint8_t x);
+
 #endif /* SMBC_CORE_RUNNERS_H */

@@ -660,6 +660,71 @@ static void hammer_bro_shimmy_and_walk(void) {
   assert(smbc.state.ram[SMBC_ENEMY_Y_SPEED + 0] == 0x00u);
 }
 
+
+static void piranha_stays_in_pipe(void) {
+  /* any state, an unexpired frame timer, or a nearby player keeps
+   * the plant down; the background priority bit is always set */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_STATE + 0] = 0x01u;
+  move_piranha_plant(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_SPR_ATTRIB + 0] == 0x20u);
+  assert(smbc.state.ram[SMBC_PIRANHA_PLANT_MOVE_FLAG + 0] == 0x00u);
+
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_FRAME_TIMER + 0] = 0x10u;
+  move_piranha_plant(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_PIRANHA_PLANT_MOVE_FLAG + 0] == 0x00u);
+
+  /* player within $21 pixels: no reversal, plant stays put */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_PIRANHA_PLANT_Y_SPEED + 0] = 0x01u; /* down: gate runs */
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] = 0x30u;
+  smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0x20u; /* $10 away */
+  move_piranha_plant(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_PIRANHA_PLANT_MOVE_FLAG + 0] == 0x00u);
+  assert(smbc.state.ram[SMBC_PIRANHA_PLANT_Y_SPEED + 0] == 0x01u);
+}
+
+static void piranha_emerges_and_moves(void) {
+  /* a resting plant with the player far enough away reverses to
+   * rise and climbs a pixel every other frame towards its up
+   * coordinate, resting with a $40 timer on arrival */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_PIRANHA_PLANT_Y_SPEED + 0] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] = 0x80u; /* far from player */
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x60u;
+  smbc.state.ram[SMBC_PIRANHA_PLANT_UP_Y_POS + 0] = 0x5fu;
+  smbc.state.ram[SMBC_FRAME_COUNTER] = 0x01u; /* movement frame */
+  move_piranha_plant(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_PIRANHA_PLANT_Y_SPEED + 0] == 0xffu);
+  /* rose one pixel and arrived in the same frame: the flag set by
+   * the reversal clears again, and the rest timer sets */
+  assert(smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] == 0x5fu);
+  assert(smbc.state.ram[SMBC_PIRANHA_PLANT_MOVE_FLAG + 0] == 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_FRAME_TIMER + 0] == 0x40u);
+
+  /* off the movement frame the plant holds still */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_PIRANHA_PLANT_Y_SPEED + 0] = 0xffu;
+  smbc.state.ram[SMBC_PIRANHA_PLANT_MOVE_FLAG + 0] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x60u;
+  smbc.state.ram[SMBC_PIRANHA_PLANT_UP_Y_POS + 0] = 0x50u;
+  smbc.state.ram[SMBC_FRAME_COUNTER] = 0x00u;
+  move_piranha_plant(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] == 0x60u);
+  assert(smbc.state.ram[SMBC_PIRANHA_PLANT_MOVE_FLAG + 0] == 0x01u);
+
+  /* a negative resting speed reverses without the proximity gate */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_PIRANHA_PLANT_Y_SPEED + 0] = 0xffu;
+  smbc.state.ram[SMBC_FRAME_COUNTER] = 0x00u;
+  move_piranha_plant(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_PIRANHA_PLANT_Y_SPEED + 0] == 0x01u);
+  assert(smbc.state.ram[SMBC_PIRANHA_PLANT_MOVE_FLAG + 0] == 0x01u);
+}
+
 int main(void) {
   onscreen_survives();
   too_far_left_erased();
@@ -691,6 +756,8 @@ int main(void) {
   hammer_bro_jump_code();
   hammer_bro_throws();
   hammer_bro_shimmy_and_walk();
+  piranha_stays_in_pipe();
+  piranha_emerges_and_moves();
   puts("tests/core/runners: ok");
   return 0;
 }

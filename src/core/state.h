@@ -80,6 +80,8 @@ void state_init(CoreState *state);
 #define SMBC_SPR_DATA_OFFSET     0x06e4u /* smb.asm: SprDataOffset (15 bytes) */
 #define SMBC_ALT_SPR_DATA_OFFSET 0x06ecu /* smb.asm: Alt_SprDataOffset */
 #define SMBC_MISC_SPR_DATA_OFFSET 0x06f3u /* smb.asm: Misc_SprDataOffset */
+#define SMBC_BUBBLE_SPR_DATA_OFFSET 0x06eeu /* smb.asm: Bubble_SprDataOffset */
+#define SMBC_FBALL_SPR_DATA_OFFSET 0x06f1u /* smb.asm: FBall_SprDataOffset */
 
 /* screen and mode state */
 #define SMBC_DEMO_ACTION         0x0717u /* smb.asm: DemoAction */

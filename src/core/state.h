@@ -35,6 +35,7 @@ void state_init(CoreState *state);
 #define SMBC_UP_DOWN_BUTTONS    0x000bu /* smb.asm: Up_Down_Buttons */
 #define SMBC_LEFT_RIGHT_BUTTONS 0x000cu /* smb.asm: Left_Right_Buttons */
 #define SMBC_PREV_A_B_BUTTONS   0x000du /* smb.asm: PreviousA_B_Buttons */
+#define SMBC_PLAYER_FACING_DIR   0x0033u /* smb.asm: PlayerFacingDir */
 #define SMBC_GAME_ENGINE_SUBROUTINE 0x000eu /* smb.asm: GameEngineSubroutine */
 #define SMBC_DESTINATION_PAGE_LOC 0x0034u /* smb.asm: DestinationPageLoc */
 #define SMBC_VICTORY_WALK_CONTROL 0x0035u /* smb.asm: VictoryWalkControl */
@@ -82,6 +83,13 @@ void state_init(CoreState *state);
 #define SMBC_MISC_SPR_DATA_OFFSET 0x06f3u /* smb.asm: Misc_SprDataOffset */
 #define SMBC_BUBBLE_SPR_DATA_OFFSET 0x06eeu /* smb.asm: Bubble_SprDataOffset */
 #define SMBC_FBALL_SPR_DATA_OFFSET 0x06f1u /* smb.asm: FBall_SprDataOffset */
+#define SMBC_FIREBALL_BOUND_BOX_CTRL 0x04a0u /* smb.asm: Fireball_BoundBoxCtrl */
+#define SMBC_FIREBALL_COUNTER 0x06ceu    /* smb.asm: FireballCounter */
+#define SMBC_PLAYER_ANIM_TIMER_SET 0x070cu /* smb.asm: PlayerAnimTimerSet */
+#define SMBC_FIREBALL_THROWING_TIMER 0x0711u /* smb.asm: FireballThrowingTimer */
+#define SMBC_PLAYER_ANIM_TIMER 0x0781u   /* smb.asm: PlayerAnimTimer */
+#define SMBC_AIR_BUBBLE_TIMER 0x0792u    /* smb.asm: AirBubbleTimer */
+#define SMBC_BUBBLE_YMF_DUMMY 0x042cu    /* smb.asm: Bubble_YMF_Dummy */
 
 /* screen and mode state */
 #define SMBC_DEMO_ACTION         0x0717u /* smb.asm: DemoAction */
@@ -217,11 +225,13 @@ void state_init(CoreState *state);
 #define SMBC_JUMPSPRING_TIMER 0x0786u     /* smb.asm: JumpspringTimer */
 #define SMBC_PIRANHA_PLANT_Y_SPEED 0x58u /* smb.asm: PiranhaPlant_Y_Speed
                                           * (shares $58 with Jumpspring) */
+#define SMBC_SPROBJ_X_SPEED 0x0057u       /* smb.asm: SprObject_X_Speed */
 #define SMBC_SPROBJ_PAGE_LOC 0x006du     /* smb.asm: SprObject_PageLoc */
 #define SMBC_SPROBJ_X_POSITION 0x0086u   /* smb.asm: SprObject_X_Position */
 #define SMBC_SPROBJ_Y_POSITION 0x00ceu   /* smb.asm: SprObject_Y_Position */
 #define SMBC_SPROBJ_Y_HIGH_POS 0x00b5u   /* smb.asm: SprObject_Y_HighPos */
 #define SMBC_SPROBJ_Y_SPEED 0x009fu      /* smb.asm: SprObject_Y_Speed */
+#define SMBC_SPROBJ_X_MOVE_FORCE 0x0400u /* smb.asm: SprObject_X_MoveForce */
 #define SMBC_SPROBJ_YMF_DUMMY 0x0416u    /* smb.asm: SprObject_YMF_Dummy */
 #define SMBC_SPROBJ_Y_MOVE_FORCE 0x0433u /* smb.asm: SprObject_Y_MoveForce */
 #define SMBC_ENEMY_PAGE_LOC 0x006eu      /* smb.asm: Enemy_PageLoc */

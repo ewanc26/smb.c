@@ -2,24 +2,32 @@
 #include "move.h"
 
 /* smb.asm: MoveObjectHorizontally — the generic horizontal mover,
- * applied here to an enemy object. The speed's low nybble feeds the
- * fractional movement force counter; the high nybble (sign-extended)
- * is the whole-pixel adder, and the page location absorbs the carry */
-uint8_t move_enemy_horizontally(CoreState *st, uint8_t x) {
-  uint8_t speed = st->ram[SMBC_ENEMY_X_SPEED + x];
+ * over the SprObject arrays. s is the SprObject index (the player is
+ * 0, the enemies are 1 and up, the fireballs 7 and 8). The speed's
+ * low nybble feeds the fractional movement force counter; the high
+ * nybble (sign-extended) is the whole-pixel adder, and the page
+ * location absorbs the carry */
+uint8_t move_object_horizontally(CoreState *st, uint8_t s) {
+  uint8_t speed = st->ram[SMBC_SPROBJ_X_SPEED + s];
   uint8_t low = (uint8_t)(speed << 4);
   uint8_t high = (uint8_t)(speed >> 4);
   if (high >= 0x08u) high |= 0xf0u;
   uint8_t page_add = (high & 0x80u) != 0x00u ? 0xffu : 0x00u;
-  uint16_t force = (uint16_t)st->ram[SMBC_ENEMY_X_MOVE_FORCE + x] + low;
-  st->ram[SMBC_ENEMY_X_MOVE_FORCE + x] = (uint8_t)force;
+  uint16_t force = (uint16_t)st->ram[SMBC_SPROBJ_X_MOVE_FORCE + s] + low;
+  st->ram[SMBC_SPROBJ_X_MOVE_FORCE + s] = (uint8_t)force;
   uint8_t carry = (uint8_t)(force >> 8);
-  uint16_t pos = (uint16_t)st->ram[SMBC_ENEMY_X_POSITION + x] + high + carry;
-  st->ram[SMBC_ENEMY_X_POSITION + x] = (uint8_t)pos;
-  st->ram[SMBC_ENEMY_PAGE_LOC + x] =
-      (uint8_t)(st->ram[SMBC_ENEMY_PAGE_LOC + x] + page_add +
+  uint16_t pos = (uint16_t)st->ram[SMBC_SPROBJ_X_POSITION + s] + high + carry;
+  st->ram[SMBC_SPROBJ_X_POSITION + s] = (uint8_t)pos;
+  st->ram[SMBC_SPROBJ_PAGE_LOC + s] =
+      (uint8_t)(st->ram[SMBC_SPROBJ_PAGE_LOC + s] + page_add +
                 (uint8_t)(pos >> 8));
   return (uint8_t)(high + carry);
+}
+
+/* smb.asm: MoveEnemyHorizontally — the generic mover applied to an
+ * enemy object (the SprObject offset is the enemy offset plus one) */
+uint8_t move_enemy_horizontally(CoreState *st, uint8_t x) {
+  return move_object_horizontally(st, (uint8_t)(x + 1u));
 }
 
 /* smb.asm: ImposeGravity — the vertical physics core, over the generic

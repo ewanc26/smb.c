@@ -24,6 +24,12 @@
 void impose_gravity(CoreState *state, uint8_t s, uint8_t down, uint8_t up,
                     uint8_t max, uint8_t up_flag);
 
+/* smb.asm: MoveObjectHorizontally — the generic horizontal mover,
+ * over the SprObject arrays. s is the SprObject index verbatim (the
+ * player is 0, the fireballs 7 and 8). Returns the value the asm
+ * leaves in A (the whole-pixel adder plus the fractional carry). */
+uint8_t move_object_horizontally(CoreState *state, uint8_t s);
+
 /* smb.asm: MoveEnemyHorizontally — move an enemy object horizontally
  * according to its speed and movement force counters. Returns the
  * value the asm leaves in A (the whole-pixel adder plus the fractional

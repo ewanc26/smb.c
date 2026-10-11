@@ -1,12 +1,26 @@
 /* core/fball.h — the fireball and air bubble objects.
  *
- * Owns: the fireball and bubble draw routines. FireballObjCore,
- * BubbleCheck and ProcFireball_Bubble land here as they are ported.
- */
+ * Owns: ProcFireball_Bubble with the two fireball cores and the three
+ * air bubbles, and the draw routines for all of them. The movement,
+ * offscreen and collision leaves live in move.c, offscreen.c and
+ * collide.c. */
 #ifndef SMBC_CORE_FBALL_H
 #define SMBC_CORE_FBALL_H
 
 #include "state.h"
+
+/* smb.asm: ProcFireball_Bubble — the GameEngine entry: spawn a
+ * fireball for fiery mario on a fresh B press, run both fireball
+ * cores, and on water levels the three air bubbles. */
+void proc_fireball_bubble(CoreState *state);
+
+/* smb.asm: FireballObjCore — one fireball: init from the player,
+ * gravity and movement, collisions, explosion and erasure. */
+void fireball_obj_core(CoreState *state, uint8_t x);
+
+/* smb.asm: BubbleCheck — create an air bubble when the timer expires
+ * and move it slowly upwards, offscreen above the status bar. */
+void bubble_check(CoreState *state, uint8_t x);
 
 /* smb.asm: DrawFireball — the fireball sprite at its relative
  * position; DrawFirebar is the shared body, the tile alternating

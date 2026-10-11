@@ -1,5 +1,6 @@
 /* core/gamemode.c — see core/gamemode.h for the contract. */
 #include "gamemode.h"
+#include "fball.h"
 
 #include "blocks.h"
 #include "cannon.h"
@@ -44,15 +45,16 @@ static void game_routines(Smbc *smbc) {
 }
 
 /* smb.asm: GameEngine — the per-frame object and music processing. The
- * translation, offscreen, block, cannon, whirlpool and timer calls run,
- * as do the music check, palette-cycle control computation and the
- * SaveAB tail; the fireball/bubble, enemy, player-graphics, misc-object
- * and flagpole calls still wait on their atoms. */
+ * fireball/bubble, translation, offscreen, block, cannon, whirlpool
+ * and timer calls run, as do the music check, palette-cycle control
+ * computation and the SaveAB tail; the enemy, player-graphics,
+ * misc-object and flagpole calls still wait on their atoms. */
 static void game_engine(Smbc *smbc) {
   CoreState *st = &smbc->state;
-  /* TODO(port): smb.asm: ProcFireball_Bubble, the ProcELoop enemy and
-   * floatey-number passes, PlayerGfxHandler, MiscObjectsCore,
-   * FlagpoleRoutine */
+  /* TODO(port): smb.asm: the ProcELoop enemy and floatey-number
+   * passes, PlayerGfxHandler, MiscObjectsCore, FlagpoleRoutine */
+  /* smb.asm: ProcFireball_Bubble */
+  proc_fireball_bubble(st);
   /* smb.asm: GetPlayerOffscreenBits, then RelativePlayerPosition — the
    * player's offscreen bits and screen-relative coordinates, ahead of
    * PlayerGfxHandler */

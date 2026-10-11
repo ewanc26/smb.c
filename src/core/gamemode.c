@@ -1,7 +1,9 @@
 /* core/gamemode.c — see core/gamemode.h for the contract. */
 #include "gamemode.h"
 
+#include "blocks.h"
 #include "frame.h"
+#include "offscreen.h"
 #include "screen.h"
 #include "setup.h"
 #include "state.h"
@@ -34,16 +36,30 @@ static void game_routines(Smbc *smbc) {
   }
 }
 
-/* smb.asm: GameEngine — the per-frame object and music processing. Every
- * object-processing call is stubbed pending its atom; the music check,
- * palette-cycle control computation and the SaveAB tail run now. */
+/* smb.asm: GameEngine — the per-frame object and music processing. The
+ * translation, offscreen and block calls run, as do the music check,
+ * palette-cycle control computation and the SaveAB tail; the
+ * fireball/bubble, enemy, player-graphics, misc-object, cannon,
+ * whirlpool, flagpole, timer and colour calls still wait on their
+ * atoms. */
 static void game_engine(Smbc *smbc) {
   CoreState *st = &smbc->state;
   /* TODO(port): smb.asm: ProcFireball_Bubble, the ProcELoop enemy and
-   * floatey-number passes, GetPlayerOffscreenBits, RelativePlayerPosition,
-   * PlayerGfxHandler, BlockObjMT_Updater, BlockObjectsCore (x2),
-   * MiscObjectsCore, ProcessCannons, ProcessWhirlpools, FlagpoleRoutine,
-   * RunGameTimer, ColorRotation */
+   * floatey-number passes, PlayerGfxHandler, MiscObjectsCore,
+   * ProcessCannons, ProcessWhirlpools, FlagpoleRoutine, RunGameTimer,
+   * ColorRotation */
+  /* smb.asm: GetPlayerOffscreenBits, then RelativePlayerPosition — the
+   * player's offscreen bits and screen-relative coordinates, ahead of
+   * PlayerGfxHandler */
+  get_player_offscreen_bits(st);
+  relative_player_position(st);
+  /* smb.asm: BlockObjMT_Updater, then BlockObjectsCore for the second
+   * block object and the first */
+  block_obj_mt_updater(st);
+  st->ram[SMBC_OBJECT_OFFSET] = 0x01u;
+  block_objects_core(st, 0x01u);
+  st->ram[SMBC_OBJECT_OFFSET] = 0x00u;
+  block_objects_core(st, 0x00u);
   bool cycle_palette = true;
   /* cmp #$02 / bpl — the sign of (Player_Y_HighPos - 2) decides whether
    * the player is far enough below the screen to skip the music check */

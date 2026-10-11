@@ -104,6 +104,33 @@ void get_player_offscreen_bits(CoreState *st) {
       (uint8_t)((ybits << 4) | (xbits >> 4));
 }
 
+/* smb.asm: RelativeBlockPosition — the block object's two chunks
+ * (spr-object indices 9 + block and 11 + block, i.e. the block arrays
+ * at +block and +block+2) written into the block pool's relative
+ * coordinate pair */
+void relative_block_position(CoreState *st, uint8_t block) {
+  st->ram[SMBC_BLOCK_REL_YPOS] = st->ram[SMBC_BLOCK_Y_POSITION + block];
+  st->ram[SMBC_BLOCK_REL_XPOS] =
+      (uint8_t)(st->ram[SMBC_BLOCK_X_POSITION + block] -
+                st->ram[SMBC_SCREEN_LEFT_X_POS]);
+  st->ram[SMBC_BLOCK_REL_YPOS + 1u] =
+      st->ram[SMBC_BLOCK_Y_POSITION + block + 2u];
+  st->ram[SMBC_BLOCK_REL_XPOS + 1u] =
+      (uint8_t)(st->ram[SMBC_BLOCK_X_POSITION + block + 2u] -
+                st->ram[SMBC_SCREEN_LEFT_X_POS]);
+}
+
+/* smb.asm: GetBlockOffscreenBits — via SetOffscrBitsOffset the block
+ * object's offset is 9 + block; the combined bits land in
+ * Block_OffscreenBits */
+void get_block_offscreen_bits(CoreState *st, uint8_t block) {
+  uint8_t i = (uint8_t)(9u + block);
+  uint8_t xbits = get_x_offscreen_bits(st, i);
+  uint8_t ybits = get_y_offscreen_bits(st, i);
+  st->ram[SMBC_BLOCK_OFFSCREEN_BITS] =
+      (uint8_t)((ybits << 4) | (xbits >> 4));
+}
+
 /* smb.asm: PlayerEnemyDiff — the low byte is discarded by callers;
  * the sign of the page difference is what branches on */
 int8_t player_enemy_diff(CoreState *st, uint8_t x) {

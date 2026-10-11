@@ -23,6 +23,15 @@ void relative_enemy_position(CoreState *state, uint8_t x);
  * minus the screen's left edge */
 void relative_player_position(CoreState *state);
 
+/* smb.asm: RelativeBlockPosition — the two chunks of a block object
+ * (spr-object indices 9 + block and 11 + block) written into the
+ * block pool's two-byte relative coordinate pair */
+void relative_block_position(CoreState *state, uint8_t block);
+
+/* smb.asm: GetBlockOffscreenBits — the combined offscreen bits for a
+ * block object, stored in Block_OffscreenBits */
+void get_block_offscreen_bits(CoreState *state, uint8_t block);
+
 /* smb.asm: GetEnemyOffscreenBits — write the combined offscreen bits
  * (vertical in the high nybble, horizontal in the low) into
  * Enemy_OffscreenBits */

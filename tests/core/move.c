@@ -96,6 +96,30 @@ static void gravity_upwards(void) {
   assert(smbc.state.ram[SMBC_ENEMY_Y_HIGH_POS + 0] == 0x00u);
 }
 
+static void block_gravity(void) {
+  /* smb.asm: ImposeGravityBlock — downward amount $50, maximum speed
+   * MaxSpdBlockData[1] = $08 */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_BLOCK_Y_POSITION + 0] = 0x50u;
+  smbc.state.ram[SMBC_BLOCK_Y_HIGH_POS + 0] = 0x01u;
+  impose_gravity_block(&smbc.state, 0x08u);
+  assert(smbc.state.ram[SMBC_BLOCK_Y_MOVE_FORCE + 0] == 0x50u);
+  assert(smbc.state.ram[SMBC_BLOCK_Y_SPEED + 0] == 0x00u);
+  assert(smbc.state.ram[SMBC_BLOCK_Y_POSITION + 0] == 0x50u);
+
+  /* the force counter keeps overflowing: by the fourth frame the carry
+   * has nudged the position down a pixel */
+  impose_gravity_block(&smbc.state, 0x08u);
+  impose_gravity_block(&smbc.state, 0x08u);
+  impose_gravity_block(&smbc.state, 0x08u);
+  assert(smbc.state.ram[SMBC_BLOCK_Y_POSITION + 0] == 0x51u);
+
+  /* the speed clamps at the block maximum of eight */
+  for (int i = 0; i < 200; i++) impose_gravity_block(&smbc.state, 0x08u);
+  assert(smbc.state.ram[SMBC_BLOCK_Y_SPEED + 0] == 0x08u);
+}
+
 static void red_p_troopa_gravity(void) {
   /* smb.asm: MoveRedPTroopa with the up flag — the upward amount
    * (twice the downward) undoes the growth, and the speed clamps at
@@ -169,6 +193,7 @@ int main(void) {
   horizontal();
   gravity_basic();
   gravity_upwards();
+  block_gravity();
   red_p_troopa_gravity();
   platform_amounts();
   puts("tests/core/move: ok");

@@ -142,6 +142,49 @@ static void player_bits(void) {
 }
 
 
+static void relative_block(void) {
+  /* smb.asm: RelativeBlockPosition — the two chunks (Block arrays at
+   * +block and +block+2) written into the block pool's relative pair */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_SCREEN_LEFT_X_POS] = 0x20u;
+  smbc.state.ram[SMBC_BLOCK_X_POSITION + 0] = 0x80u;
+  smbc.state.ram[SMBC_BLOCK_X_POSITION + 2] = 0x90u;
+  smbc.state.ram[SMBC_BLOCK_Y_POSITION + 0] = 0x30u;
+  smbc.state.ram[SMBC_BLOCK_Y_POSITION + 2] = 0x38u;
+  relative_block_position(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_BLOCK_REL_XPOS] == 0x60u);
+  assert(smbc.state.ram[SMBC_BLOCK_REL_XPOS + 1] == 0x70u);
+  assert(smbc.state.ram[SMBC_BLOCK_REL_YPOS] == 0x30u);
+  assert(smbc.state.ram[SMBC_BLOCK_REL_YPOS + 1] == 0x38u);
+
+  /* the second block object reads the odd chunk indices */
+  smbc.state.ram[SMBC_BLOCK_X_POSITION + 1] = 0x50u;
+  smbc.state.ram[SMBC_BLOCK_X_POSITION + 3] = 0x60u;
+  relative_block_position(&smbc.state, 0x01u);
+  assert(smbc.state.ram[SMBC_BLOCK_REL_XPOS] == 0x30u);
+  assert(smbc.state.ram[SMBC_BLOCK_REL_XPOS + 1] == 0x40u);
+}
+
+static void block_bits(void) {
+  /* smb.asm: GetBlockOffscreenBits — the block object's buffer index
+   * (Block arrays) with the combined bits in Block_OffscreenBits */
+  Smbc smbc;
+  smbc_init(&smbc);
+  set_screen(&smbc);
+  smbc.state.ram[SMBC_BLOCK_PAGE_LOC + 0] = 0x00u;
+  smbc.state.ram[SMBC_BLOCK_X_POSITION + 0] = 0x80u;
+  smbc.state.ram[SMBC_BLOCK_Y_HIGH_POS + 0] = 0x01u;
+  smbc.state.ram[SMBC_BLOCK_Y_POSITION + 0] = 0x40u;
+  get_block_offscreen_bits(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_BLOCK_OFFSCREEN_BITS] == 0x00u);
+
+  smbc.state.ram[SMBC_BLOCK_PAGE_LOC + 0] = 0x01u;
+  smbc.state.ram[SMBC_BLOCK_X_POSITION + 0] = 0xf0u; /* beyond the edge */
+  get_block_offscreen_bits(&smbc.state, 0x00u);
+  assert((smbc.state.ram[SMBC_BLOCK_OFFSCREEN_BITS] & 0x0fu) == 0x0fu);
+}
+
 static void relative_player(void) {
   /* smb.asm: RelativePlayerPosition — Y verbatim, X minus the left
    * edge, wrapping on a borrow */
@@ -166,6 +209,8 @@ int main(void) {
   y_bits();
   player_bits();
   relative_player();
+  relative_block();
+  block_bits();
   puts("tests/core/offscreen: ok");
   return 0;
 }

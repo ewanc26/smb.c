@@ -291,8 +291,25 @@ void state_init(CoreState *state);
 #define SMBC_CROUCHING_FLAG 0x0714u      /* smb.asm: CrouchingFlag */
 #define SMBC_Y_PLATFORM_CENTER_Y_POS 0x0058u /* smb.asm: YPlatformCenterYPos */
 #define SMBC_BLOCK_PAGE_LOC 0x0076u       /* smb.asm: Block_PageLoc */
+#define SMBC_BLOCK_ORIG_Y_POS 0x03e4u     /* smb.asm: Block_Orig_YPos */
+#define SMBC_BLOCK_BBUF_LOW 0x03e6u       /* smb.asm: Block_BBuf_Low */
+#define SMBC_BLOCK_METATILE 0x03e8u       /* smb.asm: Block_Metatile */
+#define SMBC_BLOCK_REP_FLAG 0x03ecu       /* smb.asm: Block_RepFlag */
+#define SMBC_BLOCK_RESIDUAL_COUNTER 0x03f0u /* smb.asm: Block_ResidualCounter */
 #define SMBC_BLOCK_X_POSITION 0x008fu     /* smb.asm: Block_X_Position */
 #define SMBC_BLOCK_Y_POSITION 0x00d7u     /* smb.asm: Block_Y_Position */
+#define SMBC_BLOCK_STATE 0x0026u          /* smb.asm: Block_State */
+#define SMBC_BLOCK_Y_HIGH_POS 0x00beu     /* smb.asm: Block_Y_HighPos */
+/* the block pool's SprObject projections (chunk A): the object code
+ * reaches them through the shared SprObject/enemy arrays at +8 */
+#define SMBC_BLOCK_X_SPEED 0x0060u        /* smb.asm: Block_X_Speed */
+#define SMBC_BLOCK_Y_SPEED 0x00a8u        /* smb.asm: Block_Y_Speed */
+#define SMBC_BLOCK_Y_MOVE_FORCE 0x043cu   /* smb.asm: Block_Y_MoveForce */
+#define SMBC_BLOCK_REL_XPOS 0x03b1u       /* smb.asm: Block_Rel_XPos */
+#define SMBC_BLOCK_REL_YPOS 0x03bcu       /* smb.asm: Block_Rel_YPos */
+#define SMBC_BLOCK_OFFSCREEN_BITS 0x03d4u /* smb.asm: Block_OffscreenBits */
+#define SMBC_BLOCK_ORIG_XPOS 0x03f1u      /* smb.asm: Block_Orig_XPos */
+#define SMBC_BLOCK_SPR_DATA_OFFSET 0x06ecu /* smb.asm: Block_SprDataOffset */
 #define SMBC_FIREBAR_SPIN_DIRECTION 0x0034u /* smb.asm: FirebarSpinDirection */
 #define SMBC_BOWSER_BODY_CONTROLS 0x0363u /* smb.asm: BowserBodyControls */
 #define SMBC_BOWSER_GFX_FLAG  0x036au     /* smb.asm: BowserGfxFlag */

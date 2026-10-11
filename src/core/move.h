@@ -50,4 +50,10 @@ void set_x_move_amt(CoreState *state, uint8_t x, uint8_t down, uint8_t max);
  * gravity, dir zero for down, one for up */
 void move_platform_vert(CoreState *state, uint8_t x, uint8_t dir);
 
+/* smb.asm: ImposeGravityBlock — gravity for a block object chunk, with
+ * the block pool's downward amount ($50) and maximum speed ($08). x is
+ * the object offset in the enemy arrays (chunk A of block b is 8 + b,
+ * chunk B is 10 + b) */
+void impose_gravity_block(CoreState *state, uint8_t x);
+
 #endif /* SMBC_CORE_MOVE_H */

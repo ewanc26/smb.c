@@ -110,3 +110,10 @@ void move_red_p_troopa(CoreState *st, uint8_t x, uint8_t dir) {
 void move_platform_vert(CoreState *st, uint8_t x, uint8_t dir) {
   impose_gravity(st, x, 0x05u, 0x0au, 0x03u, dir);
 }
+
+/* smb.asm: ImposeGravityBlock / ImposeGravitySprObj — the block pool's
+ * downward amount ($50) and maximum speed (MaxSpdBlockData[1] = $08),
+ * moving downwards only */
+void impose_gravity_block(CoreState *st, uint8_t x) {
+  impose_gravity_spr_obj(st, x, 0x50u, 0x08u);
+}

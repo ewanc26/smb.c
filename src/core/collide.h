@@ -31,4 +31,16 @@ uint8_t get_enemy_bound_box_ofs(CoreState *state, uint8_t slot,
  * adjusted Y coordinate, which always fails the demote tests */
 void chk_to_stun_enemies(CoreState *state, uint8_t x, uint8_t a);
 
+/* smb.asm: SetupFloateyNumber — the score value from A with the
+ * $30 timer and the enemy's position */
+void setup_floatey_number(CoreState *state, uint8_t x, uint8_t score);
+
+/* smb.asm: ShellOrBlockDefeat — the shell/bump kill: a piranha
+ * plant sinks $18 pixels first, the enemy stuns (with the adjusted
+ * Y coordinate in the accumulator, per the asm), takes the d5
+ * defeat bit under its low five state bits, and scores 200 by
+ * default, 1000 for a hammer bro or 100 for a goomba, with the
+ * smack sound */
+void shell_or_block_defeat(CoreState *state, uint8_t x);
+
 #endif

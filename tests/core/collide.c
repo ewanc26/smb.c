@@ -179,6 +179,50 @@ static void stun_speeds_by_area_and_id(void) {
   assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] == 0x10u);
 }
 
+
+static void shell_defeat_scores_and_stuns(void) {
+  /* a goomba: stunned, defeated, 100 points, smack queued */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_GOOMBA;
+  smbc.state.ram[SMBC_ENEMY_STATE + 0] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x40u;
+  smbc.state.ram[SMBC_AREA_TYPE] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_REL_XPOS] = 0x77u;
+  shell_or_block_defeat(&smbc.state, 0x00u);
+  assert((smbc.state.ram[SMBC_ENEMY_STATE + 0] & 0x22u) == 0x22u);
+  assert((smbc.state.ram[SMBC_ENEMY_STATE + 0] & 0xc0u) == 0x00u);
+  assert(smbc.state.ram[SMBC_FLOATEY_NUM_CONTROL + 0] == 0x01u);
+  assert(smbc.state.ram[SMBC_FLOATEY_NUM_TIMER + 0] == 0x30u);
+  assert(smbc.state.ram[SMBC_FLOATEY_NUM_Y_POS + 0] == 0x3eu);
+  assert(smbc.state.ram[SMBC_FLOATEY_NUM_X_POS + 0] == 0x77u);
+  assert(smbc.state.ram[SMBC_SQUARE1_SOUND_QUEUE] == 0x08u);
+
+  /* a hammer bro scores 1000 */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_HAMMER_BRO;
+  smbc.state.ram[SMBC_AREA_TYPE] = 0x01u;
+  shell_or_block_defeat(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_FLOATEY_NUM_CONTROL + 0] == 0x06u);
+
+  /* anything else scores the default 200 */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = 0x02u;
+  smbc.state.ram[SMBC_AREA_TYPE] = 0x01u;
+  shell_or_block_defeat(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_FLOATEY_NUM_CONTROL + 0] == 0x02u);
+
+  /* a piranha plant sinks $18 first and keeps its id — the
+   * adjusted coordinate fails the demote tests */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_PIRANHA_PLANT;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x20u;
+  smbc.state.ram[SMBC_AREA_TYPE] = 0x01u;
+  shell_or_block_defeat(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_ID + 0] == SMBC_PIRANHA_PLANT);
+  assert(smbc.state.ram[SMBC_FLOATEY_NUM_Y_POS + 0] == 0x36u);
+}
+
 int main(void) {
   masked_bits_park_the_box();
   corners_from_ctrl_data();
@@ -187,6 +231,7 @@ int main(void) {
   bound_box_ofs_helper();
   stun_demotes_and_sets_state();
   stun_speeds_by_area_and_id();
+  shell_defeat_scores_and_stuns();
   puts("collide: ok");
   return 0;
 }

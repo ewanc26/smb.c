@@ -133,3 +133,27 @@ void chk_to_stun_enemies(CoreState *st, uint8_t x, uint8_t a) {
   }
   st->ram[SMBC_ENEMY_X_SPEED + x] = SMBC_ENEMY_BG_CX_SPD_DATA[dir - 1u];
 }
+
+void setup_floatey_number(CoreState *st, uint8_t x, uint8_t score) {
+  st->ram[SMBC_FLOATEY_NUM_CONTROL + x] = score;
+  st->ram[SMBC_FLOATEY_NUM_TIMER + x] = 0x30u;
+  st->ram[SMBC_FLOATEY_NUM_Y_POS + x] = st->ram[SMBC_ENEMY_Y_POSITION + x];
+  st->ram[SMBC_FLOATEY_NUM_X_POS + x] = st->ram[SMBC_ENEMY_REL_XPOS];
+}
+
+void shell_or_block_defeat(CoreState *st, uint8_t x) {
+  uint8_t a = st->ram[SMBC_ENEMY_ID + x];
+  if (a == SMBC_PIRANHA_PLANT) {
+    a = (uint8_t)(st->ram[SMBC_ENEMY_Y_POSITION + x] + 0x18u);
+    st->ram[SMBC_ENEMY_Y_POSITION + x] = a;
+  }
+  chk_to_stun_enemies(st, x, a);
+  st->ram[SMBC_ENEMY_STATE + x] =
+      (uint8_t)((st->ram[SMBC_ENEMY_STATE + x] & 0x1fu) | 0x20u);
+  uint8_t score = 0x02u; /* 200 points */
+  uint8_t id = st->ram[SMBC_ENEMY_ID + x];
+  if (id == SMBC_HAMMER_BRO) score = 0x06u; /* 1000 */
+  if (id == SMBC_GOOMBA) score = 0x01u;     /* 100 */
+  setup_floatey_number(st, x, score);
+  st->ram[SMBC_SQUARE1_SOUND_QUEUE] = SMBC_SFX_ENEMY_SMACK;
+}

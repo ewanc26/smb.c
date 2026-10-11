@@ -1026,6 +1026,107 @@ static void bg_collision_entry(void) {
   assert(smbc.state.ram[SMBC_ENEMY_STATE + 0] == 0x02u);
 }
 
+
+static void gfx_handler_family(void) {
+  /* a walking goomba, sprite data offset 0: goomba tiles
+   * $fc $fc 70 71 72 73 at the rel position, attributes from
+   * EnemyAttributeData[6] = 03 */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_GOOMBA;
+  smbc.state.ram[SMBC_ENEMY_STATE + 0] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x40u;
+  smbc.state.ram[SMBC_ENEMY_REL_XPOS] = 0x50u;
+  smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] = 0x01u;
+  smbc.state.ram[SMBC_FRAME_COUNTER] = 0x08u; /* skip the waddle */
+  enemy_gfx_handler(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_SPRITE_TILENUMBER] == 0xfcu);
+  assert(smbc.state.ram[SMBC_SPRITE_TILENUMBER + 4u] == 0xfcu);
+  assert(smbc.state.ram[SMBC_SPRITE_TILENUMBER + 8u] == 0x70u);
+  assert(smbc.state.ram[SMBC_SPRITE_TILENUMBER + 12u] == 0x71u);
+  assert(smbc.state.ram[SMBC_SPRITE_TILENUMBER + 16u] == 0x72u);
+  assert(smbc.state.ram[SMBC_SPRITE_TILENUMBER + 20u] == 0x73u);
+  assert(smbc.state.ram[SMBC_SPRITE_Y_POSITION] == 0x40u);
+  assert(smbc.state.ram[SMBC_SPRITE_Y_POSITION + 8u] == 0x48u);
+  assert(smbc.state.ram[SMBC_SPRITE_Y_POSITION + 16u] == 0x50u);
+  assert(smbc.state.ram[SMBC_SPRITE_X_POSITION] == 0x50u);
+  assert(smbc.state.ram[SMBC_SPRITE_X_POSITION + 4u] == 0x58u);
+  assert(smbc.state.ram[SMBC_SPRITE_ATTRIBUTES] == 0x03u);
+
+  /* the goomba waddle: an eighth frame flips the direction,
+   * swapping the tile pair and adding the h-flip attribute */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_GOOMBA;
+  smbc.state.ram[SMBC_ENEMY_STATE + 0] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x40u;
+  smbc.state.ram[SMBC_ENEMY_REL_XPOS] = 0x50u;
+  smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] = 0x01u;
+  smbc.state.ram[SMBC_FRAME_COUNTER] = 0x00u;
+  enemy_gfx_handler(&smbc.state, 0x00u);
+  assert((smbc.state.ram[SMBC_SPRITE_ATTRIBUTES] & 0x40u) != 0x00u);
+
+  /* a defeated koopa shell upside-down: state 2 maps to the
+   * $5a shell frame */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_GREEN_KOOPA;
+  smbc.state.ram[SMBC_ENEMY_STATE + 0] = 0x02u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x40u;
+  smbc.state.ram[SMBC_ENEMY_REL_XPOS] = 0x50u;
+  smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] = 0x01u;
+  smbc.state.ram[SMBC_FRAME_COUNTER] = 0x08u;
+  enemy_gfx_handler(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_SPRITE_TILENUMBER + 8u] == 0x6eu);
+  assert(smbc.state.ram[SMBC_SPRITE_TILENUMBER + 12u] == 0x6eu);
+  assert(smbc.state.ram[SMBC_SPRITE_TILENUMBER + 16u] == 0x6fu);
+  /* state 2 < 4: the defeated-state flip does not run */
+  assert(smbc.state.ram[SMBC_VERTICAL_FLIP_FLAG] == 0x00u);
+
+  /* a piranha plant moving down with a live frame timer does
+   * not draw at all */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_PIRANHA_PLANT;
+  smbc.state.ram[SMBC_PIRANHA_PLANT_Y_SPEED + 0] = 0x02u;
+  smbc.state.ram[SMBC_ENEMY_FRAME_TIMER + 0] = 0x08u;
+  enemy_gfx_handler(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_SPRITE_TILENUMBER] == 0x00u);
+
+  /* the same plant rising animates the second frame when the
+   * timing mask hits: attribute $21 from EnemyAttributeData */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_PIRANHA_PLANT;
+  smbc.state.ram[SMBC_PIRANHA_PLANT_Y_SPEED + 0] = 0xfeu;
+  smbc.state.ram[SMBC_ENEMY_STATE + 0] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x40u;
+  smbc.state.ram[SMBC_ENEMY_REL_XPOS] = 0x50u;
+  smbc.state.ram[SMBC_FRAME_COUNTER] = 0x00u;
+  enemy_gfx_handler(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_SPRITE_TILENUMBER + 8u] == 0xedu);
+  assert(smbc.state.ram[SMBC_SPRITE_ATTRIBUTES] == 0x21u);
+
+  /* the offscreen bits park rows and columns: d2 right column,
+   * d7 the whole object with a high pos of 2 erases it */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_GOOMBA;
+  smbc.state.ram[SMBC_ENEMY_STATE + 0] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x40u;
+  smbc.state.ram[SMBC_ENEMY_REL_XPOS] = 0x50u;
+  smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_FLAG + 0] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_Y_HIGH_POS + 0] = 0x02u;
+  smbc.state.ram[SMBC_ENEMY_OFFSCREEN_BITS] = 0x84u;
+  smbc.state.ram[SMBC_FRAME_COUNTER] = 0x08u;
+  enemy_gfx_handler(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_SPRITE_Y_POSITION + 4u] == 0xf8u);
+  assert(smbc.state.ram[SMBC_SPRITE_Y_POSITION + 12u] == 0xf8u);
+  assert(smbc.state.ram[SMBC_SPRITE_Y_POSITION] == 0xf8u);
+  assert(smbc.state.ram[SMBC_SPRITE_Y_POSITION + 20u] == 0xf8u);
+  /* rows two and three keep their positions: the d7 row park
+   * only covers the first row pair, the flag clear hides the
+   * rest */
+  assert(smbc.state.ram[SMBC_SPRITE_Y_POSITION + 8u] == 0x48u);
+  assert(smbc.state.ram[SMBC_ENEMY_FLAG + 0] == 0x00u);
+}
+
 int main(void) {
   masked_bits_park_the_box();
   corners_from_ctrl_data();
@@ -1050,6 +1151,7 @@ int main(void) {
   landing_family();
   jump_and_hammer_bro_bg();
   bg_collision_entry();
+  gfx_handler_family();
   puts("collide: ok");
   return 0;
 }

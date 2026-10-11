@@ -64,6 +64,9 @@ void state_init(CoreState *state);
 /* OAM (sprite data page) */
 #define SMBC_SPRITE_DATA         0x0200u /* smb.asm: Sprite_Data */
 #define SMBC_SPRITE_Y_POSITION   0x0200u /* smb.asm: Sprite_Y_Position */
+#define SMBC_SPRITE_TILENUMBER   0x0201u /* smb.asm: Sprite_Tilenumber */
+#define SMBC_SPRITE_ATTRIBUTES   0x0202u /* smb.asm: Sprite_Attributes */
+#define SMBC_SPRITE_X_POSITION   0x0203u /* smb.asm: Sprite_X_Position */
 
 /* VRAM buffers */
 #define SMBC_VRAM_BUFFER1_OFFSET 0x0300u /* smb.asm: VRAM_Buffer1_Offset */
@@ -287,6 +290,11 @@ void state_init(CoreState *state);
 #define SMBC_BLOCK_Y_POSITION 0x00d7u     /* smb.asm: Block_Y_Position */
 #define SMBC_FIREBAR_SPIN_DIRECTION 0x0034u /* smb.asm: FirebarSpinDirection */
 #define SMBC_BOWSER_BODY_CONTROLS 0x0363u /* smb.asm: BowserBodyControls */
+#define SMBC_BOWSER_GFX_FLAG  0x036au     /* smb.asm: BowserGfxFlag */
+#define SMBC_VERTICAL_FLIP_FLAG 0x0109u   /* smb.asm: VerticalFlipFlag */
+#define SMBC_JUMPSPRING_ANIM_CTRL 0x070eu /* smb.asm: JumpspringAnimCtrl */
+#define SMBC_ENEMY_SPR_DATA_OFFSET 0x06e5u /* smb.asm: Enemy_SprDataOffset */
+#define SMBC_PIRANHA_PLANT_Y_SPEED 0x58u /* smb.asm: PiranhaPlant_Y_Speed */
 #define SMBC_BOWSER_FEET_COUNTER 0x0364u  /* smb.asm: BowserFeetCounter */
 #define SMBC_BOWSER_MOVEMENT_SPEED 0x0365u /* smb.asm: BowserMovementSpeed */
 #define SMBC_BOWSER_ORIG_X_POS 0x0366u    /* smb.asm: BowserOrigXPos */

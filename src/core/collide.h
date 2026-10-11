@@ -263,4 +263,14 @@ void handle_e_to_bg_collision(CoreState *state, uint8_t x, uint8_t metatile);
  * the rest check underneath and land or edge-check */
 void enemy_to_bg_collision_det(CoreState *state, uint8_t x);
 
+/* smb.asm: EnemyGfxHandler — render the enemy's six sprites:
+ * resolve the graphics-table offset through the per-object
+ * exceptions (piranha movement, retainer/princess, cannon
+ * bullet bill, jumpspring frames, podoboo flip, bowser halves,
+ * goomba waddle, shells and eggs, hammer bro pose, the
+ * bloober bob, animation timing, defeated flip), draw three
+ * rows, mirror or flip per the symmetry rules, and park
+ * offscreen columns and rows at $f8 */
+void enemy_gfx_handler(CoreState *state, uint8_t x);
+
 #endif

@@ -839,3 +839,401 @@ void enemy_to_bg_collision_det(CoreState *st, uint8_t x) {
   }
   chk_for_red_koopa(st, x);
 }
+
+/* smb.asm: EnemyGraphicsTable — six tiles per frame, the frames
+ * stacked per object; the offsets below index into it */
+static const uint8_t SMBC_ENEMY_GRAPHICS_TABLE[270] = {
+    0xfcu, 0xfcu, 0xaau, 0xabu, 0xacu, 0xadu, /* buzzy beetle 1 */
+    0xfcu, 0xfcu, 0xaeu, 0xafu, 0xb0u, 0xb1u, /* buzzy beetle 2 */
+    0xfcu, 0xa5u, 0xa6u, 0xa7u, 0xa8u, 0xa9u, /* koopa troopa 1 */
+    0xfcu, 0xa0u, 0xa1u, 0xa2u, 0xa3u, 0xa4u, /* koopa troopa 2 */
+    0x69u, 0xa5u, 0x6au, 0xa7u, 0xa8u, 0xa9u, /* paratroopa 1 */
+    0x6bu, 0xa0u, 0x6cu, 0xa2u, 0xa3u, 0xa4u, /* paratroopa 2 */
+    0xfcu, 0xfcu, 0x96u, 0x97u, 0x98u, 0x99u, /* spiny 1 */
+    0xfcu, 0xfcu, 0x9au, 0x9bu, 0x9cu, 0x9du, /* spiny 2 */
+    0xfcu, 0xfcu, 0x8fu, 0x8eu, 0x8eu, 0x8fu, /* spiny's egg 1 */
+    0xfcu, 0xfcu, 0x95u, 0x94u, 0x94u, 0x95u, /* spiny's egg 2 */
+    0xfcu, 0xfcu, 0xdcu, 0xdcu, 0xdfu, 0xdfu, /* bloober 1 */
+    0xdcu, 0xdcu, 0xddu, 0xddu, 0xdeu, 0xdeu, /* bloober 2 */
+    0xfcu, 0xfcu, 0xb2u, 0xb3u, 0xb4u, 0xb5u, /* cheep-cheep 1 */
+    0xfcu, 0xfcu, 0xb6u, 0xb3u, 0xb7u, 0xb5u, /* cheep-cheep 2 */
+    0xfcu, 0xfcu, 0x70u, 0x71u, 0x72u, 0x73u, /* goomba */
+    0xfcu, 0xfcu, 0x6eu, 0x6eu, 0x6fu, 0x6fu, /* koopa shell, down 1 */
+    0xfcu, 0xfcu, 0x6du, 0x6du, 0x6fu, 0x6fu, /* koopa shell, down 2 */
+    0xfcu, 0xfcu, 0x6fu, 0x6fu, 0x6eu, 0x6eu, /* koopa shell, up 1 */
+    0xfcu, 0xfcu, 0x6fu, 0x6fu, 0x6du, 0x6du, /* koopa shell, up 2 */
+    0xfcu, 0xfcu, 0xf4u, 0xf4u, 0xf5u, 0xf5u, /* buzzy shell, up 1 */
+    0xfcu, 0xfcu, 0xf4u, 0xf4u, 0xf5u, 0xf5u, /* buzzy shell, up 2 */
+    0xfcu, 0xfcu, 0xf5u, 0xf5u, 0xf4u, 0xf4u, /* buzzy shell, down 1 */
+    0xfcu, 0xfcu, 0xf5u, 0xf5u, 0xf4u, 0xf4u, /* buzzy shell, down 2 */
+    0xfcu, 0xfcu, 0xfcu, 0xfcu, 0xefu, 0xefu, /* defeated goomba */
+    0xb9u, 0xb8u, 0xbbu, 0xbau, 0xbcu, 0xbcu, /* lakitu 1 */
+    0xfcu, 0xfcu, 0xbdu, 0xbdu, 0xbcu, 0xbcu, /* lakitu 2 */
+    0x7au, 0x7bu, 0xdau, 0xdbu, 0xd8u, 0xd8u, /* princess */
+    0xcdu, 0xcdu, 0xceu, 0xceu, 0xcfu, 0xcfu, /* mushroom retainer */
+    0x7du, 0x7cu, 0xd1u, 0x8cu, 0xd3u, 0xd2u, /* hammer bro 1 */
+    0x7du, 0x7cu, 0x89u, 0x88u, 0x8bu, 0x8au, /* hammer bro 2 */
+    0xd5u, 0xd4u, 0xe3u, 0xe2u, 0xd3u, 0xd2u, /* hammer bro 3 */
+    0xd5u, 0xd4u, 0xe3u, 0xe2u, 0x8bu, 0x8au, /* hammer bro 4 */
+    0xe5u, 0xe5u, 0xe6u, 0xe6u, 0xebu, 0xebu, /* piranha plant 1 */
+    0xecu, 0xecu, 0xedu, 0xedu, 0xeeu, 0xeeu, /* piranha plant 2 */
+    0xfcu, 0xfcu, 0xd0u, 0xd0u, 0xd7u, 0xd7u, /* podoboo */
+    0xbfu, 0xbeu, 0xc1u, 0xc0u, 0xc2u, 0xfcu, /* bowser front 1 */
+    0xc4u, 0xc3u, 0xc6u, 0xc5u, 0xc8u, 0xc7u, /* bowser rear 1 */
+    0xbfu, 0xbeu, 0xcau, 0xc9u, 0xc2u, 0xfcu, /* bowser front 2 */
+    0xc4u, 0xc3u, 0xc6u, 0xc5u, 0xccu, 0xcbu, /* bowser rear 2 */
+    0xfcu, 0xfcu, 0xe8u, 0xe7u, 0xeau, 0xe9u, /* bullet bill */
+    0xf2u, 0xf2u, 0xf3u, 0xf3u, 0xf2u, 0xf2u, /* jumpspring 1 */
+    0xf1u, 0xf1u, 0xf1u, 0xf1u, 0xfcu, 0xfcu, /* jumpspring 2 */
+    0xf0u, 0xf0u, 0xfcu, 0xfcu, 0xfcu, 0xfcu, /* jumpspring 3 */
+};
+/* smb.asm: EnemyGfxTableOffsets */
+static const uint8_t SMBC_ENEMY_GFX_TABLE_OFFSETS[27] = {
+    0x0cu, 0x0cu, 0x00u, 0x0cu, 0x0cu, 0xa8u, 0x54u, 0x3cu,
+    0xeau, 0x18u, 0x48u, 0x48u, 0xccu, 0xc0u, 0x18u, 0x18u,
+    0x18u, 0x90u, 0x24u, 0xffu, 0x48u, 0x9cu, 0xd2u, 0xd8u,
+    0xf0u, 0xf6u, 0xfcu};
+/* smb.asm: EnemyAttributeData */
+static const uint8_t SMBC_ENEMY_ATTRIBUTE_DATA[27] = {
+    0x01u, 0x02u, 0x03u, 0x02u, 0x01u, 0x01u, 0x03u, 0x03u,
+    0x03u, 0x01u, 0x01u, 0x02u, 0x02u, 0x21u, 0x01u, 0x02u,
+    0x01u, 0x01u, 0x02u, 0xffu, 0x02u, 0x02u, 0x01u, 0x01u,
+    0x02u, 0x02u, 0x02u};
+/* smb.asm: EnemyAnimTimingBMask */
+static const uint8_t SMBC_ENEMY_ANIM_TIMING_B_MASK[2] = {0x08u, 0x18u};
+/* smb.asm: JumpspringFrameOffsets */
+static const uint8_t SMBC_JUMPSPRING_FRAME_OFFSETS[5] = {
+    0x18u, 0x19u, 0x1au, 0x19u, 0x18u};
+
+/* smb.asm: DumpTwoSpr through DumpSixSpr — write A into the
+ * sprite data at the row offsets */
+static void smbc_dump_six_spr(CoreState *st, uint8_t y, uint8_t a) {
+  st->ram[SMBC_SPRITE_DATA + 20u + y] = a;
+  st->ram[SMBC_SPRITE_DATA + 16u + y] = a;
+  st->ram[SMBC_SPRITE_DATA + 12u + y] = a;
+  st->ram[SMBC_SPRITE_DATA + 8u + y] = a;
+  st->ram[SMBC_SPRITE_DATA + 4u + y] = a;
+  st->ram[SMBC_SPRITE_DATA + y] = a;
+}
+
+/* smb.asm: MoveColOffscreen — park a column's rows at $f8 */
+static void smbc_move_col_offscreen(CoreState *st, uint8_t y) {
+  st->ram[SMBC_SPRITE_Y_POSITION + y] = 0xf8u;
+  st->ram[SMBC_SPRITE_Y_POSITION + 8u + y] = 0xf8u;
+}
+
+/* smb.asm: MoveESprRowOffscreen — park a row pair at $f8 */
+static void smbc_move_e_spr_row_offscreen(CoreState *st, uint8_t x, uint8_t a) {
+  uint8_t y = (uint8_t)(a + st->ram[SMBC_ENEMY_SPR_DATA_OFFSET + x]);
+  st->ram[SMBC_SPRITE_DATA + 4u + y] = 0xf8u;
+  st->ram[SMBC_SPRITE_DATA + y] = 0xf8u;
+}
+
+/* smb.asm: MoveESprColOffscreen — park a column at $f8 */
+static void smbc_move_e_spr_col_offscreen(CoreState *st, uint8_t x, uint8_t a) {
+  uint8_t y = (uint8_t)(a + st->ram[SMBC_ENEMY_SPR_DATA_OFFSET + x]);
+  smbc_move_col_offscreen(st, y);
+  st->ram[SMBC_SPRITE_DATA + 16u + y] = 0xf8u;
+}
+
+/* smb.asm: DrawSpriteObject — one row of two sprites: the tile
+ * pair optionally swapped for a horizontal flip (d1 of $03),
+ * the attributes, the shared vertical and staggered horizontal
+ * coordinates, then $02 and Y advance to the next row */
+static uint8_t smbc_draw_sprite_object(CoreState *st, uint8_t y, uint8_t *t,
+                                       uint8_t tile0, uint8_t tile1) {
+  if ((t[3] & 0x02u) != 0x00u) {
+    st->ram[SMBC_SPRITE_TILENUMBER + 4u + y] = tile0;
+    st->ram[SMBC_SPRITE_TILENUMBER + y] = tile1;
+    st->ram[SMBC_SPRITE_ATTRIBUTES + y] = (uint8_t)(0x40u | t[4]);
+    st->ram[SMBC_SPRITE_ATTRIBUTES + 4u + y] = (uint8_t)(0x40u | t[4]);
+  } else {
+    st->ram[SMBC_SPRITE_TILENUMBER + y] = tile0;
+    st->ram[SMBC_SPRITE_TILENUMBER + 4u + y] = tile1;
+    st->ram[SMBC_SPRITE_ATTRIBUTES + y] = t[4];
+    st->ram[SMBC_SPRITE_ATTRIBUTES + 4u + y] = t[4];
+  }
+  st->ram[SMBC_SPRITE_Y_POSITION + y] = t[2];
+  st->ram[SMBC_SPRITE_Y_POSITION + 4u + y] = t[2];
+  st->ram[SMBC_SPRITE_X_POSITION + y] = t[5];
+  st->ram[SMBC_SPRITE_X_POSITION + 4u + y] = (uint8_t)(t[5] + 0x08u);
+  t[2] = (uint8_t)(t[2] + 0x08u);
+  return (uint8_t)(y + 0x08u);
+}
+
+/* smb.asm: DrawEnemyObjRow — one graphics-table row into the
+ * sprite buffer */
+static uint8_t smbc_draw_enemy_obj_row(CoreState *st, uint8_t y, uint8_t *t,
+                                       uint8_t x_ofs) {
+  return smbc_draw_sprite_object(st, y, t, SMBC_ENEMY_GRAPHICS_TABLE[x_ofs],
+                                 SMBC_ENEMY_GRAPHICS_TABLE[x_ofs + 1u]);
+}
+
+void enemy_gfx_handler(CoreState *st, uint8_t x) {
+  /* smb.asm scratch: $02 rel Y, $03 moving dir, $04 attributes,
+   * $05 rel X, $eb sprite data offset, $ec alt state, $ed saved
+   * state, $ef saved object value */
+  uint8_t t[6] = {0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u};
+  t[2] = st->ram[SMBC_ENEMY_Y_POSITION + x];
+  t[5] = st->ram[SMBC_ENEMY_REL_XPOS];
+  uint8_t spr_ofs = st->ram[SMBC_ENEMY_SPR_DATA_OFFSET + x];
+  st->ram[SMBC_VERTICAL_FLIP_FLAG] = 0x00u;
+  t[3] = st->ram[SMBC_ENEMY_MOVING_DIR + x];
+  t[4] = st->ram[SMBC_ENEMY_SPR_ATTRIB + x];
+  uint8_t a = st->ram[SMBC_ENEMY_ID + x];
+  if (a == SMBC_PIRANHA_PLANT &&
+      (int8_t)st->ram[SMBC_PIRANHA_PLANT_Y_SPEED + x] >= 0 &&
+      st->ram[SMBC_ENEMY_FRAME_TIMER + x] != 0x00u) {
+    return;
+  }
+  uint8_t saved_state = st->ram[SMBC_ENEMY_STATE + x];
+  uint8_t ec = (uint8_t)(saved_state & 0x1fu);
+  if (a == SMBC_RETAINER_OBJECT) {
+    ec = 0x00u;
+    t[3] = 0x01u;
+    a = 0x15u;
+  }
+  if (a == SMBC_BULLET_BILL_CANNON) {
+    t[2]--;
+    a = 0x03u;
+    if (st->ram[SMBC_ENEMY_FRAME_TIMER + x] != 0x00u) a |= 0x20u;
+    t[4] = a;
+    ec = 0x00u;
+    saved_state = 0x00u;
+    a = 0x08u;
+  }
+  if (a == SMBC_JUMPSPRING_OBJECT) {
+    ec = 0x03u;
+    a = SMBC_JUMPSPRING_FRAME_OFFSETS[st->ram[SMBC_JUMPSPRING_ANIM_CTRL]];
+  }
+  uint8_t ef = a;
+  if (ef == SMBC_PODOBOO &&
+      (int8_t)st->ram[SMBC_ENEMY_Y_SPEED + x] >= 0) {
+    st->ram[SMBC_VERTICAL_FLIP_FLAG]++;
+  }
+  if (st->ram[SMBC_BOWSER_GFX_FLAG] != 0x00u) {
+    ef = st->ram[SMBC_BOWSER_GFX_FLAG] == 0x01u ? 0x16u : 0x17u;
+  }
+  if (ef == SMBC_GOOMBA) {
+    uint8_t state = st->ram[SMBC_ENEMY_STATE + x];
+    if (state >= 0x02u) ec = 0x04u;
+    if ((state & 0x20u) == 0x00u && st->ram[SMBC_TIMER_CONTROL] == 0x00u &&
+        (st->ram[SMBC_FRAME_COUNTER] & 0x08u) == 0x00u) {
+      t[3] ^= 0x03u;
+    }
+  }
+  /* smb.asm: CheckBowserFront */
+  t[4] |= SMBC_ENEMY_ATTRIBUTE_DATA[ef];
+  uint8_t gfx_ofs = SMBC_ENEMY_GFX_TABLE_OFFSETS[ef];
+  if (st->ram[SMBC_BOWSER_GFX_FLAG] != 0x00u) {
+    if (st->ram[SMBC_BOWSER_GFX_FLAG] == 0x01u) {
+      if ((st->ram[SMBC_BOWSER_BODY_CONTROLS] & 0x80u) != 0x00u) gfx_ofs = 0xdeu;
+      if ((saved_state & 0x20u) != 0x00u) {
+        /* smb.asm: FlipBowserOver */
+        st->ram[SMBC_VERTICAL_FLIP_FLAG] = gfx_ofs;
+      }
+    } else {
+      if ((st->ram[SMBC_BOWSER_BODY_CONTROLS] & 0x01u) != 0x00u) gfx_ofs = 0xe4u;
+      if ((saved_state & 0x20u) != 0x00u) {
+        t[2] = (uint8_t)(t[2] - 0x10u);
+        st->ram[SMBC_VERTICAL_FLIP_FLAG] = gfx_ofs;
+      }
+    }
+  } else if (gfx_ofs == 0x24u) {
+    /* smb.asm: CheckForSpiny — the egg frame */
+    if (ec == 0x05u) {
+      gfx_ofs = 0x30u;
+      t[3] = 0x02u;
+      ec = 0x05u;
+    }
+    goto hammer_bro_chk;
+  } else if (gfx_ofs == 0x90u) {
+    /* smb.asm: CheckForLakitu — the throwing frame */
+    if ((saved_state & 0x20u) == 0x00u &&
+        st->ram[SMBC_FRENZY_ENEMY_TIMER] < 0x10u) {
+      gfx_ofs = 0x96u;
+    }
+    goto defeated_chk;
+  } else {
+    /* smb.asm: CheckUpsideDownShell */
+    if (ef < 0x04u && ec >= 0x02u) {
+      gfx_ofs = 0x5au;
+      if (ef == SMBC_BUZZY_BEETLE) {
+        gfx_ofs = 0x7eu;
+        t[2]++;
+      }
+    }
+    /* smb.asm: CheckRightSideUpShell */
+    if (ec == 0x04u) {
+      gfx_ofs = 0x72u; /* right-side-up buzzy beetle shell */
+      t[2]++;
+      if (ef != SMBC_BUZZY_BEETLE) {
+        gfx_ofs = 0x66u; /* right-side-up koopa shell */
+        t[2]++;
+      }
+    }
+    /* smb.asm: CheckForDefdGoomba — only reached through the
+     * shell branches above, i.e. when $ec == $04 */
+    if (ec == 0x04u && ef == SMBC_GOOMBA &&
+        (saved_state & 0x20u) == 0x00u) {
+      gfx_ofs = 0x8au;
+      t[2]--;
+    }
+  }
+hammer_bro_chk:;
+  /* smb.asm: CheckForHammerBro / CheckForBloober — find whether
+   * the animation-timing branch runs */
+  uint8_t animate = 0x00u;
+  if (ef == SMBC_HAMMER_BRO) {
+    if (saved_state == 0x00u) {
+      animate = 0x01u;
+    } else if ((saved_state & 0x08u) != 0x00u) {
+      gfx_ofs = 0xb4u;
+      animate = 0x01u;
+    }
+  } else if (gfx_ofs == 0x48u) {
+    animate = 0x01u; /* cheep-cheep animates freely */
+  } else {
+    uint8_t timer = st->ram[SMBC_ENEMY_INTERVAL_TIMER + x];
+    if (timer < 0x05u) {
+      if (gfx_ofs != 0x3cu) {
+        animate = 0x01u;
+      } else if (timer != 0x01u) {
+        /* smb.asm: the bloober bobs three pixels */
+        t[2] = (uint8_t)(t[2] + 0x03u);
+        goto animation_stop;
+      }
+    }
+  }
+  if (animate != 0x00u) {
+    /* smb.asm: CheckToAnimateEnemy */
+    if (ef == SMBC_GOOMBA || ef == 0x08u || ef == SMBC_PODOBOO || ef >= 0x18u) {
+      goto defeated_chk;
+    }
+    uint8_t mask_idx = 0x00u;
+    if (ef == 0x15u) {
+      mask_idx = 0x01u; /* residual iny */
+      if (st->ram[SMBC_WORLD_NUMBER] >= 0x08u) goto defeated_chk;
+      gfx_ofs = 0xa2u;
+      ec = 0x03u;
+      goto defeated_chk;
+    }
+    if ((st->ram[SMBC_FRAME_COUNTER] &
+         SMBC_ENEMY_ANIM_TIMING_B_MASK[mask_idx]) != 0x00u) {
+      goto defeated_chk;
+    }
+    goto animation_stop;
+  }
+  goto defeated_chk;
+animation_stop:;
+  /* smb.asm: CheckAnimationStop — the second frame */
+  if ((saved_state & 0xa0u) == 0x00u && st->ram[SMBC_TIMER_CONTROL] == 0x00u) {
+    gfx_ofs = (uint8_t)(gfx_ofs + 0x06u);
+  }
+defeated_chk:;
+  /* smb.asm: CheckDefeatedState */
+  if ((saved_state & 0x20u) != 0x00u && ef >= 0x04u) {
+    st->ram[SMBC_VERTICAL_FLIP_FLAG] = 0x01u;
+    ec = 0x00u;
+  }
+  /* smb.asm: DrawEnemyObject — three rows of two sprites */
+  uint8_t y = spr_ofs;
+  y = smbc_draw_enemy_obj_row(st, y, t, gfx_ofs);
+  y = smbc_draw_enemy_obj_row(st, y, t, (uint8_t)(gfx_ofs + 0x02u));
+  y = smbc_draw_enemy_obj_row(st, y, t, (uint8_t)(gfx_ofs + 0x04u));
+  if (ef == 0x08u) goto offscr_chk;
+  y = spr_ofs;
+  if (st->ram[SMBC_VERTICAL_FLIP_FLAG] != 0x00u) {
+    /* smb.asm: CheckForVerticalFlip */
+    st->ram[SMBC_SPRITE_ATTRIBUTES + y] |= 0x80u;
+    smbc_dump_six_spr(st, (uint8_t)(y + 0x02u),
+                      st->ram[SMBC_SPRITE_ATTRIBUTES + y]);
+    uint8_t row = y;
+    if (ef != SMBC_HAMMER_BRO && ef != SMBC_LAKITU && ef < 0x15u) {
+      row = (uint8_t)(y + 0x08u);
+    }
+    /* smb.asm: FlipEnemyVertically — swap the row pair with the
+     * third row's tiles */
+    uint8_t swap0 = st->ram[SMBC_SPRITE_TILENUMBER + row];
+    uint8_t swap1 = st->ram[SMBC_SPRITE_TILENUMBER + 4u + row];
+    st->ram[SMBC_SPRITE_TILENUMBER + row] =
+        st->ram[SMBC_SPRITE_TILENUMBER + 16u + y];
+    st->ram[SMBC_SPRITE_TILENUMBER + 4u + row] =
+        st->ram[SMBC_SPRITE_TILENUMBER + 20u + y];
+    st->ram[SMBC_SPRITE_TILENUMBER + 20u + y] = swap1;
+    st->ram[SMBC_SPRITE_TILENUMBER + 16u + y] = swap0;
+  }
+  /* smb.asm: CheckForESymmetry */
+  if (st->ram[SMBC_BOWSER_GFX_FLAG] != 0x00u) goto offscr_chk;
+  if (ef == 0x05u) goto offscr_chk;
+  uint8_t mirror = 0x00u;
+  if (ef == SMBC_BLOOBER || ef == SMBC_PIRANHA_PLANT || ef == SMBC_PODOBOO) {
+    mirror = 0x01u;
+  } else if (ef == SMBC_SPINY) {
+    if (ec == 0x05u) mirror = 0x01u;
+  } else {
+    if (ef == 0x15u) {
+      st->ram[SMBC_SPRITE_ATTRIBUTES + 20u + y] = 0x42u;
+    }
+    if (ec >= 0x02u) mirror = 0x01u;
+  }
+  if (mirror != 0x00u && st->ram[SMBC_BOWSER_GFX_FLAG] == 0x00u) {
+    /* smb.asm: MirrorEnemyGfx */
+    uint8_t attr = (uint8_t)(st->ram[SMBC_SPRITE_ATTRIBUTES + y] & 0xa3u);
+    st->ram[SMBC_SPRITE_ATTRIBUTES + y] = attr;
+    st->ram[SMBC_SPRITE_ATTRIBUTES + 8u + y] = attr;
+    st->ram[SMBC_SPRITE_ATTRIBUTES + 16u + y] = attr;
+    attr |= 0x40u;
+    if (ec == 0x05u) attr |= 0x80u;
+    st->ram[SMBC_SPRITE_ATTRIBUTES + 4u + y] = attr;
+    st->ram[SMBC_SPRITE_ATTRIBUTES + 12u + y] = attr;
+    st->ram[SMBC_SPRITE_ATTRIBUTES + 20u + y] = attr;
+    if (ec == 0x04u) {
+      attr = (uint8_t)(st->ram[SMBC_SPRITE_ATTRIBUTES + 8u + y] | 0x80u);
+      st->ram[SMBC_SPRITE_ATTRIBUTES + 8u + y] = attr;
+      st->ram[SMBC_SPRITE_ATTRIBUTES + 16u + y] = attr;
+      attr |= 0x40u;
+      st->ram[SMBC_SPRITE_ATTRIBUTES + 12u + y] = attr;
+      st->ram[SMBC_SPRITE_ATTRIBUTES + 20u + y] = attr;
+    }
+  }
+  /* smb.asm: CheckToMirrorLakitu */
+  if (ef == SMBC_LAKITU) {
+    if (st->ram[SMBC_VERTICAL_FLIP_FLAG] != 0x00u) {
+      st->ram[SMBC_SPRITE_ATTRIBUTES + y] &= 0x81u;
+      st->ram[SMBC_SPRITE_ATTRIBUTES + 4u + y] |= 0x41u;
+    } else {
+      st->ram[SMBC_SPRITE_ATTRIBUTES + 16u + y] &= 0x81u;
+      st->ram[SMBC_SPRITE_ATTRIBUTES + 20u + y] |= 0x41u;
+      if (st->ram[SMBC_FRENZY_ENEMY_TIMER] < 0x10u) {
+        uint8_t attr = st->ram[SMBC_SPRITE_ATTRIBUTES + 20u + y];
+        st->ram[SMBC_SPRITE_ATTRIBUTES + 12u + y] = attr;
+        st->ram[SMBC_SPRITE_ATTRIBUTES + 8u + y] =
+            (uint8_t)(attr & 0x81u);
+        goto offscr_chk;
+      }
+    }
+  }
+  /* smb.asm: CheckToMirrorJSpring */
+  if (ef >= 0x18u) {
+    st->ram[SMBC_SPRITE_ATTRIBUTES + 8u + y] = 0x82u;
+    st->ram[SMBC_SPRITE_ATTRIBUTES + 16u + y] = 0x82u;
+    st->ram[SMBC_SPRITE_ATTRIBUTES + 12u + y] = 0xc2u;
+    st->ram[SMBC_SPRITE_ATTRIBUTES + 20u + y] = 0xc2u;
+  }
+offscr_chk:;
+  /* smb.asm: SprObjectOffscrChk — park columns and rows at $f8
+   * per the shared offscreen bits */
+  uint8_t bits = st->ram[SMBC_ENEMY_OFFSCREEN_BITS];
+  if ((bits & 0x04u) != 0x00u) smbc_move_e_spr_col_offscreen(st, x, 0x04u);
+  if ((bits & 0x08u) != 0x00u) smbc_move_e_spr_col_offscreen(st, x, 0x00u);
+  if ((bits & 0x20u) != 0x00u) smbc_move_e_spr_row_offscreen(st, x, 0x10u);
+  if ((bits & 0x40u) != 0x00u) smbc_move_e_spr_row_offscreen(st, x, 0x08u);
+  if ((bits & 0x80u) != 0x00u) {
+    smbc_move_e_spr_row_offscreen(st, x, 0x00u);
+    if (st->ram[SMBC_ENEMY_ID + x] != SMBC_PODOBOO &&
+        st->ram[SMBC_ENEMY_Y_HIGH_POS + x] == 0x02u) {
+      erase_enemy_object(st, x);
+    }
+  }
+}

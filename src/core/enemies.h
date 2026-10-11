@@ -27,6 +27,8 @@
 #define SMBC_GOOMBA 0x06u        /* smb.asm: Goomba */
 #define SMBC_VINE_OBJECT 0x2fu   /* smb.asm: VineObject */
 #define SMBC_LAKITU 0x11u        /* smb.asm: Lakitu */
+#define SMBC_JUMPSPRING_OBJECT 0x32u /* smb.asm: JumpspringObject */
+#define SMBC_RETAINER_OBJECT 0x35u   /* smb.asm: RetainerObject */
 #define SMBC_SPINY 0x12u         /* smb.asm: Spiny */
 #define SMBC_HAMMER_BRO 0x05u    /* smb.asm: HammerBro */
 #define SMBC_BLOOBER 0x07u       /* smb.asm: Bloober */

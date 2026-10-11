@@ -1066,3 +1066,157 @@ void vine_object_handler(CoreState *st, uint8_t x) {
   if (st->ram[ptr + y] != 0x00u) return;
   st->ram[ptr + y] = 0x26u;
 }
+
+/* smb.asm: PRandomRange */
+static const uint8_t SMBC_P_RANDOM_RANGE[4] = {0x21u, 0x41u, 0x11u, 0x31u};
+
+/* smb.asm: SetFlameTimer — cycle the flame timing table and, in
+ * secondary hard mode, shorten the fuse */
+static uint8_t set_flame_timer(CoreState *st) {
+  uint8_t ctrl = st->ram[SMBC_BOWSER_FLAME_TIMER_CTRL];
+  st->ram[SMBC_BOWSER_FLAME_TIMER_CTRL] =
+      (uint8_t)((ctrl + 0x01u) & 0x07u);
+  uint8_t v = SMBC_FLAME_TIMER_DATA[ctrl];
+  if (st->ram[SMBC_SECONDARY_HARD_MODE] != 0x00u)
+    v = (uint8_t)(v - 0x10u);
+  return v;
+}
+
+/* smb.asm: KillAllEnemies — the defeated bowser past $e0 empties
+ * every enemy slot and the frenzy buffer */
+static void kill_all_enemies(CoreState *st) {
+  for (int i = 4; i >= 0; i--) erase_enemy_object(st, (uint8_t)i);
+  st->ram[SMBC_ENEMY_FRENZY_BUFFER] = 0x00u;
+}
+
+/* smb.asm: ProcessBowserHalf — one half of bowser: retainer draw,
+ * then the bounding box and player collision while in the normal
+ * state */
+static void process_bowser_half(CoreState *st, uint8_t x) {
+  st->ram[SMBC_BOWSER_GFX_FLAG]++;
+  run_retainer_obj(st, x);
+  if (st->ram[SMBC_ENEMY_STATE + x] != 0x00u) return;
+  st->ram[SMBC_ENEMY_BOUND_BOX_CTRL + x] = 0x0au;
+  get_enemy_bound_box(st, x);
+  player_enemy_collision(st, x);
+}
+
+/* smb.asm: BowserGfxHandler — draw the front, mirror the state
+ * into the rear object offset by the facing, and draw that too */
+static void bowser_gfx_handler(CoreState *st, uint8_t x) {
+  process_bowser_half(st, x);
+  uint8_t ofs = (st->ram[SMBC_ENEMY_MOVING_DIR + x] & 0x01u) != 0x00u
+                    ? 0xf0u
+                    : 0x10u;
+  uint8_t rear = st->ram[SMBC_DUPLICATE_OBJ_OFFSET];
+  st->ram[SMBC_ENEMY_X_POSITION + rear] =
+      (uint8_t)(st->ram[SMBC_ENEMY_X_POSITION + x] + ofs);
+  st->ram[SMBC_ENEMY_Y_POSITION + rear] =
+      (uint8_t)(st->ram[SMBC_ENEMY_Y_POSITION + x] + 0x08u);
+  st->ram[SMBC_ENEMY_STATE + rear] = st->ram[SMBC_ENEMY_STATE + x];
+  st->ram[SMBC_ENEMY_MOVING_DIR + rear] =
+      st->ram[SMBC_ENEMY_MOVING_DIR + x];
+  st->ram[SMBC_ENEMY_ID + rear] = SMBC_BOWSER;
+  uint8_t saved = x;
+  x = rear;
+  process_bowser_half(st, x);
+  (void)saved;
+  st->ram[SMBC_BOWSER_GFX_FLAG] = 0x00u;
+}
+
+/* smb.asm: RunBowser — feet animation, facing resets, the drift
+ * toward and away from the origin, hammers from world 6, jumps,
+ * and the flame spit with the mouth toggle */
+void run_bowser(CoreState *st, uint8_t x) {
+  if ((st->ram[SMBC_ENEMY_STATE + x] & 0x20u) != 0x00u) {
+    /* smb.asm: defeated — above $e0 the floater handles him,
+     * below, clear the room */
+    if (st->ram[SMBC_ENEMY_Y_POSITION + x] >= 0xe0u)
+      kill_all_enemies(st);
+    return;
+  }
+  st->ram[SMBC_ENEMY_FRENZY_BUFFER] = 0x00u;
+  uint8_t timer_ctrl = st->ram[SMBC_TIMER_CONTROL];
+  if (timer_ctrl == 0x00u &&
+      (st->ram[SMBC_BOWSER_BODY_CONTROLS] & 0x80u) == 0x00u) {
+    /* smb.asm: FeetTmr */
+    if (--st->ram[SMBC_BOWSER_FEET_COUNTER] == 0x00u) {
+      st->ram[SMBC_BOWSER_FEET_COUNTER] = 0x20u;
+      st->ram[SMBC_BOWSER_BODY_CONTROLS] ^= 0x01u;
+    }
+    /* smb.asm: ResetMDr */
+    if ((st->ram[SMBC_FRAME_COUNTER] & 0x0fu) == 0x00u)
+      st->ram[SMBC_ENEMY_MOVING_DIR + x] = 0x02u;
+    /* smb.asm: B_FaceP — chase the player while the frame timer
+     * runs and bowser is left of the player */
+    if (st->ram[SMBC_ENEMY_FRAME_TIMER + x] != 0x00u &&
+        player_enemy_diff(st, x) < 0x00) {
+      st->ram[SMBC_ENEMY_MOVING_DIR + x] = 0x01u;
+      st->ram[SMBC_BOWSER_MOVEMENT_SPEED] = 0x02u;
+      st->ram[SMBC_ENEMY_FRAME_TIMER + x] = 0x20u;
+      st->ram[SMBC_BOWSER_FIRE_BREATH_TIMER] = 0x20u;
+      if (st->ram[SMBC_ENEMY_X_POSITION + x] >= 0xc8u)
+        goto hammer_chk;
+    }
+    /* smb.asm: GetPRCmp — the drift around the origin */
+    if ((st->ram[SMBC_FRAME_COUNTER] & 0x03u) == 0x00u) {
+      uint8_t epos = st->ram[SMBC_ENEMY_X_POSITION + x];
+      if (epos == st->ram[SMBC_BOWSER_ORIG_X_POS]) {
+        st->ram[SMBC_MAX_RANGE_FROM_ORIGIN] =
+            SMBC_P_RANDOM_RANGE[st->ram[SMBC_PSEUDO_RANDOM_BIT_REG + x] &
+                                0x03u];
+      }
+      epos = (uint8_t)(epos + st->ram[SMBC_BOWSER_MOVEMENT_SPEED]);
+      st->ram[SMBC_ENEMY_X_POSITION + x] = epos;
+      if (st->ram[SMBC_ENEMY_MOVING_DIR + x] != 0x01u) {
+        uint8_t speed = 0xffu;
+        int8_t diff = (int8_t)(epos - st->ram[SMBC_BOWSER_ORIG_X_POS]);
+        uint8_t d = (uint8_t)diff;
+        if (diff < 0x00) {
+          d = (uint8_t)(~d + 0x01u);
+          speed = 0x01u;
+        }
+        if (d >= st->ram[SMBC_MAX_RANGE_FROM_ORIGIN])
+          st->ram[SMBC_BOWSER_MOVEMENT_SPEED] = speed;
+      }
+    }
+  }
+hammer_chk:
+  /* smb.asm: HammerChk — jumps while the frame timer counts down,
+   * else fall, throw, and rearm */
+  if (timer_ctrl == 0x00u) {
+    if (st->ram[SMBC_ENEMY_FRAME_TIMER + x] != 0x00u) {
+      /* smb.asm: MakeBJump */
+      if (st->ram[SMBC_ENEMY_FRAME_TIMER + x] == 0x01u) {
+        st->ram[SMBC_ENEMY_Y_POSITION + x]--;
+        st->ram[SMBC_ENEMY_Y_SPEED + x] = 0x00u;
+        st->ram[SMBC_ENEMY_Y_MOVE_FORCE + x] = 0x00u;
+        st->ram[SMBC_ENEMY_Y_SPEED + x] = 0xfeu;
+      }
+    } else {
+      move_enemy_slow_vert(st, x);
+      if (st->ram[SMBC_WORLD_NUMBER] >= 0x05u && /* World6 */
+          (st->ram[SMBC_FRAME_COUNTER] & 0x03u) == 0x00u)
+        spawn_hammer_obj(st, x);
+      if (st->ram[SMBC_ENEMY_Y_POSITION + x] >= 0x80u) {
+        st->ram[SMBC_ENEMY_FRAME_TIMER + x] =
+            SMBC_P_RANDOM_RANGE[st->ram[SMBC_PSEUDO_RANDOM_BIT_REG + x] &
+                                0x03u];
+      }
+    }
+  }
+  /* smb.asm: ChkFireB — world 8 always spits, 6-7 never, and the
+   * earlier worlds only on their flame cadence */
+  uint8_t world = st->ram[SMBC_WORLD_NUMBER];
+  if (world == 0x07u /* World8 */ || world < 0x05u /* World6 */) {
+    if (st->ram[SMBC_BOWSER_FIRE_BREATH_TIMER] == 0x00u) {
+      st->ram[SMBC_BOWSER_FIRE_BREATH_TIMER] = 0x20u;
+      st->ram[SMBC_BOWSER_BODY_CONTROLS] ^= 0x80u;
+      if ((st->ram[SMBC_BOWSER_BODY_CONTROLS] & 0x80u) == 0x00u) {
+        st->ram[SMBC_BOWSER_FIRE_BREATH_TIMER] = set_flame_timer(st);
+        st->ram[SMBC_ENEMY_FRENZY_BUFFER] = SMBC_BOWSER_FLAME;
+      }
+    }
+  }
+  bowser_gfx_handler(st, x);
+}

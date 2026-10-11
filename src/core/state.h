@@ -328,6 +328,7 @@ void state_init(CoreState *state);
 #define SMBC_CHEEP_CHEEP_ORIG_Y_POS 0x0434u /* smb.asm: CheepCheepOrigYPos */
 #define SMBC_BOWSER_HIT_POINTS 0x0483u    /* smb.asm: BowserHitPoints */
 #define SMBC_DUPLICATE_OBJ_OFFSET 0x06cfu /* smb.asm: DuplicateObj_Offset */
+#define SMBC_MAX_RANGE_FROM_ORIGIN 0x06dcu /* smb.asm: MaxRangeFromOrigin */
 #define SMBC_LAKITU_REAPPEAR_TIMER 0x06d1u /* smb.asm: LakituReappearTimer */
 #define SMBC_BOWSER_FIRE_BREATH_TIMER 0x0790u /* smb.asm: BowserFireBreathTimer */
 #define SMBC_PLAYER_X_SPEED 0x0057u       /* smb.asm: Player_X_Speed */

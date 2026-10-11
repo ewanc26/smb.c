@@ -1408,6 +1408,120 @@ static void vine_family(void) {
   assert(smbc.state.ram[SMBC_ENEMY_FLAG + 5] == 0x00u);
 }
 
+
+static void bowser_family(void) {
+  /* defeated below $e0: every enemy slot and the frenzy buffer
+   * empty out */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_BOWSER;
+  smbc.state.ram[SMBC_ENEMY_STATE + 0] = 0x20u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0xf0u;
+  smbc.state.ram[SMBC_ENEMY_FLAG + 0] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_FLAG + 3] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_FRENZY_BUFFER] = 0x2bu;
+  run_bowser(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_FLAG + 0] == 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_FLAG + 3] == 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_FRENZY_BUFFER] == 0x00u);
+
+  /* the feet counter ticks and toggles d0 on expiry */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_BOWSER;
+  smbc.state.ram[SMBC_BOWSER_FEET_COUNTER] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_FRAME_TIMER + 0] = 0x01u; /* skip drift */
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] = 0xc8u;  /* skip chase */
+  smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0x20u;
+  smbc.state.ram[SMBC_SCREEN_LEFT_PAGE_LOC + 1u] = 0x01u;
+  smbc.state.ram[SMBC_WORLD_NUMBER] = 0x00u;
+  run_bowser(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_BOWSER_FEET_COUNTER] == 0x20u);
+  assert((smbc.state.ram[SMBC_BOWSER_BODY_CONTROLS] & 0x01u) == 0x01u);
+
+  /* the chase: frame timer running, bowser left of the player —
+   * face right, speed 2, timers armed */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_BOWSER;
+  smbc.state.ram[SMBC_ENEMY_FRAME_TIMER + 0] = 0x10u;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] = 0x40u;
+  smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0xa0u;
+  smbc.state.ram[SMBC_SCREEN_LEFT_PAGE_LOC + 1u] = 0x01u;
+  smbc.state.ram[SMBC_WORLD_NUMBER] = 0x00u;
+  smbc.state.ram[SMBC_BOWSER_FIRE_BREATH_TIMER] = 0x01u;
+  run_bowser(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] == 0x01u);
+  assert(smbc.state.ram[SMBC_BOWSER_MOVEMENT_SPEED] == 0x02u);
+  assert(smbc.state.ram[SMBC_ENEMY_FRAME_TIMER + 0] == 0x20u);
+  assert(smbc.state.ram[SMBC_BOWSER_FIRE_BREATH_TIMER] == 0x20u);
+
+  /* the flame spit: timer expired, mouth closes, the frenzy
+   * buffer takes the flame and the fuse comes from the table */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_BOWSER;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] = 0x40u;
+  smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0xa0u;
+  smbc.state.ram[SMBC_SCREEN_LEFT_PAGE_LOC + 1u] = 0x01u;
+  smbc.state.ram[SMBC_WORLD_NUMBER] = 0x00u;
+  smbc.state.ram[SMBC_BOWSER_BODY_CONTROLS] = 0x80u; /* mouth open */
+  smbc.state.ram[SMBC_BOWSER_FIRE_BREATH_TIMER] = 0x00u;
+  run_bowser(&smbc.state, 0x00u);
+  /* mouth toggled to closed: flame fires with table fuse $bf */
+  assert((smbc.state.ram[SMBC_BOWSER_BODY_CONTROLS] & 0x80u) == 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_FRENZY_BUFFER] == 0x2bu);
+  assert(smbc.state.ram[SMBC_BOWSER_FIRE_BREATH_TIMER] == 0xbfu);
+  assert(smbc.state.ram[SMBC_BOWSER_FLAME_TIMER_CTRL] == 0x01u);
+
+  /* the mouth opening: no flame, fuse is the $20 placeholder */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_BOWSER;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] = 0x40u;
+  smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0xa0u;
+  smbc.state.ram[SMBC_SCREEN_LEFT_PAGE_LOC + 1u] = 0x01u;
+  smbc.state.ram[SMBC_WORLD_NUMBER] = 0x00u;
+  smbc.state.ram[SMBC_BOWSER_BODY_CONTROLS] = 0x00u;
+  smbc.state.ram[SMBC_BOWSER_FIRE_BREATH_TIMER] = 0x00u;
+  smbc.state.ram[SMBC_ENEMY_FRAME_TIMER + 0] = 0x01u; /* skip hammer */
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] = 0xc8u; /* no chase */
+  run_bowser(&smbc.state, 0x00u);
+  assert((smbc.state.ram[SMBC_BOWSER_BODY_CONTROLS] & 0x80u) == 0x80u);
+  assert(smbc.state.ram[SMBC_ENEMY_FRENZY_BUFFER] == 0x00u);
+  assert(smbc.state.ram[SMBC_BOWSER_FIRE_BREATH_TIMER] == 0x20u);
+
+  /* the rear half draws offset by the facing: moving left puts
+   * it $10 behind, moving right $f0 ahead */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_BOWSER;
+  smbc.state.ram[SMBC_ENEMY_FRAME_TIMER + 0] = 0x10u; /* no jump */
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] = 0xc8u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x40u;
+  smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0x20u;
+  smbc.state.ram[SMBC_SCREEN_LEFT_PAGE_LOC + 1u] = 0x01u;
+  smbc.state.ram[SMBC_WORLD_NUMBER] = 0x00u;
+  smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] = 0x02u; /* left */
+  smbc.state.ram[SMBC_DUPLICATE_OBJ_OFFSET] = 0x03u;
+  smbc.state.ram[SMBC_BOWSER_FIRE_BREATH_TIMER] = 0x01u;
+  run_bowser(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_ID + 3] == SMBC_BOWSER);
+  assert(smbc.state.ram[SMBC_ENEMY_X_POSITION + 3] == 0xd8u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_POSITION + 3] == 0x48u);
+  assert(smbc.state.ram[SMBC_BOWSER_GFX_FLAG] == 0x00u);
+
+  /* the jump: frame timer at 1 pops him up with $fe */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_BOWSER;
+  smbc.state.ram[SMBC_ENEMY_FRAME_TIMER + 0] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] = 0xc8u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x80u;
+  smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0x20u;
+  smbc.state.ram[SMBC_SCREEN_LEFT_PAGE_LOC + 1u] = 0x01u;
+  smbc.state.ram[SMBC_WORLD_NUMBER] = 0x00u;
+  smbc.state.ram[SMBC_BOWSER_FIRE_BREATH_TIMER] = 0x01u;
+  smbc.state.ram[SMBC_DUPLICATE_OBJ_OFFSET] = 0x03u;
+  run_bowser(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] == 0x7fu);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_SPEED + 0] == 0xfeu);
+}
+
 int main(void) {
   onscreen_survives();
   too_far_left_erased();
@@ -1453,6 +1567,7 @@ int main(void) {
   star_flag_family();
   jumpspring_family();
   vine_family();
+  bowser_family();
   puts("tests/core/runners: ok");
   return 0;
 }

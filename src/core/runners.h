@@ -153,4 +153,9 @@ void jumpspring_handler(CoreState *state, uint8_t x);
  * tip once it tops out */
 void vine_object_handler(CoreState *state, uint8_t x);
 
+/* smb.asm: RunBowser — the full bowser frame: feet, facing, the
+ * drift around the origin, jumps, hammers from world 6, the flame
+ * spit with the mouth toggle, and the two-half draw */
+void run_bowser(CoreState *state, uint8_t x);
+
 #endif /* SMBC_CORE_RUNNERS_H */

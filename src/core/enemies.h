@@ -39,6 +39,8 @@
 #define SMBC_PODOBOO 0x0cu       /* smb.asm: Podoboo */
 #define SMBC_FLYING_CHEEP_CHEEP 0x14u /* smb.asm: FlyingCheepCheep */
 #define SMBC_POWER_UP_OBJECT 0x2eu  /* smb.asm: PowerUpObject */
+#define SMBC_BOWSER 0x2du           /* smb.asm: Bowser */
+#define SMBC_BOWSER_FLAME 0x2bu     /* smb.asm: BowserFlame */
 
 /* smb.asm: EnemiesAndLoopsCore — one enemy slot's per-frame entry. An
  * active slot jumps to the (pending) enemy runners; an idle slot checks

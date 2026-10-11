@@ -809,3 +809,119 @@ void run_fireworks(CoreState *st, uint8_t x) {
   draw_explosion_fireworks(st, x, y,
                            st->ram[SMBC_EXPLOSION_GFX_COUNTER + x]);
 }
+
+/* smb.asm: StarFlagYPosAdder / StarFlagXPosAdder / StarFlagTileData */
+static const uint8_t SMBC_STAR_FLAG_Y_POS_ADDER[4] = {0x00u, 0x00u, 0x08u, 0x08u};
+static const uint8_t SMBC_STAR_FLAG_X_POS_ADDER[4] = {0x00u, 0x08u, 0x00u, 0x08u};
+static const uint8_t SMBC_STAR_FLAG_TILE_DATA[4] = {0x54u, 0x55u, 0x56u, 0x57u};
+
+/* smb.asm: DrawStarFlag — the four star sprites around the
+ * relative position, palette $22 with background priority */
+static void draw_star_flag(CoreState *st, uint8_t x) {
+  relative_enemy_position(st, x);
+  uint8_t y = st->ram[SMBC_ENEMY_SPR_DATA_OFFSET + x];
+  for (int i = 3; i >= 0; i--) {
+    st->ram[SMBC_SPRITE_Y_POSITION + y] =
+        (uint8_t)(st->ram[SMBC_ENEMY_REL_YPOS] +
+                  SMBC_STAR_FLAG_Y_POS_ADDER[i]);
+    st->ram[SMBC_SPRITE_TILENUMBER + y] = SMBC_STAR_FLAG_TILE_DATA[i];
+    st->ram[SMBC_SPRITE_ATTRIBUTES + y] = 0x22u;
+    st->ram[SMBC_SPRITE_X_POSITION + y] =
+        (uint8_t)(st->ram[SMBC_ENEMY_REL_XPOS] +
+                  SMBC_STAR_FLAG_X_POS_ADDER[i]);
+    y = (uint8_t)(y + 0x04u);
+  }
+}
+
+/* smb.asm: GameTimerFireworks — the timer's last digit picks the
+ * fireworks count: 5 for 1, 3 for 3, 1 for 6, none otherwise */
+static void game_timer_fireworks(CoreState *st, uint8_t x) {
+  uint8_t last = st->ram[SMBC_GAME_TIMER_DISPLAY + 2u];
+  uint8_t state = 0x05u;
+  if (last == 0x01u) {
+    st->ram[SMBC_FIREWORKS_COUNTER] = state;
+  } else if (last == 0x03u) {
+    state = 0x03u;
+    st->ram[SMBC_FIREWORKS_COUNTER] = state;
+  } else if (last == 0x06u) {
+    state = 0x00u;
+    st->ram[SMBC_FIREWORKS_COUNTER] = state;
+  } else {
+    state = 0x00u; /* the ldy #$00 from the $06 compare path */
+    st->ram[SMBC_FIREWORKS_COUNTER] = 0xffu;
+  }
+  st->ram[SMBC_ENEMY_STATE + x] = state;
+  st->ram[SMBC_STAR_FLAG_TASK_CONTROL]++;
+}
+
+/* smb.asm: AwardGameTimerPoints — tick the timer down one interval
+ * per frame with the tick sound every fourth frame, 50 points per
+ * interval; advance when the timer hits zero */
+static void award_game_timer_points(CoreState *st, uint8_t x) {
+  (void)x;
+  if ((st->ram[SMBC_GAME_TIMER_DISPLAY] |
+       st->ram[SMBC_GAME_TIMER_DISPLAY + 1u] |
+       st->ram[SMBC_GAME_TIMER_DISPLAY + 2u]) == 0x00u) {
+    st->ram[SMBC_STAR_FLAG_TASK_CONTROL]++;
+    return;
+  }
+  if ((st->ram[SMBC_FRAME_COUNTER] & 0x04u) != 0x00u) {
+    st->ram[SMBC_SQUARE2_SOUND_QUEUE] |= 0x10u; /* Sfx_TimerTick */
+  }
+  st->ram[SMBC_DIGIT_MODIFIER + 5u] = 0xffu; /* -1 from the timer */
+  digits_math_routine(st, 0x23u);
+  st->ram[SMBC_DIGIT_MODIFIER + 5u] = 0x05u; /* +50 per interval */
+  end_area_points(st);
+}
+
+/* smb.asm: RaiseFlagSetoffFWorks — raise the star to $72, then
+ * queue fireworks in the frenzy buffer while the counter lasts */
+static void raise_flag_setoff_fworks(CoreState *st, uint8_t x) {
+  if (st->ram[SMBC_ENEMY_Y_POSITION + x] >= 0x72u) {
+    st->ram[SMBC_ENEMY_Y_POSITION + x]--;
+    draw_star_flag(st, x);
+    return;
+  }
+  int8_t counter = (int8_t)st->ram[SMBC_FIREWORKS_COUNTER];
+  if (counter > 0x00) {
+    st->ram[SMBC_ENEMY_FRENZY_BUFFER] = 0x16u; /* Fireworks */
+    draw_star_flag(st, x);
+    return;
+  }
+  /* smb.asm: DrawFlagSetTimer */
+  draw_star_flag(st, x);
+  st->ram[SMBC_ENEMY_INTERVAL_TIMER + x] = 0x06u;
+  st->ram[SMBC_STAR_FLAG_TASK_CONTROL]++;
+}
+
+/* smb.asm: DelayToAreaEnd — hold until the interval expires and
+ * the event music buffer drains, then advance past the table */
+static void delay_to_area_end(CoreState *st, uint8_t x) {
+  draw_star_flag(st, x);
+  if (st->ram[SMBC_ENEMY_INTERVAL_TIMER + x] == 0x00u &&
+      st->ram[SMBC_EVENT_MUSIC_BUFFER] == 0x00u) {
+    st->ram[SMBC_STAR_FLAG_TASK_CONTROL]++;
+  }
+}
+
+/* smb.asm: RunStarFlagObj — clear the frenzy buffer and run the
+ * current task */
+void run_star_flag_obj(CoreState *st, uint8_t x) {
+  st->ram[SMBC_ENEMY_FRENZY_BUFFER] = 0x00u;
+  switch (st->ram[SMBC_STAR_FLAG_TASK_CONTROL]) {
+    case 0x01u:
+      game_timer_fireworks(st, x);
+      break;
+    case 0x02u:
+      award_game_timer_points(st, x);
+      break;
+    case 0x03u:
+      raise_flag_setoff_fworks(st, x);
+      break;
+    case 0x04u:
+      delay_to_area_end(st, x);
+      break;
+    default: /* smb.asm: StarFlagExit */
+      break;
+  }
+}

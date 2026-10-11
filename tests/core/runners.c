@@ -1131,6 +1131,102 @@ static void fireworks_family(void) {
   assert((smbc.state.ram[SMBC_SQUARE2_SOUND_QUEUE] & 0x08u) != 0x00u);
 }
 
+
+static void star_flag_family(void) {
+  /* task 1 with timer ending in 3: three fireworks, state 3 */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_STAR_FLAG_TASK_CONTROL] = 0x01u;
+  smbc.state.ram[SMBC_GAME_TIMER_DISPLAY + 2u] = 0x03u;
+  run_star_flag_obj(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_FIREWORKS_COUNTER] == 0x03u);
+  assert(smbc.state.ram[SMBC_ENEMY_STATE + 0] == 0x03u);
+  assert(smbc.state.ram[SMBC_STAR_FLAG_TASK_CONTROL] == 0x02u);
+  assert(smbc.state.ram[SMBC_ENEMY_FRENZY_BUFFER] == 0x00u);
+
+  /* a digit without fireworks: counter $ff, state $00 */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_STAR_FLAG_TASK_CONTROL] = 0x01u;
+  smbc.state.ram[SMBC_GAME_TIMER_DISPLAY + 2u] = 0x09u;
+  run_star_flag_obj(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_FIREWORKS_COUNTER] == 0xffu);
+  assert(smbc.state.ram[SMBC_ENEMY_STATE + 0] == 0x00u);
+  assert(smbc.state.ram[SMBC_STAR_FLAG_TASK_CONTROL] == 0x02u);
+
+  /* task 2 with time left: one interval down, 50 points, the
+   * tick sound on a d2 frame */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_STAR_FLAG_TASK_CONTROL] = 0x02u;
+  smbc.state.ram[SMBC_GAME_TIMER_DISPLAY + 2u] = 0x05u;
+  smbc.state.ram[SMBC_FRAME_COUNTER] = 0x04u;
+  smbc.state.ram[SMBC_OPER_MODE] = 0x01u;
+  run_star_flag_obj(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_GAME_TIMER_DISPLAY + 2u] == 0x04u);
+  assert(smbc.state.ram[SMBC_DISPLAY_DIGITS + 0x0bu] == 0x05u);
+  assert((smbc.state.ram[SMBC_SQUARE2_SOUND_QUEUE] & 0x10u) != 0x00u);
+  /* still time left: task unchanged */
+  assert(smbc.state.ram[SMBC_STAR_FLAG_TASK_CONTROL] == 0x02u);
+
+  /* no time left at all: straight to the next task, no sound */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_STAR_FLAG_TASK_CONTROL] = 0x02u;
+  run_star_flag_obj(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_STAR_FLAG_TASK_CONTROL] == 0x03u);
+  assert((smbc.state.ram[SMBC_SQUARE2_SOUND_QUEUE] & 0x10u) == 0x00u);
+
+  /* task 3 above $72: raise one pixel and draw */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_STAR_FLAG_TASK_CONTROL] = 0x03u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x80u;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] = 0x40u;
+  smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0xa0u;
+  run_star_flag_obj(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] == 0x7fu);
+  assert(smbc.state.ram[SMBC_SPRITE_TILENUMBER] == 0x57u);
+  assert(smbc.state.ram[SMBC_SPRITE_ATTRIBUTES] == 0x22u);
+  assert(smbc.state.ram[SMBC_STAR_FLAG_TASK_CONTROL] == 0x03u);
+
+  /* at the top with fireworks queued: the frenzy buffer fills */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_STAR_FLAG_TASK_CONTROL] = 0x03u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x70u;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] = 0x40u;
+  smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0xa0u;
+  smbc.state.ram[SMBC_FIREWORKS_COUNTER] = 0x03u;
+  run_star_flag_obj(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_FRENZY_BUFFER] == 0x16u);
+  assert(smbc.state.ram[SMBC_STAR_FLAG_TASK_CONTROL] == 0x03u);
+
+  /* at the top with no fireworks: set the interval and advance */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_STAR_FLAG_TASK_CONTROL] = 0x03u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x70u;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] = 0x40u;
+  smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0xa0u;
+  smbc.state.ram[SMBC_FIREWORKS_COUNTER] = 0xffu;
+  run_star_flag_obj(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_INTERVAL_TIMER + 0] == 0x06u);
+  assert(smbc.state.ram[SMBC_STAR_FLAG_TASK_CONTROL] == 0x04u);
+
+  /* task 4 waits on the interval and the event music */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_STAR_FLAG_TASK_CONTROL] = 0x04u;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] = 0x40u;
+  smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0xa0u;
+  smbc.state.ram[SMBC_ENEMY_INTERVAL_TIMER + 0] = 0x02u;
+  run_star_flag_obj(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_STAR_FLAG_TASK_CONTROL] == 0x04u);
+  smbc.state.ram[SMBC_ENEMY_INTERVAL_TIMER + 0] = 0x00u;
+  run_star_flag_obj(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_STAR_FLAG_TASK_CONTROL] == 0x05u);
+
+  /* task 5+ exits without touching anything */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_STAR_FLAG_TASK_CONTROL] = 0x05u;
+  run_star_flag_obj(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_STAR_FLAG_TASK_CONTROL] == 0x05u);
+}
+
 int main(void) {
   onscreen_survives();
   too_far_left_erased();
@@ -1173,6 +1269,7 @@ int main(void) {
   run_normal_family();
   bowser_flame_family();
   fireworks_family();
+  star_flag_family();
   puts("tests/core/runners: ok");
   return 0;
 }

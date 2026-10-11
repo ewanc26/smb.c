@@ -338,6 +338,8 @@ void state_init(CoreState *state);
 #define SMBC_ENEMY_YMF_DUMMY 0x0417u      /* smb.asm: Enemy_YMF_Dummy (shared) */
 #define SMBC_BOWSER_FLAME_PRANDOM_OFS 0x0417u /* smb.asm: BowserFlamePRandomOfs */
 #define SMBC_FIREWORKS_COUNTER 0x06d7u    /* smb.asm: FireworksCounter */
+#define SMBC_STAR_FLAG_TASK_CONTROL 0x0746u /* smb.asm: StarFlagTaskControl */
+#define SMBC_GAME_TIMER_DISPLAY 0x07f8u     /* smb.asm: GameTimerDisplay */
 #define SMBC_BITM_FILTER 0x06ddu          /* smb.asm: BitMFilter */
 #define SMBC_SCROLL_AMOUNT 0x0775u        /* smb.asm: ScrollAmount */
 #define SMBC_FRENZY_ENEMY_TIMER 0x078fu   /* smb.asm: FrenzyEnemyTimer */

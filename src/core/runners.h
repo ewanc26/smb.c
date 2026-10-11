@@ -136,4 +136,10 @@ void run_bowser_flame(CoreState *state, uint8_t x);
  * at the end award 500 points with the blast sound */
 void run_fireworks(CoreState *state, uint8_t x);
 
+/* smb.asm: RunStarFlagObj — clear the frenzy buffer and run the
+ * current star flag task: fireworks count from the timer's last
+ * digit, the 50-points-per-interval countdown, raising the star
+ * with fireworks, then the delay to the area end */
+void run_star_flag_obj(CoreState *state, uint8_t x);
+
 #endif /* SMBC_CORE_RUNNERS_H */

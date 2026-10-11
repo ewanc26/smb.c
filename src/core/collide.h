@@ -66,4 +66,13 @@ void enemy_turn_around(CoreState *state, uint8_t x);
  * around */
 void proc_enemy_collisions(CoreState *state, uint8_t x, uint8_t y);
 
+/* smb.asm: EnemiesCollision — the enemy-enemy collision sweep for
+ * slot x. Runs on odd frames only, never in water areas, and
+ * skips lakitus, piranha plants and anything id >= $15 on either
+ * side. Every lower slot with its flag set and masked offscreen
+ * bits clear gets the box comparison; the collision bits in the
+ * slot enemy track which pairs already reacted, so only fresh
+ * contacts (or anything with d7 set) run ProcEnemyCollisions */
+void enemies_collision(CoreState *state, uint8_t x);
+
 #endif

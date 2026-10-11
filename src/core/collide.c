@@ -244,3 +244,47 @@ void proc_enemy_collisions(CoreState *st, uint8_t x, uint8_t y) {
   enemy_turn_around(st, y);
   enemy_turn_around(st, x);
 }
+
+/* smb.asm: SetBitsMask / ClearBitsMask — one bit per slot, slot 0
+ * taking d7 */
+static const uint8_t SMBC_SET_BITS_MASK[7] = {
+    0x80u, 0x40u, 0x20u, 0x10u, 0x08u, 0x04u, 0x02u};
+static const uint8_t SMBC_CLEAR_BITS_MASK[7] = {
+    0x7fu, 0xbfu, 0xdfu, 0xefu, 0xf7u, 0xfbu, 0xfdu};
+
+void enemies_collision(CoreState *st, uint8_t x) {
+  if ((st->ram[SMBC_FRAME_COUNTER] & 0x01u) == 0x00u) return;
+  if (st->ram[SMBC_AREA_TYPE] == 0x00u) return; /* water area */
+  uint8_t id = st->ram[SMBC_ENEMY_ID + x];
+  if (id >= 0x15u || id == SMBC_LAKITU || id == SMBC_PIRANHA_PLANT) return;
+  if (st->ram[SMBC_ENEMY_OFFSCR_MASKED + x] != 0x00u) return;
+  uint8_t all_set = 0x00u;
+  uint8_t bbox = get_enemy_bound_box_ofs(st, x, &all_set);
+  if (x == 0x00u) return; /* no other enemies to compare */
+  for (uint8_t slot = (uint8_t)(x - 1u);; slot--) {
+    uint8_t other_id = st->ram[SMBC_ENEMY_ID + slot];
+    uint8_t ok = st->ram[SMBC_ENEMY_FLAG + slot] != 0x00u &&
+                 other_id < 0x15u && other_id != SMBC_LAKITU &&
+                 other_id != SMBC_PIRANHA_PLANT &&
+                 st->ram[SMBC_ENEMY_OFFSCR_MASKED + slot] == 0x00u;
+    if (ok) {
+      uint8_t other_bbox = (uint8_t)(slot * 4u + 4u);
+      if (spr_object_collision_core(st, other_bbox, bbox)) {
+        if (((st->ram[SMBC_ENEMY_STATE + x] |
+              st->ram[SMBC_ENEMY_STATE + slot]) &
+             0x80u) != 0x00u) {
+          proc_enemy_collisions(st, x, slot);
+        } else if ((st->ram[SMBC_ENEMY_COLLISION_BITS + slot] &
+                    SMBC_SET_BITS_MASK[x]) == 0x00u) {
+          st->ram[SMBC_ENEMY_COLLISION_BITS + slot] |=
+              SMBC_SET_BITS_MASK[x];
+          proc_enemy_collisions(st, x, slot);
+        }
+      } else {
+        st->ram[SMBC_ENEMY_COLLISION_BITS + slot] &=
+            SMBC_CLEAR_BITS_MASK[x];
+      }
+    }
+    if (slot == 0x00u) break;
+  }
+}

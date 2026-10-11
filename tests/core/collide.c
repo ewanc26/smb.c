@@ -386,6 +386,99 @@ static void enemy_collision_reactions(void) {
   assert((smbc.state.ram[SMBC_ENEMY_STATE + 0] & 0x20u) == 0x00u);
 }
 
+
+static void enemies_collision_gates(void) {
+  /* even frame: nothing happens */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_FRAME_COUNTER] = 0x02u;
+  smbc.state.ram[SMBC_AREA_TYPE] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_GOOMBA;
+  smbc.state.ram[SMBC_ENEMY_ID + 1] = SMBC_GOOMBA;
+  enemies_collision(&smbc.state, 0x01u);
+  assert(smbc.state.ram[SMBC_ENEMY_COLLISION_BITS + 0] == 0x00u);
+
+  /* water area: nothing */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_FRAME_COUNTER] = 0x01u;
+  smbc.state.ram[SMBC_AREA_TYPE] = 0x00u;
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_GOOMBA;
+  smbc.state.ram[SMBC_ENEMY_ID + 1] = SMBC_GOOMBA;
+  enemies_collision(&smbc.state, 0x01u);
+  assert(smbc.state.ram[SMBC_ENEMY_COLLISION_BITS + 0] == 0x00u);
+
+  /* lakitu slot: nothing */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_FRAME_COUNTER] = 0x01u;
+  smbc.state.ram[SMBC_AREA_TYPE] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_ID + 1] = SMBC_LAKITU;
+  enemies_collision(&smbc.state, 0x01u);
+  assert(smbc.state.ram[SMBC_ENEMY_COLLISION_BITS + 0] == 0x00u);
+
+  /* masked offscreen bits: nothing */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_FRAME_COUNTER] = 0x01u;
+  smbc.state.ram[SMBC_AREA_TYPE] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_ID + 1] = SMBC_GOOMBA;
+  smbc.state.ram[SMBC_ENEMY_OFFSCR_MASKED + 1] = 0x40u;
+  enemies_collision(&smbc.state, 0x01u);
+  assert(smbc.state.ram[SMBC_ENEMY_COLLISION_BITS + 0] == 0x00u);
+}
+
+static void enemies_collision_pairs(void) {
+  /* two overlapping goombas on an odd frame: the bit sets and
+   * both turn around */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_FRAME_COUNTER] = 0x01u;
+  smbc.state.ram[SMBC_AREA_TYPE] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_FLAG + 0] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_FLAG + 1] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_GOOMBA;
+  smbc.state.ram[SMBC_ENEMY_ID + 1] = SMBC_GOOMBA;
+  smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] = 0x10u;
+  smbc.state.ram[SMBC_ENEMY_X_SPEED + 1] = 0xf0u;
+  smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 1] = 0x02u;
+  /* overlapping boxes: slot 0 at $04ac+4, slot 1 at $04ac+8 */
+  uint16_t b0 = SMBC_BOUNDING_BOX_UL_CORNER + 4u;
+  uint16_t b1 = SMBC_BOUNDING_BOX_UL_CORNER + 8u;
+  smbc.state.ram[b0] = 0x10u;
+  smbc.state.ram[b0 + 1u] = 0x10u;
+  smbc.state.ram[b0 + 2u] = 0x20u;
+  smbc.state.ram[b0 + 3u] = 0x20u;
+  smbc.state.ram[b1] = 0x18u;
+  smbc.state.ram[b1 + 1u] = 0x18u;
+  smbc.state.ram[b1 + 2u] = 0x28u;
+  smbc.state.ram[b1 + 3u] = 0x28u;
+  enemies_collision(&smbc.state, 0x01u);
+  assert(smbc.state.ram[SMBC_ENEMY_COLLISION_BITS + 0] == 0x40u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] == 0xf0u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 1] == 0x10u);
+
+  /* still overlapping on the next odd frame: the bit is already
+   * set, so no second reaction */
+  smbc.state.ram[SMBC_FRAME_COUNTER] = 0x03u;
+  enemies_collision(&smbc.state, 0x01u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] == 0xf0u);
+
+  /* separate them: the bit clears */
+  smbc.state.ram[b1] = 0x40u;
+  smbc.state.ram[b1 + 2u] = 0x50u;
+  smbc.state.ram[SMBC_FRAME_COUNTER] = 0x05u;
+  enemies_collision(&smbc.state, 0x01u);
+  assert(smbc.state.ram[SMBC_ENEMY_COLLISION_BITS + 0] == 0x00u);
+
+  /* a dormant slot is skipped */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_FRAME_COUNTER] = 0x01u;
+  smbc.state.ram[SMBC_AREA_TYPE] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_FLAG + 0] = 0x00u;
+  smbc.state.ram[SMBC_ENEMY_ID + 1] = SMBC_GOOMBA;
+  enemies_collision(&smbc.state, 0x01u);
+  assert(smbc.state.ram[SMBC_ENEMY_COLLISION_BITS + 0] == 0x00u);
+}
+
 int main(void) {
   masked_bits_park_the_box();
   corners_from_ctrl_data();
@@ -399,6 +492,8 @@ int main(void) {
   collision_core_wraps();
   turn_around_rules();
   enemy_collision_reactions();
+  enemies_collision_gates();
+  enemies_collision_pairs();
   puts("collide: ok");
   return 0;
 }

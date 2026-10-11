@@ -9,6 +9,7 @@
 #include "screen.h"
 #include "setup.h"
 #include "state.h"
+#include "timer.h"
 
 void upd_scroll_var(Smbc *smbc) {
   CoreState *st = &smbc->state;
@@ -39,15 +40,15 @@ static void game_routines(Smbc *smbc) {
 }
 
 /* smb.asm: GameEngine — the per-frame object and music processing. The
- * translation, offscreen, block, cannon and colour calls run, as do the
+ * translation, offscreen, block, cannon and timer calls run, as do the
  * music check, palette-cycle control computation and the SaveAB tail;
- * the fireball/bubble, enemy, player-graphics, misc-object, whirlpool,
- * flagpole and timer calls still wait on their atoms. */
+ * the fireball/bubble, enemy, player-graphics, misc-object, whirlpool
+ * and flagpole calls still wait on their atoms. */
 static void game_engine(Smbc *smbc) {
   CoreState *st = &smbc->state;
   /* TODO(port): smb.asm: ProcFireball_Bubble, the ProcELoop enemy and
    * floatey-number passes, PlayerGfxHandler, MiscObjectsCore,
-   * ProcessWhirlpools, FlagpoleRoutine, RunGameTimer */
+   * ProcessWhirlpools, FlagpoleRoutine */
   /* smb.asm: GetPlayerOffscreenBits, then RelativePlayerPosition — the
    * player's offscreen bits and screen-relative coordinates, ahead of
    * PlayerGfxHandler */
@@ -62,6 +63,8 @@ static void game_engine(Smbc *smbc) {
   block_objects_core(st, 0x00u);
   /* smb.asm: ProcessCannons */
   process_cannons(st);
+  /* smb.asm: RunGameTimer */
+  run_game_timer(st);
   /* smb.asm: ColorRotation */
   color_rotation(st);
   bool cycle_palette = true;

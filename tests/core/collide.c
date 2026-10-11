@@ -627,6 +627,143 @@ static void injury_family(void) {
   assert(chk_for_player_injury(&smbc.state, 0x00u) == 0x01u);
 }
 
+
+static void power_up_collision(void) {
+  /* a star: invincibility timer and star music */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_POWER_UP_TYPE] = 0x04u;
+  handle_power_up_collision(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_FLAG + 0] == 0x00u);
+  assert(smbc.state.ram[SMBC_FLOATEY_NUM_CONTROL + 0] == 0x06u);
+  assert(smbc.state.ram[SMBC_SQUARE2_SOUND_QUEUE] == 0x20u);
+  assert(smbc.state.ram[SMBC_STAR_INVINCIBLE_TIMER] == 0x23u);
+  assert(smbc.state.ram[SMBC_AREA_MUSIC_QUEUE] == 0x40u);
+
+  /* a 1-up: the floatey becomes $0b */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_POWER_UP_TYPE] = 0x03u;
+  handle_power_up_collision(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_FLOATEY_NUM_CONTROL + 0] == 0x0bu);
+  assert(smbc.state.ram[SMBC_STAR_INVINCIBLE_TIMER] == 0x00u);
+
+  /* a mushroom on a small player: super, subroutine $09 */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_POWER_UP_TYPE] = 0x00u;
+  handle_power_up_collision(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_PLAYER_STATUS] == 0x01u);
+  assert(smbc.state.ram[SMBC_GAME_ENGINE_SUBROUTINE] == 0x09u);
+  assert(smbc.state.ram[SMBC_PLAYER_STATE] == 0x00u);
+  assert(smbc.state.ram[SMBC_TIMER_CONTROL] == 0xffu);
+
+  /* a flower on a super player: fiery, subroutine $0c */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_POWER_UP_TYPE] = 0x01u;
+  smbc.state.ram[SMBC_PLAYER_STATUS] = 0x01u;
+  handle_power_up_collision(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_PLAYER_STATUS] == 0x02u);
+  assert(smbc.state.ram[SMBC_GAME_ENGINE_SUBROUTINE] == 0x0cu);
+
+  /* a fiery player collecting one: nothing changes */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_POWER_UP_TYPE] = 0x01u;
+  smbc.state.ram[SMBC_PLAYER_STATUS] = 0x02u;
+  handle_power_up_collision(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_PLAYER_STATUS] == 0x02u);
+  assert(smbc.state.ram[SMBC_GAME_ENGINE_SUBROUTINE] == 0x00u);
+}
+
+static void pe_collisions_dispatch(void) {
+  /* kicking a stunned koopa: d7 sets, it faces the player at
+   * the kicked speed, the smack plays, points from the timer */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_GREEN_KOOPA;
+  smbc.state.ram[SMBC_ENEMY_STATE + 0] = 0x02u;
+  smbc.state.ram[SMBC_ENEMY_INTERVAL_TIMER + 0] = 0x01u;
+  smbc.state.ram[SMBC_AREA_TYPE] = 0x01u;
+  handle_pe_collisions(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_COLLISION_BITS + 0] == 0x01u);
+  assert(smbc.state.ram[SMBC_ENEMY_STATE + 0] == 0x82u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] == 0x30u);
+  assert(smbc.state.ram[SMBC_SQUARE1_SOUND_QUEUE] == 0x08u);
+  assert(smbc.state.ram[SMBC_FLOATEY_NUM_CONTROL + 0] == 0x06u);
+
+  /* a second contact with the bit set: nothing */
+  smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] = 0x30u;
+  handle_pe_collisions(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] == 0x30u);
+
+  /* a podoboo injures directly */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_PODOBOO;
+  smbc.state.ram[SMBC_PLAYER_STATUS] = 0x01u;
+  smbc.state.ram[SMBC_AREA_TYPE] = 0x01u;
+  handle_pe_collisions(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_PLAYER_STATUS] == 0x00u);
+  assert(smbc.state.ram[SMBC_INJURY_TIMER] == 0x08u);
+
+  /* a walking goomba goes through the stomp decision */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_GOOMBA;
+  smbc.state.ram[SMBC_ENEMY_STATE + 0] = 0x01u;
+  smbc.state.ram[SMBC_AREA_TYPE] = 0x01u;
+  smbc.state.ram[SMBC_PLAYER_Y_SPEED] = 0x02u;
+  handle_pe_collisions(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_STATE + 0] == 0x04u);
+
+  /* a defeated goomba in a kicked state leaves alone */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_GOOMBA;
+  smbc.state.ram[SMBC_ENEMY_STATE + 0] = 0x02u;
+  smbc.state.ram[SMBC_AREA_TYPE] = 0x01u;
+  handle_pe_collisions(&smbc.state, 0x00u);
+  assert((smbc.state.ram[SMBC_ENEMY_STATE + 0] & 0x80u) == 0x00u);
+  assert(smbc.state.ram[SMBC_SQUARE1_SOUND_QUEUE] == 0x00u);
+}
+
+static void player_enemy_collision_gates(void) {
+  /* the even-frame gate: nothing */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_FRAME_COUNTER] = 0x01u;
+  player_enemy_collision(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_COLLISION_BITS + 0] == 0x00u);
+
+  /* a miss clears d0 */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_PLAYER_Y_HIGH_POS] = 0x01u;
+  smbc.state.ram[SMBC_PLAYER_Y_POSITION] = 0x40u;
+  smbc.state.ram[SMBC_GAME_ENGINE_SUBROUTINE] = 0x08u;
+  smbc.state.ram[SMBC_ENEMY_COLLISION_BITS + 0] = 0x01u;
+  smbc.state.ram[SMBC_BOUNDING_BOX_UL_CORNER + 4u] = 0x40u;
+  smbc.state.ram[SMBC_BOUNDING_BOX_UL_CORNER + 5u] = 0x40u;
+  smbc.state.ram[SMBC_BOUNDING_BOX_LR_CORNER + 4u] = 0x50u;
+  smbc.state.ram[SMBC_BOUNDING_BOX_LR_CORNER + 5u] = 0x50u;
+  player_enemy_collision(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_COLLISION_BITS + 0] == 0x00u);
+
+  /* a hit on a star-powered player defeats the enemy */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_PLAYER_Y_HIGH_POS] = 0x01u;
+  smbc.state.ram[SMBC_PLAYER_Y_POSITION] = 0x40u;
+  smbc.state.ram[SMBC_GAME_ENGINE_SUBROUTINE] = 0x08u;
+  smbc.state.ram[SMBC_STAR_INVINCIBLE_TIMER] = 0x10u;
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_GOOMBA;
+  smbc.state.ram[SMBC_AREA_TYPE] = 0x01u;
+  /* overlapping boxes: player slot 0, enemy slot 0 at +4 */
+  smbc.state.ram[SMBC_BOUNDING_BOX_UL_CORNER] = 0x10u;
+  smbc.state.ram[SMBC_BOUNDING_BOX_UL_CORNER + 1u] = 0x10u;
+  smbc.state.ram[SMBC_BOUNDING_BOX_LR_CORNER] = 0x20u;
+  smbc.state.ram[SMBC_BOUNDING_BOX_LR_CORNER + 1u] = 0x20u;
+  smbc.state.ram[SMBC_BOUNDING_BOX_UL_CORNER + 4u] = 0x18u;
+  smbc.state.ram[SMBC_BOUNDING_BOX_UL_CORNER + 5u] = 0x18u;
+  smbc.state.ram[SMBC_BOUNDING_BOX_LR_CORNER + 4u] = 0x28u;
+  smbc.state.ram[SMBC_BOUNDING_BOX_LR_CORNER + 5u] = 0x28u;
+  player_enemy_collision(&smbc.state, 0x00u);
+  assert((smbc.state.ram[SMBC_ENEMY_STATE + 0] & 0x20u) != 0x00u);
+}
+
 int main(void) {
   masked_bits_park_the_box();
   corners_from_ctrl_data();
@@ -644,6 +781,9 @@ int main(void) {
   enemies_collision_pairs();
   stomp_family();
   injury_family();
+  power_up_collision();
+  pe_collisions_dispatch();
+  player_enemy_collision_gates();
   puts("collide: ok");
   return 0;
 }

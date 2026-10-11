@@ -444,3 +444,103 @@ uint8_t chk_for_player_injury(CoreState *st, uint8_t x) {
   injure_player(st);
   return 0x00u;
 }
+
+/* smb.asm: KickedShellPtsData */
+static const uint8_t SMBC_KICKED_SHELL_PTS_DATA[3] = {0x0au, 0x06u, 0x04u};
+/* smb.asm: KickedShellXSpdData */
+static const uint8_t SMBC_KICKED_SHELL_X_SPD_DATA[2] = {0x30u, 0xd0u};
+
+void handle_power_up_collision(CoreState *st, uint8_t x) {
+  erase_enemy_object(st, x);
+  setup_floatey_number(st, x, 0x06u); /* 1000 points */
+  st->ram[SMBC_SQUARE2_SOUND_QUEUE] = SMBC_SFX_POWER_UP_GRAB;
+  uint8_t type = st->ram[SMBC_POWER_UP_TYPE];
+  if (type >= 0x02u) {
+    if (type == 0x03u) {
+      /* smb.asm: SetFor1Up — the floatey becomes a 1-up */
+      st->ram[SMBC_FLOATEY_NUM_CONTROL + x] = 0x0bu;
+      return;
+    }
+    st->ram[SMBC_STAR_INVINCIBLE_TIMER] = 0x23u;
+    st->ram[SMBC_AREA_MUSIC_QUEUE] = SMBC_STAR_POWER_MUSIC;
+    return;
+  }
+  uint8_t status = st->ram[SMBC_PLAYER_STATUS];
+  if (status == 0x00u) {
+    /* smb.asm: UpToSuper */
+    st->ram[SMBC_PLAYER_STATUS] = 0x01u;
+    st->ram[SMBC_GAME_ENGINE_SUBROUTINE] = 0x09u;
+  } else if (status == 0x01u) {
+    st->ram[SMBC_PLAYER_STATUS] = 0x02u;
+    get_player_colors_core(st);
+    st->ram[SMBC_GAME_ENGINE_SUBROUTINE] = 0x0cu;
+  } else {
+    return;
+  }
+  /* smb.asm: UpToFiery — SetPRout with player state 0 */
+  st->ram[SMBC_PLAYER_STATE] = 0x00u;
+  st->ram[SMBC_TIMER_CONTROL] = 0xffu;
+  st->ram[SMBC_SCROLL_AMOUNT] = 0x00u;
+}
+
+void handle_pe_collisions(CoreState *st, uint8_t x) {
+  if ((st->ram[SMBC_ENEMY_COLLISION_BITS + x] & 0x01u) != 0x00u) return;
+  if (st->ram[SMBC_ENEMY_OFFSCR_MASKED + x] != 0x00u) return;
+  st->ram[SMBC_ENEMY_COLLISION_BITS + x] |= 0x01u;
+  uint8_t id = st->ram[SMBC_ENEMY_ID + x];
+  if (id == SMBC_SPINY || id == SMBC_PIRANHA_PLANT || id == SMBC_PODOBOO ||
+      id == SMBC_BULLET_BILL_CANNON || id >= 0x15u ||
+      st->ram[SMBC_AREA_TYPE] == 0x00u) {
+    /* smb.asm: spiny and cannon bullet bill go through the
+     * stomp-or-injury decision; piranha plants, podoboos,
+     * objects >= $15 and water contacts injure directly */
+    if (id == SMBC_SPINY || id == SMBC_BULLET_BILL_CANNON) {
+      chk_for_player_injury(st, x);
+    } else {
+      injure_player(st);
+    }
+    return;
+  }
+  if ((st->ram[SMBC_ENEMY_STATE + x] & 0x80u) != 0x00u) {
+    chk_for_player_injury(st, x);
+    return;
+  }
+  uint8_t state = st->ram[SMBC_ENEMY_STATE + x] & 0x07u;
+  if (state < 0x02u) {
+    chk_for_player_injury(st, x);
+    return;
+  }
+  if (id == SMBC_GOOMBA) return; /* defeated goomba: leave */
+  /* smb.asm: kicking a stunned enemy into a moving shell */
+  st->ram[SMBC_SQUARE1_SOUND_QUEUE] = SMBC_SFX_ENEMY_SMACK;
+  st->ram[SMBC_ENEMY_STATE + x] |= 0x80u;
+  uint8_t ofs = enemy_face_player(st, x);
+  st->ram[SMBC_ENEMY_X_SPEED + x] = SMBC_KICKED_SHELL_X_SPD_DATA[ofs];
+  uint8_t score = (uint8_t)(0x03u + st->ram[SMBC_STOMP_CHAIN_COUNTER]);
+  uint8_t timer = st->ram[SMBC_ENEMY_INTERVAL_TIMER + x];
+  if (timer < 0x03u) score = SMBC_KICKED_SHELL_PTS_DATA[timer];
+  setup_floatey_number(st, x, score);
+}
+
+void player_enemy_collision(CoreState *st, uint8_t x) {
+  if ((st->ram[SMBC_FRAME_COUNTER] & 0x01u) != 0x00u) return;
+  if (!check_player_vertical(st)) return;
+  if (st->ram[SMBC_ENEMY_OFFSCR_MASKED + x] != 0x00u) return;
+  if (st->ram[SMBC_GAME_ENGINE_SUBROUTINE] != 0x08u) return;
+  if ((st->ram[SMBC_ENEMY_STATE + x] & 0x20u) != 0x00u) return;
+  uint8_t all_set = 0x00u;
+  uint8_t bbox = get_enemy_bound_box_ofs(st, x, &all_set);
+  if (!player_collision_core(st, bbox)) {
+    st->ram[SMBC_ENEMY_COLLISION_BITS + x] &= 0xfeu;
+    return;
+  }
+  if (st->ram[SMBC_ENEMY_ID + x] == SMBC_POWER_UP_OBJECT) {
+    handle_power_up_collision(st, x);
+    return;
+  }
+  if (st->ram[SMBC_STAR_INVINCIBLE_TIMER] != 0x00u) {
+    shell_or_block_defeat(st, x);
+    return;
+  }
+  handle_pe_collisions(st, x);
+}

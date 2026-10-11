@@ -130,4 +130,30 @@ void force_injury(CoreState *state);
  * the enemy was stomped */
 uint8_t chk_for_player_injury(CoreState *state, uint8_t x);
 
+/* smb.asm: HandlePowerUpCollision — collecting a power-up: the
+ * object erases, 1000 points and the grab sound by default. A
+ * star sets the $23 invincibility timer and queues its music, a
+ * 1-up turns the floatey into an extra life, a mushroom or flower
+ * grows a small player to super (subroutine $09) or a super
+ * player to fiery (subroutine $0c) with a palette refresh */
+void handle_power_up_collision(CoreState *state, uint8_t x);
+
+/* smb.asm: HandlePECollisions — the player-enemy contact
+ * reaction, dispatched on the enemy id and state: d0 of the
+ * collision bits or any masked offscreen bits suppress repeats;
+ * spinys, piranha plants, podoboos and bullet bills injure,
+ * ids >= $15 injure, water areas injure, d7 shells injure,
+ * stunned enemies (state 2-5) kick a non-goomba into a moving
+ * shell with the chain score, and anything else goes through
+ * the stomp-or-injury decision */
+void handle_pe_collisions(CoreState *state, uint8_t x);
+
+/* smb.asm: PlayerEnemyCollision — the player-enemy collision
+ * detector for slot x, gated to even frames with the player
+ * vertically onscreen, the enemy unmasked and the control
+ * routine queued. A miss clears d0 of the collision bits; a hit
+ * goes to the power-up grab, the star kill, or
+ * HandlePECollisions */
+void player_enemy_collision(CoreState *state, uint8_t x);
+
 #endif

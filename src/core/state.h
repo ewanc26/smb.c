@@ -384,6 +384,8 @@ void state_init(CoreState *state);
 #define SMBC_SFX_BIG_JUMP          0x01u /* smb.asm: Sfx_BigJump */
 #define SMBC_SFX_BUMP              0x02u /* smb.asm: Sfx_Bump */
 #define SMBC_SFX_ENEMY_STOMP       0x04u /* smb.asm: Sfx_EnemyStomp (also swim) */
+#define SMBC_SFX_POWER_UP_GRAB     0x20u /* smb.asm: Sfx_PowerUpGrab */
+#define SMBC_STAR_POWER_MUSIC      0x40u /* smb.asm: StarPowerMusic */
 #define SMBC_SFX_ENEMY_SMACK       0x08u /* smb.asm: Sfx_EnemySmack */
 #define SMBC_SFX_PIPE_DOWN_INJURY  0x10u /* smb.asm: Sfx_PipeDownInjury */
 #define SMBC_SFX_FIREBALL          0x20u /* smb.asm: Sfx_Fireball */

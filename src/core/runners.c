@@ -125,6 +125,13 @@ void proc_move_red_p_troopa(CoreState *st, uint8_t x) {
   }
 }
 
+/* smb.asm: MoveDefeatedEnemy — defeated enemies fall, then move
+ * horizontally */
+static void move_defeated_enemy(CoreState *st, uint8_t x) {
+  move_d_enemy_vertically(st, x);
+  move_enemy_horizontally(st, x);
+}
+
 /* smb.asm: XMoveCntr_Platform — every fourth frame, the secondary
  * counter (the enemy X speed, shared at $58) ramps towards the
  * maximum or back down to zero by the primary counter's d0; hitting
@@ -359,4 +366,103 @@ void move_swimming_cheep_cheep(CoreState *st, uint8_t x) {
   }
   if (diff < 0x0f) return;
   st->ram[SMBC_CHEEP_CHEEP_MOVE_M_FLAG + x] = dir;
+}
+
+/* smb.asm: InitVStf — initialise vertical speed and movement force */
+static void init_v_stf(CoreState *st, uint8_t x) {
+  st->ram[SMBC_ENEMY_Y_SPEED + x] = 0x00u;
+  st->ram[SMBC_ENEMY_Y_MOVE_FORCE + x] = 0x00u;
+}
+
+void move_podoboo(CoreState *st, uint8_t x) {
+  if (st->ram[SMBC_ENEMY_INTERVAL_TIMER + x] == 0x00u) {
+    /* smb.asm: InitPodoboo, through SmallBBox and InitVStf */
+    st->ram[SMBC_ENEMY_Y_HIGH_POS + x] = 0x02u;
+    st->ram[SMBC_ENEMY_Y_POSITION + x] = 0x02u;
+    st->ram[SMBC_ENEMY_STATE + x] = 0x00u;
+    st->ram[SMBC_ENEMY_BOUND_BOX_CTRL + x] = 0x09u;
+    st->ram[SMBC_ENEMY_MOVING_DIR + x] = 0x02u;
+    init_v_stf(st, x);
+    uint8_t r = st->ram[SMBC_PSEUDO_RANDOM_BIT_REG + 1u + x];
+    st->ram[SMBC_ENEMY_Y_MOVE_FORCE + x] = (uint8_t)(r | 0x80u);
+    st->ram[SMBC_ENEMY_INTERVAL_TIMER + x] = (uint8_t)((r & 0x0fu) | 0x06u);
+    st->ram[SMBC_ENEMY_Y_SPEED + x] = 0xf9u;
+  }
+  move_j_enemy_vertically(st, x);
+}
+
+/* smb.asm: SpawnHammerObj — the misc slot offset comes from the
+ * LSFR's d2-d0, or its d3 when those are clear; the spawn is
+ * refused (carry clear) when the misc slot is taken or its enemy
+ * slot is still buffered. ObjectOffset restores x in the asm; the
+ * caller's slot is the same value here */
+static bool spawn_hammer_obj(CoreState *st, uint8_t x) {
+  uint8_t y = (uint8_t)(st->ram[SMBC_PSEUDO_RANDOM_BIT_REG + 1u] & 0x07u);
+  if (y == 0x00u) y = (uint8_t)(st->ram[SMBC_PSEUDO_RANDOM_BIT_REG + 1u] & 0x08u);
+  if (st->ram[SMBC_MISC_STATE + y] != 0x00u) return false;
+  if (st->ram[SMBC_ENEMY_FLAG + SMBC_HAMMER_ENEMY_OFS_DATA[y]] != 0x00u) {
+    return false;
+  }
+  st->ram[SMBC_HAMMER_ENEMY_OFFSET + y] = x;
+  st->ram[SMBC_MISC_STATE + y] = 0x90u;
+  st->ram[SMBC_MISC_BOUND_BOX_CTRL + y] = 0x07u;
+  return true;
+}
+
+void proc_hammer_bro(CoreState *st, uint8_t x) {
+  if ((st->ram[SMBC_ENEMY_STATE + x] & 0x20u) != 0x00u) {
+    move_defeated_enemy(st, x);
+    return;
+  }
+  if (st->ram[SMBC_HAMMER_BRO_JUMP_TIMER + x] != 0x00u) {
+    st->ram[SMBC_HAMMER_BRO_JUMP_TIMER + x]--;
+    if ((st->ram[SMBC_ENEMY_OFFSCREEN_BITS] & 0x0cu) == 0x00u) {
+      if (st->ram[SMBC_HAMMER_THROWING_TIMER + x] != 0x00u) {
+        st->ram[SMBC_HAMMER_THROWING_TIMER + x]--; /* smb.asm: DecHT */
+      } else {
+        st->ram[SMBC_HAMMER_THROWING_TIMER + x] =
+            SMBC_HAMMER_THROW_TMR_DATA[st->ram[SMBC_SECONDARY_HARD_MODE]];
+        if (spawn_hammer_obj(st, x)) {
+          st->ram[SMBC_ENEMY_STATE + x] |= 0x08u;
+        }
+      }
+    }
+  } else {
+    /* smb.asm: HammerBroJumpCode */
+    if ((st->ram[SMBC_ENEMY_STATE + x] & 0x07u) != 0x01u) {
+      uint8_t bitmask = 0x00u;
+      uint8_t speed = 0xfau;
+      uint8_t y_pos = st->ram[SMBC_ENEMY_Y_POSITION + x];
+      if ((y_pos & 0x80u) == 0x00u) {
+        speed = 0xfdu;
+        bitmask = 0x01u;
+        if (y_pos >= 0x70u) {
+          bitmask = 0x00u;
+          if ((st->ram[SMBC_PSEUDO_RANDOM_BIT_REG + 1u + x] & 0x01u) == 0x00u) {
+            speed = 0xfau;
+          }
+        }
+      }
+      st->ram[SMBC_ENEMY_Y_SPEED + x] = speed;
+      st->ram[SMBC_ENEMY_STATE + x] |= 0x01u;
+      uint8_t offset = (uint8_t)(bitmask &
+                                 st->ram[SMBC_PSEUDO_RANDOM_BIT_REG + 2u + x]);
+      if (st->ram[SMBC_SECONDARY_HARD_MODE] == 0x00u) offset = 0x00u;
+      st->ram[SMBC_ENEMY_FRAME_TIMER + x] = SMBC_HAMMER_BRO_JUMP_L_DATA[offset];
+      st->ram[SMBC_HAMMER_BRO_JUMP_TIMER + x] =
+          (uint8_t)(st->ram[SMBC_PSEUDO_RANDOM_BIT_REG + 1u + x] | 0xc0u);
+    }
+  }
+  /* smb.asm: MoveHammerBroXDir */
+  uint8_t shimmy = 0xfcu; /* left */
+  if ((st->ram[SMBC_FRAME_COUNTER] & 0x40u) != 0x00u) shimmy = 0x04u;
+  st->ram[SMBC_ENEMY_X_SPEED + x] = shimmy;
+  uint8_t dir = 0x01u; /* face right */
+  if (player_enemy_diff(st, x) >= 0) {
+    dir = 0x02u; /* face left */
+    if (st->ram[SMBC_ENEMY_INTERVAL_TIMER + x] == 0x00u) {
+      st->ram[SMBC_ENEMY_X_SPEED + x] = 0xf8u; /* walk left at the player */
+    }
+  }
+  st->ram[SMBC_ENEMY_MOVING_DIR + x] = dir;
 }

@@ -522,6 +522,144 @@ static void defeated_cheep_cheep_sinks(void) {
   assert(smbc.state.ram[SMBC_ENEMY_Y_MOVE_FORCE + 2] != 0x00u);
 }
 
+
+static void podoboo_reinit_and_rise(void) {
+  /* timer expired: reinitialise below the screen with the LSFR
+   * force and timer, an upward speed, then gravity every frame */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_PSEUDO_RANDOM_BIT_REG + 1] = 0x25u;
+  smbc.state.ram[SMBC_ENEMY_Y_SPEED + 0] = 0x00u;
+  move_podoboo(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_BOUND_BOX_CTRL + 0] == 0x09u);
+  assert(smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] == 0x02u);
+  assert(smbc.state.ram[SMBC_ENEMY_INTERVAL_TIMER + 0] == 0x07u);
+  /* the gravity frame already ran against the $f9 speed: the $a5
+   * force took $1c more and the podoboo rose seven pixels */
+  assert(smbc.state.ram[SMBC_ENEMY_Y_MOVE_FORCE + 0] == 0xc1u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] == 0xfbu);
+  /* the high byte takes the sign extension of the still-$f9 speed */
+  assert(smbc.state.ram[SMBC_ENEMY_Y_HIGH_POS + 0] == 0x01u);
+
+  /* timer running: gravity only, no reinitialisation */
+  smbc.state.ram[SMBC_ENEMY_Y_SPEED + 0] = 0x10u;
+  uint8_t box = smbc.state.ram[SMBC_ENEMY_BOUND_BOX_CTRL + 0];
+  move_podoboo(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_INTERVAL_TIMER + 0] == 0x07u);
+  assert(smbc.state.ram[SMBC_ENEMY_BOUND_BOX_CTRL + 0] == box);
+}
+
+static void hammer_bro_jump_code(void) {
+  /* jump timer expired and not already jumping: speed by screen
+   * position, d0 of the state set, length timer by hard mode, jump
+   * timer rearmed with d7-d6 set */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x50u; /* top half, above $70 */
+  proc_hammer_bro(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_SPEED + 0] == 0xfdu);
+  assert((smbc.state.ram[SMBC_ENEMY_STATE + 0] & 0x01u) == 0x01u);
+  assert(smbc.state.ram[SMBC_ENEMY_FRAME_TIMER + 0] == 0x20u); /* easy */
+  assert((smbc.state.ram[SMBC_HAMMER_BRO_JUMP_TIMER + 0] & 0xc0u) == 0xc0u);
+
+  /* bottom half: the deep $fa jump */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x90u;
+  proc_hammer_bro(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_SPEED + 0] == 0xfau);
+
+  /* hard mode with the LSFR bit set: the long jump length */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x50u;
+  smbc.state.ram[SMBC_SECONDARY_HARD_MODE] = 0x01u;
+  smbc.state.ram[SMBC_PSEUDO_RANDOM_BIT_REG + 2] = 0x01u;
+  proc_hammer_bro(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_FRAME_TIMER + 0] == 0x37u);
+
+  /* already jumping: no new jump */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_STATE + 0] = 0x01u;
+  proc_hammer_bro(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_SPEED + 0] == 0x00u);
+}
+
+static void hammer_bro_throws(void) {
+  /* jump timer running and the throwing timer expired: the timer
+   * resets by hard mode and a hammer spawns into a free misc slot,
+   * marking d3 of the state */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_HAMMER_BRO_JUMP_TIMER + 0] = 0x05u;
+  smbc.state.ram[SMBC_PSEUDO_RANDOM_BIT_REG + 1] = 0x03u; /* misc slot 3 */
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x50u;
+  proc_hammer_bro(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_HAMMER_BRO_JUMP_TIMER + 0] == 0x04u);
+  assert(smbc.state.ram[SMBC_HAMMER_THROWING_TIMER + 0] == 0x30u);
+  assert(smbc.state.ram[SMBC_MISC_STATE + 3] == 0x90u);
+  assert(smbc.state.ram[SMBC_MISC_BOUND_BOX_CTRL + 3] == 0x07u);
+  assert(smbc.state.ram[SMBC_HAMMER_ENEMY_OFFSET + 3] == 0x00u);
+  assert((smbc.state.ram[SMBC_ENEMY_STATE + 0] & 0x08u) == 0x08u);
+
+  /* throwing timer running: decrements instead, and no d3 */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_HAMMER_BRO_JUMP_TIMER + 0] = 0x05u;
+  smbc.state.ram[SMBC_HAMMER_THROWING_TIMER + 0] = 0x10u;
+  proc_hammer_bro(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_HAMMER_THROWING_TIMER + 0] == 0x0fu);
+  assert((smbc.state.ram[SMBC_ENEMY_STATE + 0] & 0x08u) == 0x00u);
+
+  /* misc slot taken: no spawn, no d3 */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_HAMMER_BRO_JUMP_TIMER + 0] = 0x05u;
+  smbc.state.ram[SMBC_PSEUDO_RANDOM_BIT_REG + 1] = 0x03u;
+  smbc.state.ram[SMBC_MISC_STATE + 3] = 0x01u;
+  proc_hammer_bro(&smbc.state, 0x00u);
+  assert((smbc.state.ram[SMBC_ENEMY_STATE + 0] & 0x08u) == 0x00u);
+
+  /* a little offscreen: no throwing at all */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_HAMMER_BRO_JUMP_TIMER + 0] = 0x05u;
+  smbc.state.ram[SMBC_ENEMY_OFFSCREEN_BITS] = 0x04u;
+  proc_hammer_bro(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_HAMMER_THROWING_TIMER + 0] == 0x00u);
+}
+
+static void hammer_bro_shimmy_and_walk(void) {
+  /* the shimmy flips with the frame counter's d6; the bro faces the
+   * player and walks left at them when the walking timer expires */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_HAMMER_BRO_JUMP_TIMER + 0] = 0x01u;
+  smbc.state.ram[SMBC_FRAME_COUNTER] = 0x00u;
+  proc_hammer_bro(&smbc.state, 0x00u);
+  /* enemy at the origin with the player: face left, walk left */
+  assert(smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] == 0x02u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] == 0xf8u);
+
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_HAMMER_BRO_JUMP_TIMER + 0] = 0x01u;
+  smbc.state.ram[SMBC_FRAME_COUNTER] = 0x40u;
+  smbc.state.ram[SMBC_ENEMY_INTERVAL_TIMER + 0] = 0x01u; /* walking timer */
+  proc_hammer_bro(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] == 0x04u); /* right shimmy */
+
+  /* player to the right of the bro: face right, keep the shimmy */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_HAMMER_BRO_JUMP_TIMER + 0] = 0x01u;
+  smbc.state.ram[SMBC_PLAYER_PAGE_LOC] = 0x01u;
+  smbc.state.ram[SMBC_FRAME_COUNTER] = 0x00u;
+  proc_hammer_bro(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] == 0x01u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] == 0xfcu);
+
+  /* defeated bros just fall: the $3d gravity from rest */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_STATE + 0] = 0x20u;
+  proc_hammer_bro(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_MOVE_FORCE + 0] == 0x3du);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_SPEED + 0] == 0x00u);
+}
+
 int main(void) {
   onscreen_survives();
   too_far_left_erased();
@@ -549,6 +687,10 @@ int main(void) {
   cheep_cheep_drifts_left();
   cheep_cheep_oscillates();
   defeated_cheep_cheep_sinks();
+  podoboo_reinit_and_rise();
+  hammer_bro_jump_code();
+  hammer_bro_throws();
+  hammer_bro_shimmy_and_walk();
   puts("tests/core/runners: ok");
   return 0;
 }

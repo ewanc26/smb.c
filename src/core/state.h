@@ -284,6 +284,11 @@ void state_init(CoreState *state);
 #define SMBC_VINE_START_Y_POSITION 0x039du /* smb.asm: VineStart_Y_Position */
 #define SMBC_PLATFORM_COLLISION_FLAG 0x03a2u /* smb.asm: PlatformCollisionFlag */
 #define SMBC_HAMMER_THROWING_TIMER 0x03a2u /* smb.asm: HammerThrowingTimer */
+#define SMBC_HAMMER_BRO_JUMP_TIMER 0x003cu   /* smb.asm: HammerBroJumpTimer */
+#define SMBC_MISC_STATE 0x002au              /* smb.asm: Misc_State */
+#define SMBC_MISC_BOUND_BOX_CTRL 0x04a2u     /* smb.asm: Misc_BoundBoxCtrl */
+#define SMBC_ENEMY_BOUND_BOX_CTRL 0x049au    /* smb.asm: Enemy_BoundBoxCtrl */
+#define SMBC_HAMMER_ENEMY_OFFSET 0x06aeu     /* smb.asm: HammerEnemyOffset */
 #define SMBC_ENEMY_X_MOVE_FORCE 0x0401u   /* smb.asm: Enemy_X_MoveForce (shared) */
 #define SMBC_RED_PTROOPA_ORIG_X_POS 0x0401u /* smb.asm: RedPTroopaOrigXPos */
 #define SMBC_Y_PLATFORM_TOP_Y_POS 0x0401u /* smb.asm: YPlatformTopYPos */

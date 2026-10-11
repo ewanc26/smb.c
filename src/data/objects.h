@@ -83,4 +83,15 @@ extern const uint8_t SMBC_BLOOBER_BITMASKS[2];
  * pair is residual and not ported) */
 extern const uint8_t SMBC_SWIM_CC_X_MOVE_DATA[2];
 
+/* smb.asm: HammerEnemyOfsData — the enemy slot a hammer spawn
+ * checks for occupancy, per misc slot */
+extern const uint8_t SMBC_HAMMER_ENEMY_OFS_DATA[9];
+
+/* smb.asm: HammerThrowTmrData — the hammer throwing timer preset,
+ * indexed by the secondary hard mode flag */
+extern const uint8_t SMBC_HAMMER_THROW_TMR_DATA[2];
+
+/* smb.asm: HammerBroJumpLData — the jump length timer presets */
+extern const uint8_t SMBC_HAMMER_BRO_JUMP_L_DATA[2];
+
 #endif /* SMBC_DATA_OBJECTS_H */

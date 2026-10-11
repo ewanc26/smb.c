@@ -64,4 +64,19 @@ void move_bullet_bill(CoreState *state, uint8_t x);
  * aliases the X speed at $58) */
 void move_swimming_cheep_cheep(CoreState *state, uint8_t x);
 
+/* smb.asm: MovePodoboo — when the interval timer expires the
+ * podoboo is reinitialised below the screen with a randomised
+ * movement force and timer and a $f9 upward speed; gravity runs
+ * every frame */
+void move_podoboo(CoreState *state, uint8_t x);
+
+/* smb.asm: ProcHammerBro — defeated bros fall; otherwise the jump
+ * timer counts down, an on-screen bro with an expired throwing
+ * timer spawns a hammer (d3 of the state marks the throw) and the
+ * jump code picks a speed by screen position and LSFR, the length
+ * timer by hard mode and more random bits. Every frame the bro
+ * shimmies by the frame counter's d6, faces the player, and walks
+ * left at them when the walking timer expires */
+void proc_hammer_bro(CoreState *state, uint8_t x);
+
 #endif /* SMBC_CORE_RUNNERS_H */

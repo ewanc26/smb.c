@@ -84,3 +84,14 @@ const uint8_t SMBC_BLOOBER_BITMASKS[2] = {0x3fu, 0x03u};
 
 /* smb.asm: SwimCCXMoveData (the residual $04, $04 pair omitted) */
 const uint8_t SMBC_SWIM_CC_X_MOVE_DATA[2] = {0x40u, 0x80u};
+
+/* smb.asm: HammerEnemyOfsData */
+const uint8_t SMBC_HAMMER_ENEMY_OFS_DATA[9] = {0x04u, 0x04u, 0x04u,
+                                               0x05u, 0x05u, 0x05u,
+                                               0x06u, 0x06u, 0x06u};
+
+/* smb.asm: HammerThrowTmrData */
+const uint8_t SMBC_HAMMER_THROW_TMR_DATA[2] = {0x30u, 0x1cu};
+
+/* smb.asm: HammerBroJumpLData */
+const uint8_t SMBC_HAMMER_BRO_JUMP_L_DATA[2] = {0x20u, 0x37u};

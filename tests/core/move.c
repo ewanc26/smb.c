@@ -189,6 +189,39 @@ static void platform_amounts(void) {
   assert(smbc.state.ram[SMBC_ENEMY_Y_MOVE_FORCE + 0] == 0x05u);
 }
 
+static void player_gravity(void) {
+  /* smb.asm: ImposeGravity — the generic core reached with the player
+   * offset (SprObject 0); the whirlpool uses it with a downward amount
+   * of $10 and a maximum speed of $01 */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_PLAYER_Y_POSITION] = 0x50u;
+  smbc.state.ram[SMBC_PLAYER_Y_HIGH_POS] = 0x01u;
+  impose_gravity(&smbc.state, 0x00u, 0x10u, 0x00u, 0x01u, 0x00u);
+  assert(smbc.state.ram[SMBC_PLAYER_Y_MOVE_FORCE] == 0x10u);
+  assert(smbc.state.ram[SMBC_PLAYER_Y_SPEED] == 0x00u);
+  assert(smbc.state.ram[SMBC_PLAYER_Y_POSITION] == 0x50u);
+  assert(smbc.state.ram[SMBC_SPROBJ_YMF_DUMMY] == 0x00u);
+  /* the dummy accumulator picks up the force counter on the next frame */
+  impose_gravity(&smbc.state, 0x00u, 0x10u, 0x00u, 0x01u, 0x00u);
+  assert(smbc.state.ram[SMBC_SPROBJ_YMF_DUMMY] == 0x10u);
+
+  /* the force counter overflows into the speed, which clamps at the
+   * whirlpool maximum of one */
+  for (int i = 0; i < 20; i++) {
+    impose_gravity(&smbc.state, 0x00u, 0x10u, 0x00u, 0x01u, 0x00u);
+  }
+  assert(smbc.state.ram[SMBC_PLAYER_Y_SPEED] == 0x01u);
+  assert(smbc.state.ram[SMBC_PLAYER_Y_POSITION] > 0x50u);
+
+  /* the enemy helpers still land on the enemy, not the player: the
+   * SprObject offset is the enemy offset plus one */
+  smbc_init(&smbc);
+  move_d_enemy_vertically(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_MOVE_FORCE + 0] == 0x3du);
+  assert(smbc.state.ram[SMBC_PLAYER_Y_MOVE_FORCE] == 0x00u);
+}
+
 int main(void) {
   horizontal();
   gravity_basic();
@@ -196,6 +229,7 @@ int main(void) {
   block_gravity();
   red_p_troopa_gravity();
   platform_amounts();
+  player_gravity();
   puts("tests/core/move: ok");
   return 0;
 }

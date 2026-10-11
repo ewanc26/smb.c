@@ -5,14 +5,24 @@
  * points for enemies, platforms and the red paratroopa. The asm
  * addresses the generic SprObject arrays with the object offset
  * incremented by one; the port uses the enemy arrays directly, which
- * is the same memory. The player-side wrappers (MovePlayerHorizontally
- * and MovePlayerVertically) belong to the player atom. */
+ * is the same memory. The one exception is impose_gravity, the generic
+ * core: it takes the SprObject index verbatim (the player is 0), so
+ * whirlpools and other player-side physics can reach the player. The
+ * named player routines (MovePlayerHorizontally, MovePlayerVertically)
+ * belong to the player atom. */
 #ifndef SMBC_CORE_MOVE_H
 #define SMBC_CORE_MOVE_H
 
 #include <stdint.h>
 
 #include "state.h"
+
+/* smb.asm: ImposeGravity — the generic vertical physics core. s is the
+ * SprObject index (player 0, enemies 1 and up). down is the downward
+ * movement amount ($00), up the upward amount ($01), max the maximum
+ * speed ($02) and up_flag whether to apply the upward part. */
+void impose_gravity(CoreState *state, uint8_t s, uint8_t down, uint8_t up,
+                    uint8_t max, uint8_t up_flag);
 
 /* smb.asm: MoveEnemyHorizontally — move an enemy object horizontally
  * according to its speed and movement force counters. Returns the

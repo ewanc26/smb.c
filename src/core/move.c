@@ -22,54 +22,57 @@ uint8_t move_enemy_horizontally(CoreState *st, uint8_t x) {
   return (uint8_t)(high + carry);
 }
 
-/* smb.asm: ImposeGravity — the vertical physics core. The movement
+/* smb.asm: ImposeGravity — the vertical physics core, over the generic
+ * SprObject arrays. s is the SprObject index: the player is 0, the
+ * enemies are 1 and up (the enemy-array helpers add one). The movement
  * force dummy absorbs the force counter, the speed (plus that carry)
  * moves the object, then the force counter grows by the downward
  * amount and the speed is clamped to the maximum. When the up flag is
  * set the upward amount (twice the downward) undoes the growth and
  * the speed is clamped to the negative maximum instead */
-static void impose_gravity(CoreState *st, uint8_t x, uint8_t down,
-                           uint8_t up, uint8_t max, uint8_t up_flag) {
-  uint16_t dummy = (uint16_t)st->ram[SMBC_ENEMY_YMF_DUMMY + x] +
-                   st->ram[SMBC_ENEMY_Y_MOVE_FORCE + x];
-  st->ram[SMBC_ENEMY_YMF_DUMMY + x] = (uint8_t)dummy;
+void impose_gravity(CoreState *st, uint8_t s, uint8_t down, uint8_t up,
+                    uint8_t max, uint8_t up_flag) {
+  uint16_t dummy = (uint16_t)st->ram[SMBC_SPROBJ_YMF_DUMMY + s] +
+                   st->ram[SMBC_SPROBJ_Y_MOVE_FORCE + s];
+  st->ram[SMBC_SPROBJ_YMF_DUMMY + s] = (uint8_t)dummy;
   uint8_t carry = (uint8_t)(dummy >> 8);
-  uint8_t add = ((int8_t)st->ram[SMBC_ENEMY_Y_SPEED + x] < 0) ? 0xffu : 0x00u;
-  uint16_t pos = (uint16_t)st->ram[SMBC_ENEMY_Y_POSITION + x] +
-                 st->ram[SMBC_ENEMY_Y_SPEED + x] + carry;
-  st->ram[SMBC_ENEMY_Y_POSITION + x] = (uint8_t)pos;
-  st->ram[SMBC_ENEMY_Y_HIGH_POS + x] =
-      (uint8_t)(st->ram[SMBC_ENEMY_Y_HIGH_POS + x] + add +
+  uint8_t add = ((int8_t)st->ram[SMBC_SPROBJ_Y_SPEED + s] < 0) ? 0xffu : 0x00u;
+  uint16_t pos = (uint16_t)st->ram[SMBC_SPROBJ_Y_POSITION + s] +
+                 st->ram[SMBC_SPROBJ_Y_SPEED + s] + carry;
+  st->ram[SMBC_SPROBJ_Y_POSITION + s] = (uint8_t)pos;
+  st->ram[SMBC_SPROBJ_Y_HIGH_POS + s] =
+      (uint8_t)(st->ram[SMBC_SPROBJ_Y_HIGH_POS + s] + add +
                 (uint8_t)(pos >> 8));
-  uint16_t force = (uint16_t)st->ram[SMBC_ENEMY_Y_MOVE_FORCE + x] + down;
-  st->ram[SMBC_ENEMY_Y_MOVE_FORCE + x] = (uint8_t)force;
+  uint16_t force = (uint16_t)st->ram[SMBC_SPROBJ_Y_MOVE_FORCE + s] + down;
+  st->ram[SMBC_SPROBJ_Y_MOVE_FORCE + s] = (uint8_t)force;
   uint8_t speed =
-      (uint8_t)(st->ram[SMBC_ENEMY_Y_SPEED + x] + (uint8_t)(force >> 8));
-  st->ram[SMBC_ENEMY_Y_SPEED + x] = speed;
+      (uint8_t)(st->ram[SMBC_SPROBJ_Y_SPEED + s] + (uint8_t)(force >> 8));
+  st->ram[SMBC_SPROBJ_Y_SPEED + s] = speed;
   if ((int8_t)speed >= (int8_t)max &&
-      st->ram[SMBC_ENEMY_Y_MOVE_FORCE + x] >= 0x80u) {
-    st->ram[SMBC_ENEMY_Y_SPEED + x] = max;
-    st->ram[SMBC_ENEMY_Y_MOVE_FORCE + x] = 0x00u;
+      st->ram[SMBC_SPROBJ_Y_MOVE_FORCE + s] >= 0x80u) {
+    st->ram[SMBC_SPROBJ_Y_SPEED + s] = max;
+    st->ram[SMBC_SPROBJ_Y_MOVE_FORCE + s] = 0x00u;
   }
   if (up_flag == 0x00u) return;
   uint8_t negmax = (uint8_t)(~(max)+1u);
   uint8_t sub =
-      (uint16_t)st->ram[SMBC_ENEMY_Y_MOVE_FORCE + x] < (uint16_t)up ? 1u : 0u;
-  st->ram[SMBC_ENEMY_Y_MOVE_FORCE + x] =
-      (uint8_t)(st->ram[SMBC_ENEMY_Y_MOVE_FORCE + x] - up);
-  speed = (uint8_t)(st->ram[SMBC_ENEMY_Y_SPEED + x] - sub);
-  st->ram[SMBC_ENEMY_Y_SPEED + x] = speed;
+      (uint16_t)st->ram[SMBC_SPROBJ_Y_MOVE_FORCE + s] < (uint16_t)up ? 1u : 0u;
+  st->ram[SMBC_SPROBJ_Y_MOVE_FORCE + s] =
+      (uint8_t)(st->ram[SMBC_SPROBJ_Y_MOVE_FORCE + s] - up);
+  speed = (uint8_t)(st->ram[SMBC_SPROBJ_Y_SPEED + s] - sub);
+  st->ram[SMBC_SPROBJ_Y_SPEED + s] = speed;
   if ((int8_t)speed < (int8_t)negmax &&
-      st->ram[SMBC_ENEMY_Y_MOVE_FORCE + x] < 0x80u) {
-    st->ram[SMBC_ENEMY_Y_SPEED + x] = negmax;
-    st->ram[SMBC_ENEMY_Y_MOVE_FORCE + x] = 0xffu;
+      st->ram[SMBC_SPROBJ_Y_MOVE_FORCE + s] < 0x80u) {
+    st->ram[SMBC_SPROBJ_Y_SPEED + s] = negmax;
+    st->ram[SMBC_SPROBJ_Y_MOVE_FORCE + s] = 0xffu;
   }
 }
 
-/* smb.asm: ImposeGravitySprObj — the downwards-only entry */
+/* smb.asm: ImposeGravitySprObj — the downwards-only entry, over the
+ * enemy arrays (the SprObject offset is the enemy offset plus one) */
 static void impose_gravity_spr_obj(CoreState *st, uint8_t x, uint8_t down,
                                    uint8_t max) {
-  impose_gravity(st, x, down, 0x00u, max, 0x00u);
+  impose_gravity(st, (uint8_t)(x + 1u), down, 0x00u, max, 0x00u);
 }
 
 void set_x_move_amt(CoreState *st, uint8_t x, uint8_t down, uint8_t max) {
@@ -101,14 +104,14 @@ void move_enemy_slow_vert(CoreState *st, uint8_t x) {
 /* smb.asm: MoveRedPTroopaDown / MoveRedPTroopaUp / MoveRedPTroopa,
  * which falls into RedPTroopaGrav */
 void move_red_p_troopa(CoreState *st, uint8_t x, uint8_t dir) {
-  impose_gravity(st, x, 0x03u, 0x06u, 0x02u, dir);
+  impose_gravity(st, (uint8_t)(x + 1u), 0x03u, 0x06u, 0x02u, dir);
 }
 
 /* smb.asm: MovePlatformDown / MovePlatformUp, which fall into
  * RedPTroopaGrav. The asm's comparison against object $29 is residual
  * (that object never reaches this code) and is not ported */
 void move_platform_vert(CoreState *st, uint8_t x, uint8_t dir) {
-  impose_gravity(st, x, 0x05u, 0x0au, 0x03u, dir);
+  impose_gravity(st, (uint8_t)(x + 1u), 0x05u, 0x0au, 0x03u, dir);
 }
 
 /* smb.asm: ImposeGravityBlock / ImposeGravitySprObj — the block pool's

@@ -582,3 +582,26 @@ void move_lakitu(CoreState *st, uint8_t x) {
   st->ram[SMBC_ENEMY_MOVING_DIR + x] = dir;
   move_enemy_horizontally(st, x);
 }
+
+void move_flying_cheep_cheep(CoreState *st, uint8_t x) {
+  if ((st->ram[SMBC_ENEMY_STATE + x] & 0x20u) != 0x00u) {
+    st->ram[SMBC_ENEMY_SPR_ATTRIB + x] = 0x00u;
+    move_j_enemy_vertically(st, x);
+    return;
+  }
+  move_enemy_horizontally(st, x);
+  set_x_move_amt(st, x, 0x0du, 0x05u); /* smb.asm: SetXMoveAmt */
+  uint8_t y = (uint8_t)(st->ram[SMBC_ENEMY_Y_MOVE_FORCE + x] >> 4);
+  if (y > 0x09u) y = 0x09u; /* the code bytes beyond are not ported */
+  uint8_t r = (uint8_t)(st->ram[SMBC_ENEMY_Y_POSITION + x] -
+                        SMBC_PRANDOM_SUBTRACTER[y]);
+  if ((r & 0x80u) != 0x00u) r = (uint8_t)(~r + 1u); /* smb.asm: AddCCF */
+  if (r < 0x08u) {
+    st->ram[SMBC_ENEMY_Y_MOVE_FORCE + x] += 0x10u;
+    y = (uint8_t)(st->ram[SMBC_ENEMY_Y_MOVE_FORCE + x] >> 4);
+  }
+  /* smb.asm: BPGet — residual; the priority is overwritten before
+   * the next frame is drawn */
+  if (y > 0x04u) y = 0x04u;
+  st->ram[SMBC_ENEMY_SPR_ATTRIB + x] = SMBC_FLY_CC_B_PRIORITY[y];
+}

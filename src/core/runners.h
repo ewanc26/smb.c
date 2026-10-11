@@ -98,4 +98,13 @@ void move_piranha_plant(CoreState *state, uint8_t x);
  * The direction's d0 then negates the speed for leftward flight */
 void move_lakitu(CoreState *state, uint8_t x);
 
+/* smb.asm: MoveFlyingCheepCheep — the jumping cheep-cheep: a
+ * defeated one clears its sprite attributes and falls with jumping
+ * gravity; otherwise it moves horizontally, takes $0d gravity
+ * capped at five, and wobbles its movement force up by $10 whenever
+ * a pseudorandom subtraction against the vertical position lands
+ * within eight pixels. The background priority lookup is residual
+ * in the asm */
+void move_flying_cheep_cheep(CoreState *state, uint8_t x);
+
 #endif /* SMBC_CORE_RUNNERS_H */

@@ -827,6 +827,53 @@ static void lakitu_turns_around(void) {
   assert(smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] == 0x01u);
 }
 
+
+static void flying_cheep_cheep_moves(void) {
+  /* undefeated: horizontal movement, the $0d/$05 gravity, the
+   * wobble, and the residual priority store */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] = 0x40u;
+  smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] = 0x18u; /* rightward */
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0xa0u;
+  move_flying_cheep_cheep(&smbc.state, 0x00u);
+  /* force $0d after gravity: nybble 0, subtracter $f8; $a0-$f8
+   * wraps negative, negated to $58 — no wobble */
+  assert(smbc.state.ram[SMBC_ENEMY_Y_MOVE_FORCE + 0] == 0x0du);
+  assert(smbc.state.ram[SMBC_ENEMY_SPR_ATTRIB + 0] == 0x20u);
+  /* moved one pixel right ($18 high nybble) */
+  assert(smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] == 0x41u);
+
+  /* within eight pixels of the subtracter: the force wobbles up */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0xa0u; /* == subtracter[1] */
+  smbc.state.ram[SMBC_ENEMY_Y_MOVE_FORCE + 0] = 0x10u;
+  move_flying_cheep_cheep(&smbc.state, 0x00u);
+  /* gravity: $10+$0d = $1d, nybble 1; $a0-$a0 = 0 < 8: wobble */
+  assert(smbc.state.ram[SMBC_ENEMY_Y_MOVE_FORCE + 0] == 0x2du);
+  /* nybble of $2d is 2: priority $20 */
+  assert(smbc.state.ram[SMBC_ENEMY_SPR_ATTRIB + 0] == 0x20u);
+
+  /* high force nybble selects the zero priority */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_Y_MOVE_FORCE + 0] = 0x30u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x00u; /* $00-$bd wraps: $43 */
+  move_flying_cheep_cheep(&smbc.state, 0x00u);
+  /* gravity: $3d, nybble 3, subtracter $bd; $00-$bd = $43 >= 8 */
+  assert(smbc.state.ram[SMBC_ENEMY_Y_MOVE_FORCE + 0] == 0x3du);
+  assert(smbc.state.ram[SMBC_ENEMY_SPR_ATTRIB + 0] == 0x00u);
+}
+
+static void defeated_flying_cheep_cheep(void) {
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_STATE + 0] = 0x20u;
+  smbc.state.ram[SMBC_ENEMY_SPR_ATTRIB + 0] = 0x60u;
+  move_flying_cheep_cheep(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_SPR_ATTRIB + 0] == 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_MOVE_FORCE + 0] == 0x1cu);
+}
+
 int main(void) {
   onscreen_survives();
   too_far_left_erased();
@@ -863,6 +910,8 @@ int main(void) {
   lakitu_spawning_state();
   lakitu_chases_player();
   lakitu_turns_around();
+  flying_cheep_cheep_moves();
+  defeated_flying_cheep_cheep();
   puts("tests/core/runners: ok");
   return 0;
 }

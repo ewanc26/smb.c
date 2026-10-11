@@ -94,4 +94,16 @@ extern const uint8_t SMBC_HAMMER_THROW_TMR_DATA[2];
 /* smb.asm: HammerBroJumpLData — the jump length timer presets */
 extern const uint8_t SMBC_HAMMER_BRO_JUMP_L_DATA[2];
 
+/* smb.asm: PRandomSubtracter, extended through the adjacent
+ * FlyCCBPriority table — the flying cheep-cheep indexes it with
+ * the high nybble of its movement force, which reaches past the
+ * five table entries into the neighbouring table (ROM-accurate
+ * for offsets $0-$9; the code bytes beyond are not ported) */
+extern const uint8_t SMBC_PRANDOM_SUBTRACTER[10];
+
+/* smb.asm: FlyCCBPriority — the sprite background priority per
+ * force nybble; offsets past $4 read code bytes on hardware and
+ * the store is residual (overwritten before drawing) */
+extern const uint8_t SMBC_FLY_CC_B_PRIORITY[5];
+
 #endif /* SMBC_DATA_OBJECTS_H */

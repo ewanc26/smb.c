@@ -42,6 +42,10 @@ void move_enemy_slow_vert(CoreState *state, uint8_t x);
  * paratroopa's vertical gravity, dir zero for down, one for up */
 void move_red_p_troopa(CoreState *state, uint8_t x, uint8_t dir);
 
+/* smb.asm: SetXMoveAmt — the generic gravity entry used by movers
+ * that pick their own downward force and maximum speed */
+void set_x_move_amt(CoreState *state, uint8_t x, uint8_t down, uint8_t max);
+
 /* smb.asm: MovePlatformDown / MovePlatformUp — platform vertical
  * gravity, dir zero for down, one for up */
 void move_platform_vert(CoreState *state, uint8_t x, uint8_t dir);

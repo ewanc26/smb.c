@@ -72,6 +72,10 @@ static void impose_gravity_spr_obj(CoreState *st, uint8_t x, uint8_t down,
   impose_gravity(st, x, down, 0x00u, max, 0x00u);
 }
 
+void set_x_move_amt(CoreState *st, uint8_t x, uint8_t down, uint8_t max) {
+  impose_gravity_spr_obj(st, x, down, max);
+}
+
 void move_d_enemy_vertically(CoreState *st, uint8_t x) {
   uint8_t down = 0x3du;
   if (st->ram[SMBC_ENEMY_STATE + x] == 0x05u) down = 0x20u;

@@ -95,3 +95,11 @@ const uint8_t SMBC_HAMMER_THROW_TMR_DATA[2] = {0x30u, 0x1cu};
 
 /* smb.asm: HammerBroJumpLData */
 const uint8_t SMBC_HAMMER_BRO_JUMP_L_DATA[2] = {0x20u, 0x37u};
+
+/* smb.asm: PRandomSubtracter, with FlyCCBPriority visible past the
+ * fifth entry as on the cartridge */
+const uint8_t SMBC_PRANDOM_SUBTRACTER[10] = {0xf8u, 0xa0u, 0x70u, 0xbdu, 0x00u,
+                                             0x20u, 0x20u, 0x20u, 0x00u, 0x00u};
+
+/* smb.asm: FlyCCBPriority */
+const uint8_t SMBC_FLY_CC_B_PRIORITY[5] = {0x20u, 0x20u, 0x20u, 0x00u, 0x00u};

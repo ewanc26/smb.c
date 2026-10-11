@@ -240,6 +240,18 @@ void draw_brick_chunks(CoreState *st, uint8_t block) {
   st->ram[SMBC_SPRITE_Y_POSITION + 12u + y] = 0xf8u;
 }
 
+/* smb.asm: InitBlock_XY_Pos — the player's position plus eight
+ * pixels, snapped to the 16-pixel grid, becomes the block object's */
+void init_block_xy_pos(CoreState *st, uint8_t x) {
+  uint16_t pos = (uint16_t)st->ram[SMBC_PLAYER_X_POSITION] + 0x08u;
+  st->ram[SMBC_BLOCK_X_POSITION + x] = (uint8_t)pos & 0xf0u;
+  uint8_t page =
+      (uint8_t)(st->ram[SMBC_PLAYER_PAGE_LOC] + (uint8_t)(pos >> 8));
+  st->ram[SMBC_BLOCK_PAGE_LOC + x] = page;
+  st->ram[SMBC_BLOCK_PAGE_LOC2 + x] = page;
+  st->ram[SMBC_BLOCK_Y_HIGH_POS + x] = st->ram[SMBC_PLAYER_Y_HIGH_POS];
+}
+
 /* smb.asm: BlockObjectsCore — state zero leaves the block asleep; a
  * state low nybble of one is a bouncing block (chunk A only), anything
  * else is a pair of brick chunks (chunks A and B). After the movement

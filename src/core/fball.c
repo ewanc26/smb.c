@@ -113,23 +113,30 @@ void fireball_obj_core(CoreState *st, uint8_t x) {
   draw_fireball(st, x);
 }
 
+/* smb.asm: SetupBubble — ahead of the facing direction, eight pixels
+ * down, the timer from the pseudorandom bit. The asm reads the bit
+ * from the caller's $07; the entrance path calls this with $07 still
+ * holding PlayerHole's limit, so the port masks it to stay inside the
+ * two-entry timer table (the original would read past it). */
+void setup_bubble(CoreState *st, uint8_t x, uint8_t bit) {
+  uint8_t adder =
+      (st->ram[SMBC_PLAYER_FACING_DIR] & 0x01u) != 0x00u ? 0x08u : 0x00u;
+  uint16_t pos = (uint16_t)adder + st->ram[SMBC_PLAYER_X_POSITION];
+  st->ram[SMBC_BUBBLE_X_POSITION + x] = (uint8_t)pos;
+  st->ram[SMBC_BUBBLE_PAGE_LOC + x] =
+      (uint8_t)(st->ram[SMBC_PLAYER_PAGE_LOC] + (uint8_t)(pos >> 8));
+  st->ram[SMBC_BUBBLE_Y_POSITION + x] =
+      (uint8_t)(st->ram[SMBC_PLAYER_Y_POSITION] + 0x08u);
+  st->ram[SMBC_BUBBLE_Y_HIGH_POS + x] = 0x01u;
+  st->ram[SMBC_AIR_BUBBLE_TIMER] = SMBC_BUBBLE_TIMER_DATA[bit & 0x01u];
+}
+
 void bubble_check(CoreState *st, uint8_t x) {
   uint8_t bit =
       (uint8_t)(st->ram[SMBC_PSEUDO_RANDOM_BIT_REG + 1u + x] & 0x01u);
   if (st->ram[SMBC_BUBBLE_Y_POSITION + x] == 0xf8u) {
     if (st->ram[SMBC_AIR_BUBBLE_TIMER] != 0x00u) return;
-    /* smb.asm: SetupBubble — ahead of the facing direction, eight
-     * pixels down, the timer from the LSFR bit */
-    uint8_t adder =
-        (st->ram[SMBC_PLAYER_FACING_DIR] & 0x01u) != 0x00u ? 0x08u : 0x00u;
-    uint16_t pos = (uint16_t)adder + st->ram[SMBC_PLAYER_X_POSITION];
-    st->ram[SMBC_BUBBLE_X_POSITION + x] = (uint8_t)pos;
-    st->ram[SMBC_BUBBLE_PAGE_LOC + x] =
-        (uint8_t)(st->ram[SMBC_PLAYER_PAGE_LOC] + (uint8_t)(pos >> 8));
-    st->ram[SMBC_BUBBLE_Y_POSITION + x] =
-        (uint8_t)(st->ram[SMBC_PLAYER_Y_POSITION] + 0x08u);
-    st->ram[SMBC_BUBBLE_Y_HIGH_POS + x] = 0x01u;
-    st->ram[SMBC_AIR_BUBBLE_TIMER] = SMBC_BUBBLE_TIMER_DATA[bit];
+    setup_bubble(st, x, bit);
   }
   /* smb.asm: MoveBubl — the dummy absorbs the movement force, the
    * borrow moves the bubble up a pixel, and above the status bar it

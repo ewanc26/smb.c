@@ -13,6 +13,7 @@
 #include "offscreen.h"
 #include "parser.h"
 #include "playergfx.h"
+#include "routines.h"
 #include "screen.h"
 #include "setup.h"
 #include "state.h"
@@ -41,8 +42,20 @@ void upd_scroll_var(Smbc *smbc) {
  *   9 PlayerChangeSize, 10 PlayerInjuryBlink, 11 PlayerDeath,
  *   12 PlayerFireFlower */
 static void game_routines(Smbc *smbc) {
-  /* TODO(port): all thirteen routines belong to the player atom */
   switch (smbc->state.ram[SMBC_GAME_ENGINE_SUBROUTINE]) {
+    case 0x00u: entrance_game_timer_setup(smbc); break;
+    case 0x01u: vine_auto_climb(smbc); break;
+    case 0x02u: side_exit_pipe_entry(smbc); break;
+    case 0x03u: vertical_pipe_entry(smbc); break;
+    case 0x04u: flagpole_slide(smbc); break;
+    case 0x05u: player_end_level(smbc); break;
+    case 0x06u: player_lose_life(smbc); break;
+    case 0x07u: player_entrance(smbc); break;
+    case 0x08u: player_ctrl_routine(smbc); break;
+    case 0x09u: player_change_size(smbc); break;
+    case 0x0au: player_injury_blink(smbc); break;
+    case 0x0bu: player_death(smbc); break;
+    case 0x0cu: player_fire_flower(smbc); break;
     default: break;
   }
 }

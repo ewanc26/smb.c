@@ -59,6 +59,12 @@ static void bounding_box_core(CoreState *st, uint8_t x, uint8_t y) {
   st->ram[box + 3u] = (uint8_t)(rel_y + data[3]);
 }
 
+/* smb.asm: PlayerCtrlRoutine's BoundingBoxCore call — the player's
+ * four corners, slot zero on both offsets */
+void get_player_bound_box(CoreState *st) {
+  bounding_box_core(st, 0x00u, 0x00u);
+}
+
 /* smb.asm: CheckRightScreenBBox / CheckLeftScreenBBox — against the
  * screen's middle: on the right side a wrapped (sign-set) edge goes
  * to $ff, on the left a wrapped edge past $a0 goes to $00 */

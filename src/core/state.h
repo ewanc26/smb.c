@@ -325,6 +325,7 @@ void state_init(CoreState *state);
 #define SMBC_JUMP_SWIM_TIMER 0x0782u       /* smb.asm: JumpSwimTimer */
 #define SMBC_Y_PLATFORM_CENTER_Y_POS 0x0058u /* smb.asm: YPlatformCenterYPos */
 #define SMBC_BLOCK_PAGE_LOC 0x0076u       /* smb.asm: Block_PageLoc */
+#define SMBC_BLOCK_PAGE_LOC2 0x03eau      /* smb.asm: Block_PageLoc2 */
 #define SMBC_BLOCK_ORIG_Y_POS 0x03e4u     /* smb.asm: Block_Orig_YPos */
 #define SMBC_BLOCK_BBUF_LOW 0x03e6u       /* smb.asm: Block_BBuf_Low */
 #define SMBC_BLOCK_METATILE 0x03e8u       /* smb.asm: Block_Metatile */
@@ -361,6 +362,18 @@ void state_init(CoreState *state);
 #define SMBC_VINE_START_Y_POSITION 0x039du /* smb.asm: VineStart_Y_Position */
 #define SMBC_PLATFORM_COLLISION_FLAG 0x03a2u /* smb.asm: PlatformCollisionFlag */
 #define SMBC_SIDE_COLLISION_TIMER 0x0785u  /* smb.asm: SideCollisionTimer */
+#define SMBC_SCROLL_INTERVAL_TIMER 0x0795u /* smb.asm: ScrollIntervalTimer */
+#define SMBC_PLAYER_X_SCROLL 0x06ffu      /* smb.asm: Player_X_Scroll */
+#define SMBC_VERTICAL_FORCE_DOWN 0x070au  /* smb.asm: VerticalForceDown */
+#define SMBC_DEATH_MUSIC_LOADED 0x0712u   /* smb.asm: DeathMusicLoaded */
+#define SMBC_FLAGPOLE_SOUND_QUEUE 0x0713u /* smb.asm: FlagpoleSoundQueue */
+#define SMBC_DISABLE_COLLISION_DET 0x0716u /* smb.asm: DisableCollisionDet */
+#define SMBC_CHANGE_AREA_TIMER 0x06deu    /* smb.asm: ChangeAreaTimer */
+#define SMBC_COIN_TALLY_FOR_1UPS 0x0748u  /* smb.asm: CoinTallyFor1Ups */
+/* smb.asm: $07 — PlayerHole's fall limit; SetupBubble reads it raw as
+ * the pseudorandom-bit offset (zero-page scratch, shared with the
+ * block buffer path's SMBC_BB_PTR_HI) */
+#define SMBC_PLAYER_HOLE_LIMIT 0x0007u
 #define SMBC_PLAYER_COLLISION_BITS 0x0490u /* smb.asm: Player_CollisionBits */
 #define SMBC_BOUNDING_BOX_UL_YPOS 0x04adu  /* smb.asm: BoundingBox_UL_YPos */
 #define SMBC_BOUNDING_BOX_DR_YPOS 0x04afu  /* smb.asm: BoundingBox_DR_YPos */

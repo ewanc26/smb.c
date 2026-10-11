@@ -20,6 +20,10 @@ void fireball_obj_core(CoreState *state, uint8_t x);
 
 /* smb.asm: BubbleCheck — create an air bubble when the timer expires
  * and move it slowly upwards, offscreen above the status bar. */
+/* smb.asm: SetupBubble — spawn the air bubble in slot x; bit is the
+ * caller's pseudorandom bit ($07 in the asm), masked to the table. */
+void setup_bubble(CoreState *state, uint8_t x, uint8_t bit);
+
 void bubble_check(CoreState *state, uint8_t x);
 
 /* smb.asm: DrawFireball — the fireball sprite at its relative

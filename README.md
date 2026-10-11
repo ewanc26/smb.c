@@ -22,10 +22,16 @@ player graphics (pose selection, grow/shrink, swim kick, offscreen
 parking), block objects, misc objects (hammers, jumping coins, floatey
 numbers), cannons, whirlpools, the flagpole, the game timer, colour
 rotation and the palette cycling, ending in the SaveAB tail and
-`UpdScrollVar`. The thirteen `GameRoutines` player routines and
-`InitializeArea` are the remaining pieces of the tree. The sound engine,
-enemy data driving and the title/victory trees are tracked in the open
-issues and translated routine by routine.
+`UpdScrollVar`. The `GameRoutines` tree is in: the area entrance setup,
+the pipe and vine entries, the flagpole slide and end-of-level walk,
+the lose-life, death, injury-blink, size-change and fire-flower
+sequences, `PlayerCtrlRoutine`'s controller split, bounding box and
+hole handling, and `ScrollHandler` with its screen-edge clamps.
+`PlayerCtrlRoutine`'s two physics calls (`PlayerMovementSubs`,
+`PlayerBGCollision`) and `InitializeArea` are the remaining pieces of
+the tree. The sound engine, enemy data driving and the title/victory
+trees are tracked in the open issues and translated routine by
+routine.
 
 The source of truth is `smb.asm` — doppelganger's comprehensive disassembly
 (x816 syntax), kept unmodified in the repository root. Every translated

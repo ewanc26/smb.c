@@ -8,6 +8,10 @@
 
 #include "state.h"
 
+/* smb.asm: BoundingBoxCore (player call) — the player's four corners
+ * from the relative coordinates and the bound box control row */
+void get_player_bound_box(CoreState *state);
+
 /* smb.asm: GetEnemyBoundBox — masks the offscreen bits against the
  * screen-relative position, parks the bounding box offscreen when
  * anything is masked, and otherwise computes the corners from the

@@ -17,20 +17,26 @@ static void setup_game_over(Smbc *smbc) {
   st->ram[SMBC_OPER_MODE_TASK] += 1u;        /* inc — set secondary mode */
 }
 
-/* smb.asm: TerminateGame (with ContinueGame) */
+/* smb.asm: ContinueGame */
+void continue_game(Smbc *smbc) {
+  CoreState *st = &smbc->state;
+  load_area_pointer(smbc);
+  st->ram[SMBC_PLAYER_SIZE] = 0x01;
+  st->ram[SMBC_FETCH_NEW_GAME_TIMER_FLAG] += 1u; /* inc */
+  st->ram[SMBC_TIMER_CONTROL] = 0x00;
+  st->ram[SMBC_PLAYER_STATUS] = 0x00;
+  st->ram[SMBC_GAME_ENGINE_SUBROUTINE] = 0x00;
+  st->ram[SMBC_OPER_MODE_TASK] = 0x00;
+  st->ram[SMBC_OPER_MODE] = SMBC_MODE_GAME;
+}
+
+/* smb.asm: TerminateGame */
 void terminate_game(Smbc *smbc) {
   CoreState *st = &smbc->state;
   st->ram[SMBC_EVENT_MUSIC_QUEUE] = SMBC_MUSIC_SILENCE;
   if (!transpose_players(smbc)) {
     /* ContinueGame — the other player keeps going */
-    load_area_pointer(smbc);
-    st->ram[SMBC_PLAYER_SIZE] = 0x01;
-    st->ram[SMBC_FETCH_NEW_GAME_TIMER_FLAG] += 1u; /* inc */
-    st->ram[SMBC_TIMER_CONTROL] = 0x00;
-    st->ram[SMBC_PLAYER_STATUS] = 0x00;
-    st->ram[SMBC_GAME_ENGINE_SUBROUTINE] = 0x00;
-    st->ram[SMBC_OPER_MODE_TASK] = 0x00;
-    st->ram[SMBC_OPER_MODE] = SMBC_MODE_GAME;
+    continue_game(smbc);
     return;
   }
   st->ram[SMBC_CONTINUE_WORLD] = st->ram[SMBC_WORLD_NUMBER];

@@ -27,4 +27,8 @@ void draw_block(CoreState *state, uint8_t block);
  * flying chunks */
 void draw_brick_chunks(CoreState *state, uint8_t block);
 
+/* smb.asm: InitBlock_XY_Pos — seed a block object's position from the
+ * player's, snapped to the 16-pixel grid */
+void init_block_xy_pos(CoreState *state, uint8_t x);
+
 #endif /* SMBC_CORE_BLOCKS_H */

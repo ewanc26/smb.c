@@ -163,4 +163,8 @@ void run_bowser(CoreState *state, uint8_t x);
  * suite; the power-up always lives in the last enemy slot */
 void power_up_obj_handler(CoreState *state);
 
+/* smb.asm: RunFirebarObj — spin the bar, draw and collide each
+ * fireball from the lookup rows, then the offscreen bounds */
+void run_firebar_obj(CoreState *state, uint8_t x);
+
 #endif /* SMBC_CORE_RUNNERS_H */

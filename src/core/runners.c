@@ -1269,3 +1269,193 @@ void power_up_obj_handler(CoreState *st) {
   player_enemy_collision(st, x);
   offscreen_bounds_check(st, x);
 }
+
+/* smb.asm: FirebarPosLookupTbl — the sinusoid per fireball part */
+static const uint8_t SMBC_FIREBAR_POS_LOOKUP[99] = {
+    0x00u, 0x01u, 0x03u, 0x04u, 0x05u, 0x06u, 0x07u, 0x07u, 0x08u,
+    0x00u, 0x03u, 0x06u, 0x09u, 0x0bu, 0x0du, 0x0eu, 0x0fu, 0x10u,
+    0x00u, 0x04u, 0x09u, 0x0du, 0x10u, 0x13u, 0x16u, 0x17u, 0x18u,
+    0x00u, 0x06u, 0x0cu, 0x12u, 0x16u, 0x1au, 0x1du, 0x1fu, 0x20u,
+    0x00u, 0x07u, 0x0fu, 0x16u, 0x1cu, 0x21u, 0x25u, 0x27u, 0x28u,
+    0x00u, 0x09u, 0x12u, 0x1bu, 0x21u, 0x27u, 0x2cu, 0x2fu, 0x30u,
+    0x00u, 0x0bu, 0x15u, 0x1fu, 0x27u, 0x2eu, 0x33u, 0x37u, 0x38u,
+    0x00u, 0x0cu, 0x18u, 0x24u, 0x2du, 0x35u, 0x3bu, 0x3eu, 0x40u,
+    0x00u, 0x0eu, 0x1bu, 0x28u, 0x32u, 0x3bu, 0x42u, 0x46u, 0x48u,
+    0x00u, 0x0fu, 0x1fu, 0x2du, 0x38u, 0x42u, 0x4au, 0x4eu, 0x50u,
+    0x00u, 0x11u, 0x22u, 0x31u, 0x3eu, 0x49u, 0x51u, 0x56u, 0x58u};
+
+/* smb.asm: FirebarMirrorData — quadrant mirrors by spinstate */
+static const uint8_t SMBC_FIREBAR_MIRROR_DATA[4] = {
+    0x01u, 0x03u, 0x02u, 0x00u};
+
+/* smb.asm: FirebarTblOffsets — one row of nine per fireball */
+static const uint8_t SMBC_FIREBAR_TBL_OFFSETS[12] = {
+    0x00u, 0x09u, 0x12u, 0x1bu, 0x24u, 0x2du,
+    0x36u, 0x3fu, 0x48u, 0x51u, 0x5au, 0x63u};
+
+/* smb.asm: FirebarYPos — collision reach small/big */
+static const uint8_t SMBC_FIREBAR_Y_POS[2] = {0x0cu, 0x18u};
+
+/* smb.asm: FirebarSpin — the speed spins the low byte, the carry
+ * returns through the high byte; counter-clockwise subtracts */
+static uint8_t smbc_firebar_spin(CoreState *st, uint8_t x, uint8_t speed) {
+  if (st->ram[SMBC_FIREBAR_SPIN_DIRECTION + x] == 0x00u) {
+    uint8_t lo = st->ram[SMBC_FIREBAR_SPIN_STATE_LOW + x];
+    uint16_t sum = (uint16_t)lo + speed;
+    st->ram[SMBC_FIREBAR_SPIN_STATE_LOW + x] = (uint8_t)sum;
+    return (uint8_t)(st->ram[SMBC_FIREBAR_SPIN_STATE_HIGH + x] +
+                     ((sum >> 8u) & 0x01u));
+  }
+  uint8_t lo = st->ram[SMBC_FIREBAR_SPIN_STATE_LOW + x];
+  uint8_t sub = (uint8_t)(lo - speed);
+  st->ram[SMBC_FIREBAR_SPIN_STATE_LOW + x] = sub;
+  return (uint8_t)(st->ram[SMBC_FIREBAR_SPIN_STATE_HIGH + x] -
+                   (sub > lo ? 0x01u : 0x00u));
+}
+
+/* smb.asm: GetFirebarPosition — the spinstate oscillates over the
+ * lookup row for this part: low nybble for the horizontal adder,
+ * plus eight for the vertical, mirrored per quadrant */
+static void smbc_get_firebar_position(uint8_t spin, uint8_t part,
+                                      uint8_t *h_adder, uint8_t *v_adder,
+                                      uint8_t *mirror) {
+  uint8_t a = (uint8_t)(spin & 0x0fu);
+  if (a >= 0x09u) a = (uint8_t)((a ^ 0x0fu) + 0x01u);
+  *h_adder = SMBC_FIREBAR_POS_LOOKUP[SMBC_FIREBAR_TBL_OFFSETS[part] + a];
+  uint8_t v = (uint8_t)((spin + 0x08u) & 0x0fu);
+  if (v >= 0x09u) v = (uint8_t)((v ^ 0x0fu) + 0x01u);
+  *v_adder = SMBC_FIREBAR_POS_LOOKUP[SMBC_FIREBAR_TBL_OFFSETS[part] + v];
+  *mirror = SMBC_FIREBAR_MIRROR_DATA[spin >> 3u];
+}
+
+/* smb.asm: DrawFirebar — tile $64/$65 alternating every four
+ * frames, both flips set every eight */
+static void smbc_draw_firebar(CoreState *st, uint8_t y) {
+  uint8_t f = st->ram[SMBC_FRAME_COUNTER];
+  st->ram[SMBC_SPRITE_TILENUMBER + y] = (uint8_t)(((f >> 2u) & 0x01u) ^ 0x64u);
+  st->ram[SMBC_SPRITE_ATTRIBUTES + y] =
+      (uint8_t)(0x02u | (((f >> 2u) & 0x02u) != 0x00u ? 0xc0u : 0x00u));
+}
+
+/* smb.asm: FirebarCollision — draw the fireball tile, then the
+ * radial proximity check against the player: under eight pixels
+ * on both axes hurts, pushing the shared movement direction away
+ * from the side that hit; the OAM offset advances regardless */
+static void smbc_firebar_collision(CoreState *st, uint8_t *oam_ofs,
+                                   uint8_t spr_x, uint8_t spr_y) {
+  uint8_t y = *oam_ofs;
+  smbc_draw_firebar(st, y);
+  if (st->ram[SMBC_STAR_INVINCIBLE_TIMER] == 0x00u &&
+      st->ram[SMBC_TIMER_CONTROL] == 0x00u &&
+      st->ram[SMBC_PLAYER_Y_HIGH_POS] == 0x01u) {
+    uint8_t size_flag = 0x00u;
+    uint8_t py = st->ram[SMBC_PLAYER_Y_POSITION];
+    if (st->ram[SMBC_PLAYER_SIZE] != 0x00u ||
+        st->ram[SMBC_CROUCHING_FLAG] != 0x00u) {
+      /* smb.asm: AdjSm — small or crouching reaches lower */
+      size_flag = 0x02u;
+      py = (uint8_t)(py + 0x18u);
+    }
+    for (;;) {
+      uint8_t dy = py >= spr_y ? (uint8_t)(py - spr_y)
+                               : (uint8_t)(spr_y - py);
+      if (dy < 0x08u && spr_x < 0xf0u) {
+        /* smb.asm: the player sprite's centre against the
+         * fireball */
+        uint8_t pcx =
+            (uint8_t)(st->ram[SMBC_SPRITE_X_POSITION + 4u] + 0x04u);
+        uint8_t pdx = pcx >= spr_x ? (uint8_t)(pcx - spr_x)
+                                   : (uint8_t)(spr_x - pcx);
+        if (pdx < 0x08u) {
+          /* smb.asm: ChgSDir — away from the side that hit */
+          st->ram[SMBC_ENEMY_MOVING_DIR] = pcx >= spr_x ? 0x01u : 0x02u;
+          injure_player(st);
+          break;
+        }
+      }
+      if (size_flag == 0x02u) break;
+      py = (uint8_t)(st->ram[SMBC_PLAYER_Y_POSITION] +
+                     SMBC_FIREBAR_Y_POS[size_flag]);
+      size_flag++;
+    }
+  }
+  *oam_ofs = (uint8_t)(y + 0x04u);
+}
+
+/* smb.asm: DrawFirebar_Collision — place one fireball from its
+ * adders (mirrored per quadrant), park it at $f8 if it strays
+ * $59 pixels from the centre, then run the collision check */
+static void smbc_draw_firebar_collision(CoreState *st, uint8_t *oam_ofs,
+                                        uint8_t h_adder, uint8_t v_adder,
+                                        uint8_t mirror) {
+  uint8_t y = *oam_ofs;
+  uint8_t h = h_adder;
+  if ((mirror & 0x01u) == 0x00u) h = (uint8_t)(0x01u + (h ^ 0xffu));
+  uint8_t spr_x = (uint8_t)(h + st->ram[SMBC_ENEMY_REL_XPOS]);
+  st->ram[SMBC_SPRITE_X_POSITION + y] = spr_x;
+  uint8_t dx = spr_x >= st->ram[SMBC_ENEMY_REL_XPOS]
+                   ? (uint8_t)(spr_x - st->ram[SMBC_ENEMY_REL_XPOS])
+                   : (uint8_t)(st->ram[SMBC_ENEMY_REL_XPOS] - spr_x);
+  uint8_t spr_y;
+  if (dx >= 0x59u) {
+    spr_y = 0xf8u;
+  } else if (st->ram[SMBC_ENEMY_REL_YPOS] == 0xf8u) {
+    spr_y = 0xf8u;
+  } else {
+    uint8_t v = v_adder;
+    if ((mirror & 0x02u) == 0x00u) v = (uint8_t)(0x01u + (v ^ 0xffu));
+    spr_y = (uint8_t)(v + st->ram[SMBC_ENEMY_REL_YPOS]);
+  }
+  st->ram[SMBC_SPRITE_Y_POSITION + y] = spr_y;
+  smbc_firebar_collision(st, oam_ofs, spr_x, spr_y);
+}
+
+/* smb.asm: ProcFirebar — spin the bar (skipping the horizontal
+ * state for the short bars), place the head, then each ball from
+ * its lookup row; the fifth ball of a long bar borrows the
+ * duplicate object's OAM offset */
+static void smbc_proc_firebar(CoreState *st, uint8_t x) {
+  get_enemy_offscreen_bits(st, x);
+  if ((st->ram[SMBC_ENEMY_OFFSCREEN_BITS] & 0x08u) != 0x00u) return;
+  if (st->ram[SMBC_TIMER_CONTROL] == 0x00u) {
+    uint8_t hi = smbc_firebar_spin(st, x,
+                                   st->ram[SMBC_FIREBAR_SPIN_SPEED + x]);
+    st->ram[SMBC_FIREBAR_SPIN_STATE_HIGH + x] = (uint8_t)(hi & 0x1fu);
+  }
+  uint8_t spin = st->ram[SMBC_FIREBAR_SPIN_STATE_HIGH + x];
+  if (st->ram[SMBC_ENEMY_ID + x] >= 0x1fu &&
+      (spin == 0x08u || spin == 0x18u)) {
+    /* smb.asm: SkpFSte — never rest horizontal */
+    spin++;
+    st->ram[SMBC_FIREBAR_SPIN_STATE_HIGH + x] = spin;
+  }
+  relative_enemy_position(st, x);
+  uint8_t oam_ofs = st->ram[SMBC_ENEMY_SPR_DATA_OFFSET + x];
+  st->ram[SMBC_SPRITE_Y_POSITION + oam_ofs] = st->ram[SMBC_ENEMY_REL_YPOS];
+  st->ram[SMBC_SPRITE_X_POSITION + oam_ofs] = st->ram[SMBC_ENEMY_REL_XPOS];
+  /* smb.asm: the head sits at the centre and collides from the
+   * coordinates just written */
+  smbc_firebar_collision(st, &oam_ofs, st->ram[SMBC_ENEMY_REL_XPOS],
+                         st->ram[SMBC_ENEMY_REL_YPOS]);
+  uint8_t h, v, mirror;
+  uint8_t max_part =
+      st->ram[SMBC_ENEMY_ID + x] >= 0x1fu ? 0x0bu : 0x05u;
+  for (uint8_t part = 0x00u;;) {
+    smbc_get_firebar_position(spin, part, &h, &v, &mirror);
+    smbc_draw_firebar_collision(st, &oam_ofs, h, v, mirror);
+    if (part == 0x04u) {
+      /* smb.asm: NextFbar — the long bar's second half takes the
+       * duplicate object's sprite offset */
+      uint8_t dup = st->ram[SMBC_DUPLICATE_OBJ_OFFSET];
+      oam_ofs = st->ram[SMBC_ENEMY_SPR_DATA_OFFSET + dup];
+    }
+    part++;
+    if (part >= max_part) break;
+  }
+}
+
+/* smb.asm: RunFirebarObj */
+void run_firebar_obj(CoreState *st, uint8_t x) {
+  smbc_proc_firebar(st, x);
+  offscreen_bounds_check(st, x);
+}

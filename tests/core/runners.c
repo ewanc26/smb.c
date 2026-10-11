@@ -1630,6 +1630,105 @@ static void power_up_family(void) {
   assert(smbc.state.ram[SMBC_SPRITE_ATTRIBUTES + 12u] == 0x41u);
 }
 
+
+static void firebar_family(void) {
+  /* the spin: clockwise speed carries into the masked high byte */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 1] = 0x1eu; /* short firebar */
+  smbc.state.ram[SMBC_ENEMY_STATE + 1] = 0x01u;
+  smbc.state.ram[SMBC_FIREBAR_SPIN_STATE_LOW + 1] = 0xf0u;
+  smbc.state.ram[SMBC_FIREBAR_SPIN_SPEED + 1] = 0x20u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 1] = 0x60u;
+  smbc.state.ram[SMBC_ENEMY_Y_HIGH_POS + 1] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 1] = 0x40u;
+  smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0xa0u;
+  smbc.state.ram[SMBC_SCREEN_LEFT_PAGE_LOC + 1u] = 0x01u;
+  smbc.state.ram[SMBC_PLAYER_Y_HIGH_POS] = 0x02u; /* no collision */
+  run_firebar_obj(&smbc.state, 0x01u);
+  assert(smbc.state.ram[SMBC_FIREBAR_SPIN_STATE_LOW + 1] == 0x10u);
+  assert(smbc.state.ram[SMBC_FIREBAR_SPIN_STATE_HIGH + 1] == 0x01u);
+
+  /* the head draws at the centre, the first ball eight above
+   * (spin zero, quadrant mirror $01) */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 1] = 0x1eu;
+  smbc.state.ram[SMBC_ENEMY_STATE + 1] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 1] = 0x60u;
+  smbc.state.ram[SMBC_ENEMY_Y_HIGH_POS + 1] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 1] = 0x40u;
+  smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0xa0u;
+  smbc.state.ram[SMBC_SCREEN_LEFT_PAGE_LOC + 1u] = 0x01u;
+  smbc.state.ram[SMBC_PLAYER_Y_HIGH_POS] = 0x02u;
+  run_firebar_obj(&smbc.state, 0x01u);
+  assert(smbc.state.ram[SMBC_SPRITE_X_POSITION] == 0x40u);
+  assert(smbc.state.ram[SMBC_SPRITE_Y_POSITION] == 0x60u);
+  assert(smbc.state.ram[SMBC_SPRITE_X_POSITION + 4u] == 0x40u);
+  assert(smbc.state.ram[SMBC_SPRITE_Y_POSITION + 4u] == 0x58u);
+  assert((smbc.state.ram[SMBC_SPRITE_TILENUMBER] & 0xfeu) == 0x64u);
+  assert(smbc.state.ram[SMBC_SPRITE_ATTRIBUTES] == 0x02u);
+
+  /* the short bar rests horizontal; the long bar skips the
+   * horizontal spin states */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 1] = 0x1eu;
+  smbc.state.ram[SMBC_ENEMY_STATE + 1] = 0x01u;
+  smbc.state.ram[SMBC_FIREBAR_SPIN_STATE_HIGH + 1] = 0x08u;
+  smbc.state.ram[SMBC_TIMER_CONTROL] = 0x01u; /* suspend spinning */
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 1] = 0x60u;
+  smbc.state.ram[SMBC_ENEMY_Y_HIGH_POS + 1] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 1] = 0x40u;
+  smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0xa0u;
+  smbc.state.ram[SMBC_SCREEN_LEFT_PAGE_LOC + 1u] = 0x01u;
+  smbc.state.ram[SMBC_PLAYER_Y_HIGH_POS] = 0x02u;
+  run_firebar_obj(&smbc.state, 0x01u);
+  assert(smbc.state.ram[SMBC_FIREBAR_SPIN_STATE_HIGH + 1] == 0x08u);
+
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 1] = 0x1fu; /* long firebar */
+  smbc.state.ram[SMBC_ENEMY_STATE + 1] = 0x01u;
+  smbc.state.ram[SMBC_FIREBAR_SPIN_STATE_HIGH + 1] = 0x08u;
+  smbc.state.ram[SMBC_TIMER_CONTROL] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 1] = 0x60u;
+  smbc.state.ram[SMBC_ENEMY_Y_HIGH_POS + 1] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 1] = 0x40u;
+  smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0xa0u;
+  smbc.state.ram[SMBC_SCREEN_LEFT_PAGE_LOC + 1u] = 0x01u;
+  smbc.state.ram[SMBC_PLAYER_Y_HIGH_POS] = 0x02u;
+  run_firebar_obj(&smbc.state, 0x01u);
+  assert(smbc.state.ram[SMBC_FIREBAR_SPIN_STATE_HIGH + 1] == 0x09u);
+
+  /* a touch hurts and pushes away from the side that hit */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 1] = 0x1eu;
+  smbc.state.ram[SMBC_ENEMY_STATE + 1] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 1] = 0x60u;
+  smbc.state.ram[SMBC_ENEMY_Y_HIGH_POS + 1] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 1] = 0x40u;
+  smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0xa0u;
+  smbc.state.ram[SMBC_SCREEN_LEFT_PAGE_LOC + 1u] = 0x01u;
+  smbc.state.ram[SMBC_PLAYER_Y_HIGH_POS] = 0x01u;
+  smbc.state.ram[SMBC_PLAYER_Y_POSITION] = 0x60u - 0x18u + 0x04u;
+  smbc.state.ram[SMBC_PLAYER_SIZE] = 0x01u; /* small */
+  smbc.state.ram[SMBC_SPRITE_X_POSITION + 4u] = 0x40u - 0x08u;
+  run_firebar_obj(&smbc.state, 0x01u);
+  /* player centre $3c left of the head at $40: pushed left */
+  assert(smbc.state.ram[SMBC_ENEMY_MOVING_DIR] == 0x02u);
+
+  /* d3 of the offscreen bits skips the whole bar */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 1] = 0x1eu;
+  smbc.state.ram[SMBC_ENEMY_STATE + 1] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 1] = 0x60u;
+  smbc.state.ram[SMBC_ENEMY_Y_HIGH_POS + 1] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 1] = 0x10u;
+  smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0x20u;
+  smbc.state.ram[SMBC_SCREEN_LEFT_X_POS] = 0x40u; /* fully left */
+  smbc.state.ram[SMBC_PLAYER_Y_HIGH_POS] = 0x02u;
+  run_firebar_obj(&smbc.state, 0x01u);
+  assert(smbc.state.ram[SMBC_SPRITE_X_POSITION] == 0x00u);
+}
+
 int main(void) {
   onscreen_survives();
   too_far_left_erased();
@@ -1677,6 +1776,7 @@ int main(void) {
   vine_family();
   bowser_family();
   power_up_family();
+  firebar_family();
   puts("tests/core/runners: ok");
   return 0;
 }

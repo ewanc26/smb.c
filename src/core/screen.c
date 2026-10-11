@@ -258,9 +258,10 @@ void update_top_score(CoreState *state) {
   top_score_check(state, 0x0b);
 }
 
-void get_player_colors(Smbc *smbc) {
+void get_player_colors(Smbc *smbc) { get_player_colors_core(&smbc->state); }
+
+void get_player_colors_core(CoreState *st) {
   /* smb.asm: GetPlayerColors */
-  CoreState *st = &smbc->state;
   uint8_t x = st->ram[SMBC_VRAM_BUFFER1_OFFSET];
   uint8_t y = 0x00;
   if (st->ram[SMBC_CURRENT_PLAYER] != 0x00) y = 0x04u; /* luigi's offset */

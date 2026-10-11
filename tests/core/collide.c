@@ -554,6 +554,79 @@ static void stomp_family(void) {
   assert(smbc.state.ram[SMBC_PLAYER_Y_SPEED] == 0xfcu);
 }
 
+
+static void injury_family(void) {
+  /* a big player shrinks: small status, $08 injury timer, the
+   * pipedown sound, subroutine $0a, halted timers */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_PLAYER_STATUS] = 0x01u;
+  force_injury(&smbc.state);
+  assert(smbc.state.ram[SMBC_PLAYER_STATUS] == 0x00u);
+  assert(smbc.state.ram[SMBC_INJURY_TIMER] == 0x08u);
+  assert(smbc.state.ram[SMBC_SQUARE1_SOUND_QUEUE] == 0x10u);
+  assert(smbc.state.ram[SMBC_GAME_ENGINE_SUBROUTINE] == 0x0au);
+  assert(smbc.state.ram[SMBC_PLAYER_STATE] == 0x01u);
+  assert(smbc.state.ram[SMBC_TIMER_CONTROL] == 0xffu);
+  assert(smbc.state.ram[SMBC_SCROLL_AMOUNT] == 0x00u);
+
+  /* a small player dies: speed halted, death music, $fc
+   * vertical speed, subroutine $0b */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_PLAYER_X_SPEED] = 0x18u;
+  force_injury(&smbc.state);
+  assert(smbc.state.ram[SMBC_PLAYER_X_SPEED] == 0x00u);
+  assert(smbc.state.ram[SMBC_EVENT_MUSIC_QUEUE] == 0x01u);
+  assert(smbc.state.ram[SMBC_PLAYER_Y_SPEED] == 0xfcu);
+  assert(smbc.state.ram[SMBC_GAME_ENGINE_SUBROUTINE] == 0x0bu);
+
+  /* injure_player respects a running injury timer */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_PLAYER_STATUS] = 0x01u;
+  smbc.state.ram[SMBC_INJURY_TIMER] = 0x04u;
+  injure_player(&smbc.state);
+  assert(smbc.state.ram[SMBC_PLAYER_STATUS] == 0x01u);
+
+  /* falling onto a goomba stomps it */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_PLAYER_Y_SPEED] = 0x02u;
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_GOOMBA;
+  assert(chk_for_player_injury(&smbc.state, 0x00u) == 0x01u);
+  assert(smbc.state.ram[SMBC_ENEMY_STATE + 0] == 0x04u);
+
+  /* moving up into a goomba: injured, and the right-moving
+   * enemy with the player on its left turns around first */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_PLAYER_Y_SPEED] = 0xfcu;
+  smbc.state.ram[SMBC_PLAYER_STATUS] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_GOOMBA;
+  smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] = 0x10u;
+  smbc.state.ram[SMBC_SPROBJ_REL_XPOS] = 0x10u;
+  smbc.state.ram[SMBC_ENEMY_REL_XPOS] = 0x30u;
+  assert(chk_for_player_injury(&smbc.state, 0x00u) == 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] == 0xf0u);
+  assert(smbc.state.ram[SMBC_PLAYER_STATUS] == 0x00u);
+
+  /* a standing player under a bloober, the $0c-adjusted
+   * position above the enemy: stomped despite not falling */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_PLAYER_Y_SPEED] = 0x00u;
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_BLOOBER;
+  smbc.state.ram[SMBC_PLAYER_Y_POSITION] = 0x10u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x40u;
+  smbc.state.ram[SMBC_AREA_TYPE] = 0x00u;
+  assert(chk_for_player_injury(&smbc.state, 0x00u) == 0x01u);
+  assert(smbc.state.ram[SMBC_ENEMY_STATE + 0] == 0x20u);
+
+  /* a running stomp timer stomps even a moving-up player */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_PLAYER_Y_SPEED] = 0xfcu;
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_GOOMBA;
+  smbc.state.ram[SMBC_STOMP_TIMER] = 0x01u;
+  assert(chk_for_player_injury(&smbc.state, 0x00u) == 0x01u);
+}
+
 int main(void) {
   masked_bits_park_the_box();
   corners_from_ctrl_data();
@@ -570,6 +643,7 @@ int main(void) {
   enemies_collision_gates();
   enemies_collision_pairs();
   stomp_family();
+  injury_family();
   puts("collide: ok");
   return 0;
 }

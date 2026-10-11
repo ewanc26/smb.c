@@ -113,4 +113,21 @@ void chk_for_demote_koopa(CoreState *state, uint8_t x);
  * the hard mode flag, and the player bounces at $fc */
 void handle_stomped_shell_e(CoreState *state, uint8_t x);
 
+/* smb.asm: InjurePlayer / ForceInjury / KillPlayer — the injury
+ * path. With the injury timer running nothing happens; otherwise
+ * a big player shrinks with an $08 injury timer, the pipedown
+ * sound and a palette refresh, while a small player dies: speed
+ * halted, death music, $fc vertical speed. Both queue the $0a
+ * ($0b for death) game engine subroutine with player state 1,
+ * halt the timers and zero the scroll */
+void injure_player(CoreState *state);
+void force_injury(CoreState *state);
+
+/* smb.asm: ChkForPlayerInjury — the stomp-versus-injury
+ * decision. A player moving up (or an enemy below the player's
+ * $0c-adjusted position for ids >= $07) can be injured; falling
+ * or standing means the enemy is stomped. Returns nonzero when
+ * the enemy was stomped */
+uint8_t chk_for_player_injury(CoreState *state, uint8_t x);
+
 #endif

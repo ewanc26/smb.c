@@ -55,6 +55,8 @@ void digits_math_routine(CoreState *state, uint8_t y);
  * the three player colours, then a terminator. Called from the screen
  * task tree and the player atom's palette changes. */
 void get_player_colors(struct Smbc *smbc);
+/* the same on bare state, for callers without a Smbc */
+void get_player_colors_core(CoreState *state);
 
 /* smb.asm: UpdateNumber — print the status bar values selected by
  * `nybbles`, then zero-suppress the score's highest digit. */

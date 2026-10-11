@@ -3,6 +3,7 @@
 
 #include "enemies.h"
 #include "offscreen.h"
+#include "screen.h"
 
 /* smb.asm: BoundBoxCtrlData — left/top/right/bottom offsets per
  * bound box control value */
@@ -381,4 +382,65 @@ void handle_stomped_shell_e(CoreState *st, uint8_t x) {
   st->ram[SMBC_ENEMY_INTERVAL_TIMER + x] =
       SMBC_REVIVAL_RATE_DATA[st->ram[SMBC_PRIMARY_HARD_MODE] & 0x01u];
   st->ram[SMBC_PLAYER_Y_SPEED] = 0xfcu;
+}
+
+void force_injury(CoreState *st) {
+  uint8_t status = st->ram[SMBC_PLAYER_STATUS];
+  if (status == 0x00u) {
+    /* smb.asm: KillPlayer */
+    st->ram[SMBC_PLAYER_X_SPEED] = 0x00u;
+    st->ram[SMBC_EVENT_MUSIC_QUEUE] = 0x01u; /* death music */
+    st->ram[SMBC_PLAYER_Y_SPEED] = 0xfcu;
+    st->ram[SMBC_GAME_ENGINE_SUBROUTINE] = 0x0bu;
+    st->ram[SMBC_PLAYER_STATE] = 0x01u;
+    st->ram[SMBC_TIMER_CONTROL] = 0xffu;
+    st->ram[SMBC_SCROLL_AMOUNT] = 0x00u;
+    return;
+  }
+  st->ram[SMBC_PLAYER_STATUS] = 0x00u; /* shrink to small */
+  st->ram[SMBC_INJURY_TIMER] = 0x08u;
+  st->ram[SMBC_SQUARE1_SOUND_QUEUE] = 0x10u; /* pipedown/injury */
+  get_player_colors_core(st);
+  st->ram[SMBC_GAME_ENGINE_SUBROUTINE] = 0x0au;
+  st->ram[SMBC_PLAYER_STATE] = 0x01u;
+  st->ram[SMBC_TIMER_CONTROL] = 0xffu;
+  st->ram[SMBC_SCROLL_AMOUNT] = 0x00u;
+}
+
+void injure_player(CoreState *st) {
+  if (st->ram[SMBC_INJURY_TIMER] != 0x00u) return;
+  force_injury(st);
+}
+
+uint8_t chk_for_player_injury(CoreState *st, uint8_t x) {
+  int8_t y_speed = (int8_t)st->ram[SMBC_PLAYER_Y_SPEED];
+  if (y_speed > 0) {
+    /* smb.asm: falling — the enemy is stomped */
+    enemy_stomped(st, x);
+    return 0x01u;
+  }
+  if (st->ram[SMBC_ENEMY_ID + x] >= SMBC_BLOOBER) {
+    uint8_t adj = (uint8_t)(st->ram[SMBC_PLAYER_Y_POSITION] + 0x0cu);
+    if (adj < st->ram[SMBC_ENEMY_Y_POSITION + x]) {
+      enemy_stomped(st, x);
+      return 0x01u;
+    }
+  }
+  if (st->ram[SMBC_STOMP_TIMER] != 0x00u) {
+    enemy_stomped(st, x);
+    return 0x01u;
+  }
+  if (st->ram[SMBC_INJURY_TIMER] != 0x00u) return 0x00u;
+  /* smb.asm: a moving enemy facing the player turns around first */
+  if (st->ram[SMBC_SPROBJ_REL_XPOS] < st->ram[SMBC_ENEMY_REL_XPOS]) {
+    if (st->ram[SMBC_ENEMY_MOVING_DIR + x] == 0x01u) {
+      enemy_turn_around(st, x);
+    }
+  } else {
+    if (st->ram[SMBC_ENEMY_MOVING_DIR + x] != 0x01u) {
+      enemy_turn_around(st, x);
+    }
+  }
+  injure_player(st);
+  return 0x00u;
 }

@@ -1,7 +1,18 @@
 # SMBC
 
-A C port of the entire Super Mario Bros. (NES) game, built from the
-disassembly, that runs on any system.
+A native C port of the original NES *Super Mario Bros.*, translated routine by routine from its disassembly. The goal is to run the game as a normal native program on supported host systems—not to emulate a NES console or require a ROM at runtime.
+
+The port aims to preserve the original game's graphics, audio, timing, physics, collision behaviour, glitches, and moment-to-moment gameplay. The original assembly disassembly, `smb.asm`, is the reference source; translated routines cite their source labels. Hardware-specific behaviour needed by the game is represented in C so the original game logic can run natively.
+
+This is a work in progress. Fidelity takes priority over redesign: the default experience should look and play like the original NES release.
+
+## Project goals
+
+- Translate the original game logic from the disassembly into C.
+- Run natively on the host platform rather than emulate a complete NES system.
+- Reproduce original NES rendering, sound, frame timing, controller behaviour, physics, and known edge cases as closely as possible.
+- Keep translated routines traceable to their original assembly labels.
+- Provide repeatable tests and reference comparisons to catch behavioural regressions.
 
 ---
 

@@ -4,12 +4,12 @@
  * skeleton. Tasks 0-1 (InitializeArea, ScreenRoutines) and every
  * GameRoutines entry belong to the area, screen and player atoms; the
  * GameEngine's remaining object-processing calls (fireball/bubble,
- * enemies, player graphics, misc objects, whirlpools, flagpole) likewise
- * wait on their atoms. What runs now: the master joypad copy, the
- * subroutine dispatch, the task gate, the player offscreen bits and
- * relative position, the block pass, the cannon pass, the game timer,
- * colour rotation, the star-music check, the SaveAB tail and
- * UpdScrollVar.
+ * enemies, player graphics, misc objects, flagpole) likewise wait on
+ * their atoms. What runs now: the master joypad copy, the subroutine
+ * dispatch, the task gate, the player offscreen bits and relative
+ * position, the block pass, the cannon pass, the whirlpool pass, the
+ * game timer, colour rotation, the star-music check, the SaveAB tail
+ * and UpdScrollVar.
  */
 #ifndef SMBC_CORE_GAMEMODE_H
 #define SMBC_CORE_GAMEMODE_H

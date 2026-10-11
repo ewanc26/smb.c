@@ -237,6 +237,7 @@ void state_init(CoreState *state);
 #define SMBC_WHIRLPOOL_PAGE_LOC 0x046bu  /* smb.asm: Whirlpool_PageLoc */
 #define SMBC_WHIRLPOOL_LEFT_EXTENT 0x0471u /* smb.asm: Whirlpool_LeftExtent */
 #define SMBC_WHIRLPOOL_LENGTH 0x0477u    /* smb.asm: Whirlpool_Length */
+#define SMBC_WHIRLPOOL_FLAG 0x047du      /* smb.asm: Whirlpool_Flag */
 #define SMBC_ENEMY_BOUND_BOX_CTRL 0x049au /* smb.asm: Enemy_BoundBoxCtrl */
 #define SMBC_BRICK_COIN_TIMER_FLAG 0x06bcu /* smb.asm: BrickCoinTimerFlag */
 #define SMBC_ENEMY_FRENZY_QUEUE 0x06cdu  /* smb.asm: EnemyFrenzyQueue */

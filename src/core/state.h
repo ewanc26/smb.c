@@ -252,6 +252,7 @@ void state_init(CoreState *state);
 #define SMBC_SFX_ENEMY_SMACK 0x08u       /* smb.asm: Sfx_EnemySmack */
 #define SMBC_SHELL_CHAIN_COUNTER 0x0125u  /* smb.asm: ShellChainCounter */
 #define SMBC_VINE_FLAG_OFFSET 0x0398u     /* smb.asm: VineFlagOffset */
+#define SMBC_VINE_HEIGHT 0x0399u          /* smb.asm: VineHeight */
 #define SMBC_ENEMY_SPR_ATTRIB 0x03c5u     /* smb.asm: Enemy_SprAttrib */
 #define SMBC_ENEMY_REL_XPOS 0x03aeu      /* smb.asm: Enemy_Rel_XPos */
 #define SMBC_ENEMY_REL_YPOS 0x03b9u      /* smb.asm: Enemy_Rel_YPos */

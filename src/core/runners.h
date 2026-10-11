@@ -148,4 +148,9 @@ void run_star_flag_obj(CoreState *state, uint8_t x);
  * control steps every four frames */
 void jumpspring_handler(CoreState *state, uint8_t x);
 
+/* smb.asm: VineObjectHandler — grow, draw, and reap the vine in
+ * the special enemy slot, and write the climbing metatile at its
+ * tip once it tops out */
+void vine_object_handler(CoreState *state, uint8_t x);
+
 #endif /* SMBC_CORE_RUNNERS_H */

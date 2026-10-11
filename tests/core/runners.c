@@ -1315,6 +1315,99 @@ static void jumpspring_family(void) {
   assert(smbc.state.ram[SMBC_PLAYER_Y_POSITION] == 0x40u);
 }
 
+
+static void vine_family(void) {
+  /* only the special slot runs */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 4] = 0x2fu; /* VineObject */
+  smbc.state.ram[SMBC_VINE_FLAG_OFFSET] = 0x01u;
+  smbc.state.ram[SMBC_VINE_HEIGHT] = 0x20u;
+  vine_object_handler(&smbc.state, 0x04u);
+  assert(smbc.state.ram[SMBC_VINE_HEIGHT] == 0x20u);
+
+  /* growth: below the cap on a d1 frame, one pixel up and the
+   * height ticks */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 5] = 0x2fu;
+  smbc.state.ram[SMBC_VINE_FLAG_OFFSET] = 0x01u;
+  smbc.state.ram[SMBC_VINE_HEIGHT] = 0x20u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 5] = 0x60u;
+  smbc.state.ram[SMBC_FRAME_COUNTER] = 0x02u;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 5] = 0x40u;
+  smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0xa0u;
+  smbc.state.ram[SMBC_SCREEN_LEFT_PAGE_LOC + 1u] = 0x01u;
+  vine_object_handler(&smbc.state, 0x05u);
+  assert(smbc.state.ram[SMBC_VINE_HEIGHT] == 0x21u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_POSITION + 5] == 0x5fu);
+
+  /* at the cap the height holds */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 5] = 0x2fu;
+  smbc.state.ram[SMBC_VINE_FLAG_OFFSET] = 0x01u;
+  smbc.state.ram[SMBC_VINE_HEIGHT] = 0x30u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 5] = 0x60u;
+  smbc.state.ram[SMBC_FRAME_COUNTER] = 0x02u;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 5] = 0x40u;
+  smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0xa0u;
+  smbc.state.ram[SMBC_SCREEN_LEFT_PAGE_LOC + 1u] = 0x01u;
+  vine_object_handler(&smbc.state, 0x05u);
+  assert(smbc.state.ram[SMBC_VINE_HEIGHT] == 0x30u);
+
+  /* too small to draw: under $08 exits before the sprite work */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 5] = 0x2fu;
+  smbc.state.ram[SMBC_VINE_FLAG_OFFSET] = 0x01u;
+  smbc.state.ram[SMBC_VINE_HEIGHT] = 0x04u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 5] = 0x60u;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 5] = 0x40u;
+  smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0xa0u;
+  vine_object_handler(&smbc.state, 0x05u);
+  assert(smbc.state.ram[SMBC_SPRITE_TILENUMBER] == 0x00u);
+
+  /* the draw: six $e1 tiles, $e0 at the tip of the first vine,
+   * the staggered columns, height >= $20 so the metatile write
+   * path runs (block buffer empty → writes $26 at the tip) */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 5] = 0x2fu;
+  smbc.state.ram[SMBC_VINE_FLAG_OFFSET] = 0x01u;
+  smbc.state.ram[SMBC_VINE_OBJ_OFFSET + 0] = 0x05u;
+  smbc.state.ram[SMBC_VINE_HEIGHT] = 0x30u;
+  smbc.state.ram[SMBC_VINE_START_Y_POSITION] = 0x60u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 5] = 0x40u;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 5] = 0x40u;
+  smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0xa0u;
+  smbc.state.ram[SMBC_SCREEN_LEFT_PAGE_LOC + 1u] = 0x01u;
+  vine_object_handler(&smbc.state, 0x05u);
+  assert(smbc.state.ram[SMBC_SPRITE_TILENUMBER] == 0xe0u);
+  assert(smbc.state.ram[SMBC_SPRITE_TILENUMBER + 4u] == 0xe1u);
+  assert(smbc.state.ram[SMBC_SPRITE_Y_POSITION] == 0x40u);
+  assert(smbc.state.ram[SMBC_SPRITE_Y_POSITION + 4u] == 0x48u);
+  assert(smbc.state.ram[SMBC_SPRITE_X_POSITION] == 0x40u);
+  assert(smbc.state.ram[SMBC_SPRITE_X_POSITION + 4u] == 0x46u);
+  assert(smbc.state.ram[SMBC_SPRITE_ATTRIBUTES] == 0x21u);
+  assert(smbc.state.ram[SMBC_SPRITE_ATTRIBUTES + 4u] == 0x61u);
+
+  /* fully offscreen: every vine is reaped and the trackers reset */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 5] = 0x2fu;
+  smbc.state.ram[SMBC_ENEMY_FLAG + 5] = 0x01u;
+  smbc.state.ram[SMBC_VINE_FLAG_OFFSET] = 0x01u;
+  smbc.state.ram[SMBC_VINE_OBJ_OFFSET + 0] = 0x05u;
+  smbc.state.ram[SMBC_VINE_HEIGHT] = 0x10u;
+  smbc.state.ram[SMBC_VINE_START_Y_POSITION] = 0x60u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 5] = 0x40u;
+  smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0xa0u;
+  /* 8px left of the left edge: x offscreen bits $c0, and
+   * (0xc0 >> 4) & $0c fires the kill */
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 5] = 0x38u;
+  smbc.state.ram[SMBC_SCREEN_LEFT_X_POS] = 0x40u;
+  vine_object_handler(&smbc.state, 0x05u);
+  assert(smbc.state.ram[SMBC_VINE_FLAG_OFFSET] == 0x00u);
+  assert(smbc.state.ram[SMBC_VINE_HEIGHT] == 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_FLAG + 5] == 0x00u);
+}
+
 int main(void) {
   onscreen_survives();
   too_far_left_erased();
@@ -1359,6 +1452,7 @@ int main(void) {
   fireworks_family();
   star_flag_family();
   jumpspring_family();
+  vine_family();
   puts("tests/core/runners: ok");
   return 0;
 }

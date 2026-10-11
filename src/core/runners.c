@@ -971,3 +971,98 @@ void jumpspring_handler(CoreState *st, uint8_t x) {
     st->ram[SMBC_JUMPSPRING_ANIM_CTRL]++;
   }
 }
+
+/* smb.asm: VineYPosAdder */
+static const uint8_t SMBC_VINE_Y_POS_ADDER[2] = {0x00u, 0x30u};
+
+/* smb.asm: SixSpriteStacker — stack six sprite rows eight pixels
+ * apart vertically, then restore the OAM offset */
+static uint8_t smbc_six_sprite_stacker(CoreState *st, uint8_t y, uint8_t v) {
+  for (uint8_t i = 0x00u; i < 0x06u; i++) {
+    st->ram[SMBC_SPRITE_DATA + y] = v;
+    v = (uint8_t)(v + 0x08u);
+    y = (uint8_t)(y + 0x04u);
+  }
+  return (uint8_t)(y - 0x18u);
+}
+
+/* smb.asm: DrawVine — a six-sprite staggered column, $e1 tiles
+ * with $e0 for the topmost vine, rows past $64 pixels from the
+ * start parked offscreen */
+static void draw_vine(CoreState *st, uint8_t x, uint8_t which) {
+  (void)x;
+  uint8_t y_pos = (uint8_t)(st->ram[SMBC_ENEMY_REL_YPOS] +
+                            SMBC_VINE_Y_POS_ADDER[which]);
+  uint8_t slot = st->ram[SMBC_VINE_OBJ_OFFSET + which];
+  uint8_t y = st->ram[SMBC_ENEMY_SPR_DATA_OFFSET + slot];
+  y = smbc_six_sprite_stacker(st, y, y_pos);
+  uint8_t rel_x = st->ram[SMBC_ENEMY_REL_XPOS];
+  st->ram[SMBC_SPRITE_X_POSITION + y] = rel_x;
+  st->ram[SMBC_SPRITE_X_POSITION + 8u + y] = rel_x;
+  st->ram[SMBC_SPRITE_X_POSITION + 16u + y] = rel_x;
+  rel_x = (uint8_t)(rel_x + 0x06u);
+  st->ram[SMBC_SPRITE_X_POSITION + 4u + y] = rel_x;
+  st->ram[SMBC_SPRITE_X_POSITION + 12u + y] = rel_x;
+  st->ram[SMBC_SPRITE_X_POSITION + 20u + y] = rel_x;
+  st->ram[SMBC_SPRITE_ATTRIBUTES + y] = 0x21u;
+  st->ram[SMBC_SPRITE_ATTRIBUTES + 8u + y] = 0x21u;
+  st->ram[SMBC_SPRITE_ATTRIBUTES + 16u + y] = 0x21u;
+  st->ram[SMBC_SPRITE_ATTRIBUTES + 4u + y] = 0x61u;
+  st->ram[SMBC_SPRITE_ATTRIBUTES + 12u + y] = 0x61u;
+  st->ram[SMBC_SPRITE_ATTRIBUTES + 20u + y] = 0x61u;
+  for (uint8_t i = 0x00u; i < 0x06u; i++) {
+    st->ram[SMBC_SPRITE_TILENUMBER + y] = 0xe1u;
+    y = (uint8_t)(y + 0x04u);
+  }
+  y = (uint8_t)(y - 0x18u);
+  if (which == 0x00u) st->ram[SMBC_SPRITE_TILENUMBER + y] = 0xe0u;
+  /* smb.asm: ChkFTop — park sprites too far from the start */
+  for (uint8_t i = 0x00u; i < 0x06u; i++) {
+    uint8_t dist = (uint8_t)(st->ram[SMBC_VINE_START_Y_POSITION] -
+                             st->ram[SMBC_SPRITE_Y_POSITION + y]);
+    if (dist >= 0x64u) st->ram[SMBC_SPRITE_Y_POSITION + y] = 0xf8u;
+    y = (uint8_t)(y + 0x04u);
+  }
+}
+
+/* smb.asm: VineHeightData */
+static const uint8_t SMBC_VINE_HEIGHT_DATA[2] = {0x30u, 0x60u};
+
+/* smb.asm: VineObjectHandler — the vine lives in the special
+ * slot: grow one pixel every other frame pair to the cap, draw
+ * each vine, kill them all if fully offscreen, and write the
+ * climbing metatile at the tip */
+void vine_object_handler(CoreState *st, uint8_t x) {
+  if (x != 0x05u) return;
+  uint8_t flag = st->ram[SMBC_VINE_FLAG_OFFSET];
+  uint8_t y = (uint8_t)(flag - 0x01u);
+  if (st->ram[SMBC_VINE_HEIGHT] != SMBC_VINE_HEIGHT_DATA[y] &&
+      (st->ram[SMBC_FRAME_COUNTER] & 0x02u) != 0x00u) {
+    st->ram[SMBC_ENEMY_Y_POSITION + 5u]--;
+    st->ram[SMBC_VINE_HEIGHT]++;
+  }
+  if (st->ram[SMBC_VINE_HEIGHT] < 0x08u) return;
+  relative_enemy_position(st, x);
+  get_enemy_offscreen_bits(st, x);
+  for (y = 0x00u; y != flag; y++) draw_vine(st, x, y);
+  if ((st->ram[SMBC_ENEMY_OFFSCREEN_BITS] & 0x0cu) != 0x00u) {
+    /* smb.asm: KillVine */
+    y = (uint8_t)(flag - 0x01u);
+    for (;;) {
+      erase_enemy_object(st, st->ram[SMBC_VINE_OBJ_OFFSET + y]);
+      if (y == 0x00u) break;
+      y--;
+    }
+    st->ram[SMBC_VINE_FLAG_OFFSET] = 0x00u;
+    st->ram[SMBC_VINE_HEIGHT] = 0x00u;
+  }
+  /* smb.asm: WrCMTile */
+  if (st->ram[SMBC_VINE_HEIGHT] < 0x20u) return;
+  block_buffer_chk_enemy(st, 0x06u, 0x1bu, 0x01u);
+  y = st->ram[SMBC_BB_Y_COORD];
+  if (y >= 0xd0u) return;
+  uint16_t ptr = (uint16_t)(st->ram[SMBC_BB_PTR_LO] |
+                            ((uint16_t)st->ram[SMBC_BB_PTR_HI] << 8u));
+  if (st->ram[ptr + y] != 0x00u) return;
+  st->ram[ptr + y] = 0x26u;
+}

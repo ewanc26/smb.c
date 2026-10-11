@@ -41,6 +41,23 @@ void get_enemy_offscreen_bits(CoreState *state, uint8_t x);
  * vertical mask in the high nybble */
 void get_player_offscreen_bits(CoreState *state);
 
+/* smb.asm: RelativeFireballPosition — the fireball's coordinates
+ * relative to the screen, written to the fireball's row of the
+ * shared relative coordinates */
+void relative_fireball_position(CoreState *state, uint8_t x);
+
+/* smb.asm: RelativeBubblePosition — the air bubble's coordinates
+ * relative to the screen, one row past the fireball's */
+void relative_bubble_position(CoreState *state, uint8_t x);
+
+/* smb.asm: GetFireballOffscreenBits — the combined offscreen bits for
+ * a fireball, stored in FBall_OffscreenBits */
+void get_fireball_offscreen_bits(CoreState *state, uint8_t x);
+
+/* smb.asm: GetBubbleOffscreenBits — the combined offscreen bits for
+ * an air bubble, stored in Bubble_OffscreenBits */
+void get_bubble_offscreen_bits(CoreState *state, uint8_t x);
+
 /* smb.asm: GetXOffscreenBits — the horizontal offscreen bits for
  * one object, exposed for the platform bound boxes */
 /* smb.asm: GetXOffscreenBits — the raw horizontal offscreen mask for

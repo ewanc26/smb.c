@@ -131,6 +131,46 @@ void get_block_offscreen_bits(CoreState *st, uint8_t block) {
       (uint8_t)((ybits << 4) | (xbits >> 4));
 }
 
+/* smb.asm: RelativeFireballPosition — ObjOffsetData[0] puts the
+ * fireball seven bytes into the spr-object arrays; the relative pair
+ * lands at the fireball's row of the shared relative coordinates */
+void relative_fireball_position(CoreState *st, uint8_t x) {
+  st->ram[SMBC_FIREBALL_REL_YPOS] = st->ram[SMBC_FIREBALL_Y_POSITION + x];
+  st->ram[SMBC_FIREBALL_REL_XPOS] =
+      (uint8_t)(st->ram[SMBC_FIREBALL_X_POSITION + x] -
+                st->ram[SMBC_SCREEN_LEFT_X_POS]);
+}
+
+/* smb.asm: RelativeBubblePosition — ObjOffsetData[1] puts the air
+ * bubble $16 bytes into the spr-object arrays; the relative pair
+ * lands one row past the fireball's */
+void relative_bubble_position(CoreState *st, uint8_t x) {
+  st->ram[SMBC_BUBBLE_REL_YPOS] = st->ram[SMBC_BUBBLE_Y_POSITION + x];
+  st->ram[SMBC_BUBBLE_REL_XPOS] =
+      (uint8_t)(st->ram[SMBC_BUBBLE_X_POSITION + x] -
+                st->ram[SMBC_SCREEN_LEFT_X_POS]);
+}
+
+/* smb.asm: GetFireballOffscreenBits — the combined bits for a
+ * fireball, stored in FBall_OffscreenBits */
+void get_fireball_offscreen_bits(CoreState *st, uint8_t x) {
+  uint8_t i = (uint8_t)(x + 0x07u);
+  uint8_t xbits = get_x_offscreen_bits(st, i);
+  uint8_t ybits = get_y_offscreen_bits(st, i);
+  st->ram[SMBC_FBALL_OFFSCREEN_BITS] =
+      (uint8_t)((ybits << 4) | (xbits >> 4));
+}
+
+/* smb.asm: GetBubbleOffscreenBits — the combined bits for an air
+ * bubble, stored in Bubble_OffscreenBits */
+void get_bubble_offscreen_bits(CoreState *st, uint8_t x) {
+  uint8_t i = (uint8_t)(x + 0x16u);
+  uint8_t xbits = get_x_offscreen_bits(st, i);
+  uint8_t ybits = get_y_offscreen_bits(st, i);
+  st->ram[SMBC_BUBBLE_OFFSCREEN_BITS] =
+      (uint8_t)((ybits << 4) | (xbits >> 4));
+}
+
 /* smb.asm: PlayerEnemyDiff — the low byte is discarded by callers;
  * the sign of the page difference is what branches on */
 int8_t player_enemy_diff(CoreState *st, uint8_t x) {

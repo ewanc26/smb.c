@@ -371,6 +371,21 @@ void state_init(CoreState *state);
 #define SMBC_PLAYER_X_SPEED 0x0057u       /* smb.asm: Player_X_Speed */
 #define SMBC_LAKITU_MOVE_SPEED 0x0058u    /* smb.asm: LakituMoveSpeed (shared) */
 #define SMBC_EXPLOSION_GFX_COUNTER 0x0058u /* smb.asm: ExplosionGfxCounter (shared) */
+#define SMBC_FIREBALL_STATE 0x0024u       /* smb.asm: Fireball_State */
+#define SMBC_FIREBALL_X_SPEED 0x005eu     /* smb.asm: Fireball_X_Speed */
+#define SMBC_FIREBALL_PAGE_LOC 0x0074u    /* smb.asm: Fireball_PageLoc */
+#define SMBC_FIREBALL_X_POSITION 0x008du  /* smb.asm: Fireball_X_Position */
+#define SMBC_FIREBALL_Y_SPEED 0x00a6u     /* smb.asm: Fireball_Y_Speed */
+#define SMBC_FIREBALL_Y_HIGH_POS 0x00bcu  /* smb.asm: Fireball_Y_HighPos */
+#define SMBC_FIREBALL_Y_POSITION 0x00d5u  /* smb.asm: Fireball_Y_Position */
+#define SMBC_BUBBLE_PAGE_LOC 0x0083u      /* smb.asm: Bubble_PageLoc */
+#define SMBC_BUBBLE_X_POSITION 0x009cu    /* smb.asm: Bubble_X_Position */
+#define SMBC_BUBBLE_Y_HIGH_POS 0x00cbu    /* smb.asm: Bubble_Y_HighPos */
+#define SMBC_BUBBLE_Y_POSITION 0x00e4u    /* smb.asm: Bubble_Y_Position */
+#define SMBC_BUBBLE_REL_XPOS 0x03b0u      /* smb.asm: SprObject_Rel_XPos+3 (shared) */
+#define SMBC_BUBBLE_REL_YPOS 0x03bbu      /* smb.asm: SprObject_Rel_YPos+3 (shared) */
+#define SMBC_FBALL_OFFSCREEN_BITS 0x03d2u /* smb.asm: FBall_OffscreenBits */
+#define SMBC_BUBBLE_OFFSCREEN_BITS 0x03d3u /* smb.asm: Bubble_OffscreenBits */
 #define SMBC_FIREBALL_REL_XPOS 0x03afu    /* smb.asm: Fireball_Rel_XPos (shared) */
 #define SMBC_FIREBALL_REL_YPOS 0x03bau    /* smb.asm: Fireball_Rel_YPos (shared) */
 #define SMBC_LAKITU_MOVE_DIRECTION 0x00a0u /* smb.asm: LakituMoveDirection (shared) */

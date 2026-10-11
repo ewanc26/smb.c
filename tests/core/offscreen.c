@@ -202,6 +202,79 @@ static void relative_player(void) {
   assert(smbc.state.ram[SMBC_PLAYER_REL_XPOS] == 0xf0u);
 }
 
+static void relative_fireball(void) {
+  /* smb.asm: RelativeFireballPosition — the fireball arrays with the
+   * relative pair at the fireball's row of the shared coordinates */
+  Smbc smbc;
+  smbc_init(&smbc);
+  set_screen(&smbc);
+  smbc.state.ram[SMBC_FIREBALL_Y_POSITION + 1] = 0x50u;
+  smbc.state.ram[SMBC_FIREBALL_X_POSITION + 1] = 0xa0u;
+  relative_fireball_position(&smbc.state, 0x01u);
+  assert(smbc.state.ram[SMBC_FIREBALL_REL_YPOS] == 0x50u);
+  assert(smbc.state.ram[SMBC_FIREBALL_REL_XPOS] == 0x80u);
+  /* the bubble's row is untouched */
+  assert(smbc.state.ram[SMBC_BUBBLE_REL_XPOS] == 0x00u);
+}
+
+static void relative_bubble(void) {
+  /* smb.asm: RelativeBubblePosition — the bubble arrays with the
+   * relative pair one row past the fireball's */
+  Smbc smbc;
+  smbc_init(&smbc);
+  set_screen(&smbc);
+  smbc.state.ram[SMBC_BUBBLE_Y_POSITION + 2] = 0x60u;
+  smbc.state.ram[SMBC_BUBBLE_X_POSITION + 2] = 0x40u;
+  relative_bubble_position(&smbc.state, 0x02u);
+  assert(smbc.state.ram[SMBC_BUBBLE_REL_YPOS] == 0x60u);
+  assert(smbc.state.ram[SMBC_BUBBLE_REL_XPOS] == 0x20u);
+  /* the fireball's row is untouched */
+  assert(smbc.state.ram[SMBC_FIREBALL_REL_XPOS] == 0x00u);
+}
+
+static void fireball_bits(void) {
+  /* smb.asm: GetFireballOffscreenBits — the fireball's spr-object
+   * index (seven bytes in) with the combined bits in
+   * FBall_OffscreenBits */
+  Smbc smbc;
+  smbc_init(&smbc);
+  set_screen(&smbc);
+  smbc.state.ram[SMBC_FIREBALL_PAGE_LOC + 0] = 0x00u;
+  smbc.state.ram[SMBC_FIREBALL_X_POSITION + 0] = 0x80u;
+  smbc.state.ram[SMBC_FIREBALL_Y_HIGH_POS + 0] = 0x01u;
+  smbc.state.ram[SMBC_FIREBALL_Y_POSITION + 0] = 0x40u;
+  get_fireball_offscreen_bits(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_FBALL_OFFSCREEN_BITS] == 0x00u);
+
+  smbc.state.ram[SMBC_FIREBALL_PAGE_LOC + 0] = 0x01u;
+  smbc.state.ram[SMBC_FIREBALL_X_POSITION + 0] = 0xf0u; /* past the edge */
+  get_fireball_offscreen_bits(&smbc.state, 0x00u);
+  assert((smbc.state.ram[SMBC_FBALL_OFFSCREEN_BITS] & 0x0fu) == 0x0fu);
+  /* the bubble's offscreen bits are untouched */
+  assert(smbc.state.ram[SMBC_BUBBLE_OFFSCREEN_BITS] == 0x00u);
+}
+
+static void bubble_bits(void) {
+  /* smb.asm: GetBubbleOffscreenBits — the bubble's spr-object index
+   * ($16 bytes in) with the combined bits in Bubble_OffscreenBits */
+  Smbc smbc;
+  smbc_init(&smbc);
+  set_screen(&smbc);
+  smbc.state.ram[SMBC_BUBBLE_PAGE_LOC + 2] = 0x00u;
+  smbc.state.ram[SMBC_BUBBLE_X_POSITION + 2] = 0x80u;
+  smbc.state.ram[SMBC_BUBBLE_Y_HIGH_POS + 2] = 0x01u;
+  smbc.state.ram[SMBC_BUBBLE_Y_POSITION + 2] = 0x40u;
+  get_bubble_offscreen_bits(&smbc.state, 0x02u);
+  assert(smbc.state.ram[SMBC_BUBBLE_OFFSCREEN_BITS] == 0x00u);
+
+  smbc.state.ram[SMBC_BUBBLE_PAGE_LOC + 2] = 0x01u;
+  smbc.state.ram[SMBC_BUBBLE_X_POSITION + 2] = 0xf0u; /* past the edge */
+  get_bubble_offscreen_bits(&smbc.state, 0x02u);
+  assert((smbc.state.ram[SMBC_BUBBLE_OFFSCREEN_BITS] & 0x0fu) == 0x0fu);
+  /* the fireball's offscreen bits are untouched */
+  assert(smbc.state.ram[SMBC_FBALL_OFFSCREEN_BITS] == 0x00u);
+}
+
 int main(void) {
   relative_position();
   x_bits_mid_and_right();
@@ -211,6 +284,10 @@ int main(void) {
   relative_player();
   relative_block();
   block_bits();
+  relative_fireball();
+  relative_bubble();
+  fireball_bits();
+  bubble_bits();
   puts("tests/core/offscreen: ok");
   return 0;
 }

@@ -57,4 +57,14 @@ extern const uint8_t SMBC_HOLE_METATILES[4];
  * metatiles, selected by object id plus the area-type offset */
 extern const uint8_t SMBC_BRICK_Q_BLOCK_METATILES[14];
 
+/* smb.asm: XOffscreenBitsData / YOffscreenBitsData — the sprite-row
+ * masks describing how much of an object is off a screen edge;
+ * DefaultXOnscreenOfs / DefaultYOnscreenOfs are the fallback table
+ * offsets and HighPosUnitData the vertical unit edge coordinates */
+extern const uint8_t SMBC_X_OFFSCREEN_BITS_DATA[16];
+extern const uint8_t SMBC_Y_OFFSCREEN_BITS_DATA[9];
+extern const uint8_t SMBC_DEFAULT_X_ONSCREEN_OFS[3];
+extern const uint8_t SMBC_DEFAULT_Y_ONSCREEN_OFS[3];
+extern const uint8_t SMBC_HIGH_POS_UNIT_DATA[2];
+
 #endif /* SMBC_DATA_OBJECTS_H */

@@ -96,6 +96,38 @@ void get_enemy_bound_box(CoreState *st, uint8_t x) {
   check_right_screen_bbox(st, (uint8_t)(x + 1u), (uint8_t)((x + 1u) * 4u));
 }
 
+/* smb.asm: GetFireballBoundBox — seven bytes into the SprObject
+ * arrays, the fireball's row of the relative coordinates */
+void get_fireball_bound_box(CoreState *st, uint8_t x) {
+  uint8_t slot = (uint8_t)(x + 0x07u);
+  bounding_box_core(st, slot, 0x02u);
+  check_right_screen_bbox(st, slot, (uint8_t)(slot * 4u));
+}
+
+/* smb.asm: FireballBGCollision — solid ground under a falling
+ * fireball bounces it once; rising or already bouncing explodes it */
+void fireball_bg_collision(CoreState *st, uint8_t x) {
+  if (st->ram[SMBC_FIREBALL_Y_POSITION + x] < 0x18u) {
+    st->ram[SMBC_FIREBALL_BOUNCING_FLAG + x] = 0x00u; /* ClearBounceFlag */
+    return;
+  }
+  uint8_t metatile = block_buffer_chk_fball(st, x);
+  if (metatile == 0x00u || !chk_for_non_solids(metatile)) {
+    st->ram[SMBC_FIREBALL_BOUNCING_FLAG + x] = 0x00u;
+    return;
+  }
+  if ((int8_t)st->ram[SMBC_FIREBALL_Y_SPEED + x] < 0 ||
+      st->ram[SMBC_FIREBALL_BOUNCING_FLAG + x] != 0x00u) {
+    /* smb.asm: InitFireballExplode */
+    st->ram[SMBC_FIREBALL_STATE + x] = 0x80u;
+    st->ram[SMBC_SQUARE1_SOUND_QUEUE] = SMBC_SFX_BUMP;
+    return;
+  }
+  st->ram[SMBC_FIREBALL_Y_SPEED + x] = 0xfdu;
+  st->ram[SMBC_FIREBALL_BOUNCING_FLAG + x] = 0x01u;
+  st->ram[SMBC_FIREBALL_Y_POSITION + x] &= 0xf8u;
+}
+
 uint8_t get_enemy_bound_box_ofs(CoreState *st, uint8_t slot,
                                 uint8_t *all_set) {
   uint8_t masked = (uint8_t)(st->ram[SMBC_ENEMY_OFFSCREEN_BITS] & 0x0fu);
@@ -571,11 +603,11 @@ void get_block_buffer_addr(CoreState *st, uint8_t column) {
   st->ram[SMBC_BB_PTR_HI] = (uint8_t)(addr >> 8u);
 }
 
-uint8_t block_buffer_chk_enemy(CoreState *st, uint8_t x, uint8_t y_ofs,
-                               uint8_t return_x) {
-  /* the asm adds one to X, the enemy slots following the player
-   * in the SprObject arrays */
-  uint8_t slot = (uint8_t)(x + 1u);
+/* smb.asm: BlockBufferCollision — the shared core on a spr-object
+ * slot; the enemy, fireball and misc callers each add their own
+ * offset before arriving here */
+static uint8_t block_buffer_chk(CoreState *st, uint8_t slot, uint8_t y_ofs,
+                                uint8_t return_x) {
   uint16_t sum =
       (uint16_t)st->ram[SMBC_SPROBJ_X_POSITION + slot] +
       SMBC_BLOCK_BUFFER_X_ADDER[y_ofs];
@@ -598,6 +630,19 @@ uint8_t block_buffer_chk_enemy(CoreState *st, uint8_t x, uint8_t y_ofs,
                                     : st->ram[SMBC_SPROBJ_Y_POSITION + slot];
   st->ram[SMBC_BB_LOW_NYBBLE] = (uint8_t)(coord & 0x0fu);
   return metatile;
+}
+
+uint8_t block_buffer_chk_enemy(CoreState *st, uint8_t x, uint8_t y_ofs,
+                               uint8_t return_x) {
+  /* smb.asm: BlockBufferChk_Enemy — the enemy slots follow the player
+   * in the SprObject arrays */
+  return block_buffer_chk(st, (uint8_t)(x + 1u), y_ofs, return_x);
+}
+
+/* smb.asm: BlockBufferChk_FBall — the fireball's adder offset, seven
+ * bytes into the SprObject arrays, the vertical coordinate returned */
+uint8_t block_buffer_chk_fball(CoreState *st, uint8_t x) {
+  return block_buffer_chk(st, (uint8_t)(x + 0x07u), 0x1au, 0x00u);
 }
 
 uint8_t chk_under_enemy(CoreState *st, uint8_t x) {

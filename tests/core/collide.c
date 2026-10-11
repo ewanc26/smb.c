@@ -825,6 +825,86 @@ static void block_buffer_primitives(void) {
 }
 
 
+static void fireball_bound_box(void) {
+  /* smb.asm: GetFireballBoundBox — the fireball slot (seven in) and
+   * its relative row; ctrl $07 = {00, 00, 08, 08} */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_SCREEN_LEFT_X_POS] = 0x20u;
+  smbc.state.ram[SMBC_SPROBJ_REL_XPOS + 2] = 0x30u;
+  smbc.state.ram[SMBC_SPROBJ_REL_YPOS + 2] = 0x50u;
+  smbc.state.ram[SMBC_SPROBJ_BOUND_BOX_CTRL + 7] = 0x07u;
+  smbc.state.ram[SMBC_FIREBALL_X_POSITION + 0] = 0x80u;
+  smbc.state.ram[SMBC_FIREBALL_PAGE_LOC + 0] = 0x00u;
+  get_fireball_bound_box(&smbc.state, 0x00u);
+  uint16_t box = SMBC_BOUNDING_BOX_UL_CORNER + 28u; /* slot 7's box */
+  assert(smbc.state.ram[box] == 0x30u);      /* left   = 30+00 */
+  assert(smbc.state.ram[box + 1u] == 0x50u); /* top    = 50+00 */
+  assert(smbc.state.ram[box + 2u] == 0x38u); /* right  = 30+08 */
+  assert(smbc.state.ram[box + 3u] == 0x58u); /* bottom = 50+08 */
+}
+
+/* fireball at x $84 page 0, y $50: adders at $1a are (04, 08) —
+ * column (84+04)>>4 = 8, row (50+08)&f0-20 = 30; buffer $0508+$30 */
+static void fireball_bg_bounces(void) {
+  /* smb.asm: FireballBGCollision — solid ground under a falling
+   * fireball: upward speed, the bounce flag, a snapped coordinate */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_FIREBALL_X_POSITION + 0] = 0x84u;
+  smbc.state.ram[SMBC_FIREBALL_Y_POSITION + 0] = 0x53u;
+  smbc.state.ram[SMBC_FIREBALL_Y_SPEED + 0] = 0x04u;
+  smbc.state.ram[0x0508u + 0x30u] = 0x24u;
+  fireball_bg_collision(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_FIREBALL_Y_SPEED + 0] == 0xfdu);
+  assert(smbc.state.ram[SMBC_FIREBALL_BOUNCING_FLAG + 0] == 0x01u);
+  assert(smbc.state.ram[SMBC_FIREBALL_Y_POSITION + 0] == 0x50u);
+  assert(smbc.state.ram[SMBC_FIREBALL_STATE + 0] == 0x00u);
+}
+
+static void fireball_bg_explodes(void) {
+  /* smb.asm: rising into solid ground, or bouncing a second time,
+   * sets the exploding bit and the bump sound */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_FIREBALL_X_POSITION + 0] = 0x84u;
+  smbc.state.ram[SMBC_FIREBALL_Y_POSITION + 0] = 0x50u;
+  smbc.state.ram[SMBC_FIREBALL_Y_SPEED + 0] = 0xfdu; /* rising */
+  smbc.state.ram[0x0508u + 0x30u] = 0x24u;
+  fireball_bg_collision(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_FIREBALL_STATE + 0] == 0x80u);
+  assert(smbc.state.ram[SMBC_SQUARE1_SOUND_QUEUE] == SMBC_SFX_BUMP);
+
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_FIREBALL_X_POSITION + 0] = 0x84u;
+  smbc.state.ram[SMBC_FIREBALL_Y_POSITION + 0] = 0x50u;
+  smbc.state.ram[SMBC_FIREBALL_Y_SPEED + 0] = 0x04u;
+  smbc.state.ram[SMBC_FIREBALL_BOUNCING_FLAG + 0] = 0x01u; /* second hit */
+  smbc.state.ram[0x0508u + 0x30u] = 0x24u;
+  fireball_bg_collision(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_FIREBALL_STATE + 0] == 0x80u);
+}
+
+static void fireball_bg_clears_flag(void) {
+  /* smb.asm: ClearBounceFlag — inside the status bar area, over
+   * nothing, or over a non-solid metatile clears the flag */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_FIREBALL_Y_POSITION + 0] = 0x10u; /* status bar */
+  smbc.state.ram[SMBC_FIREBALL_BOUNCING_FLAG + 0] = 0x01u;
+  fireball_bg_collision(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_FIREBALL_BOUNCING_FLAG + 0] == 0x00u);
+
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_FIREBALL_X_POSITION + 0] = 0x84u;
+  smbc.state.ram[SMBC_FIREBALL_Y_POSITION + 0] = 0x50u;
+  smbc.state.ram[SMBC_FIREBALL_BOUNCING_FLAG + 0] = 0x01u;
+  smbc.state.ram[0x0508u + 0x30u] = 0x26u; /* non-solid */
+  fireball_bg_collision(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_FIREBALL_BOUNCING_FLAG + 0] == 0x00u);
+  assert(smbc.state.ram[SMBC_FIREBALL_STATE + 0] == 0x00u);
+}
+
 static void landing_family(void) {
   /* a landing inside the window in the walking state goes to
    * the side check — here nothing blocks, nothing changes */
@@ -1148,6 +1228,10 @@ int main(void) {
   pe_collisions_dispatch();
   player_enemy_collision_gates();
   block_buffer_primitives();
+  fireball_bound_box();
+  fireball_bg_bounces();
+  fireball_bg_explodes();
+  fireball_bg_clears_flag();
   landing_family();
   jump_and_hammer_bro_bg();
   bg_collision_entry();

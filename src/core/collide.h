@@ -18,6 +18,14 @@ void get_enemy_bound_box(CoreState *state, uint8_t x);
 /* smb.asm: GetEnemyBoundBoxOfs / GetEnemyBoundBoxOfsArg — the enemy
  * bounding box offset (slot * 4 + 4, past the player's) and the
  * low offscreen nybble, with a flag for all four bits set */
+/* smb.asm: GetFireballBoundBox — the fireball's bounding box from
+ * its relative coordinates and control row */
+void get_fireball_bound_box(CoreState *state, uint8_t x);
+
+/* smb.asm: FireballBGCollision — bounce once off solid ground, or
+ * explode when rising or already bouncing */
+void fireball_bg_collision(CoreState *state, uint8_t x);
+
 uint8_t get_enemy_bound_box_ofs(CoreState *state, uint8_t slot,
                                 uint8_t *all_set);
 
@@ -192,6 +200,10 @@ uint8_t block_buffer_chk_enemy(CoreState *state, uint8_t x, uint8_t y_ofs,
 /* smb.asm: ChkUnderEnemy — the metatile under the enemy's bottom
  * middle */
 uint8_t chk_under_enemy(CoreState *state, uint8_t x);
+
+/* smb.asm: BlockBufferChk_FBall — the metatile at the fireball's
+ * position; the block-buffer coordinate temporaries are updated */
+uint8_t block_buffer_chk_fball(CoreState *state, uint8_t x);
 
 /* smb.asm: ChkForNonSolids — nonzero unless the metatile is a
  * vine blank ($26), either coin ($c2/$c3), or a hidden block

@@ -372,6 +372,7 @@ void state_init(CoreState *state);
 #define SMBC_LAKITU_MOVE_SPEED 0x0058u    /* smb.asm: LakituMoveSpeed (shared) */
 #define SMBC_EXPLOSION_GFX_COUNTER 0x0058u /* smb.asm: ExplosionGfxCounter (shared) */
 #define SMBC_FIREBALL_STATE 0x0024u       /* smb.asm: Fireball_State */
+#define SMBC_FIREBALL_BOUNCING_FLAG 0x003au /* smb.asm: FireballBouncingFlag */
 #define SMBC_FIREBALL_X_SPEED 0x005eu     /* smb.asm: Fireball_X_Speed */
 #define SMBC_FIREBALL_PAGE_LOC 0x0074u    /* smb.asm: Fireball_PageLoc */
 #define SMBC_FIREBALL_X_POSITION 0x008du  /* smb.asm: Fireball_X_Position */

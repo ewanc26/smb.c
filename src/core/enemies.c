@@ -1,5 +1,6 @@
 /* core/enemies.c — see enemies.h */
 #include "enemies.h"
+#include "runners.h"
 
 #include "../data/enemies.h"
 #include "enemyinit.h"
@@ -283,8 +284,7 @@ void enemies_and_loops_core(CoreState *st, uint8_t x) {
     return;
   }
   if (flag != 0x00u) {
-    /* RunEnemyObjectsCore — the per-frame enemy runners, pending their
-     * own atom */
+    run_enemy_objects_core(st, x);
     return;
   }
   /* ChkAreaTsk — leave on the parser's seventh task */

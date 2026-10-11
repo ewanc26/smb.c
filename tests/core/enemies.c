@@ -27,14 +27,30 @@ static void task_seven_leaves(void) {
 }
 
 static void active_flag_pending(void) {
-  /* smb.asm: an active slot jumps to the enemy runners — pending their
-   * own atom, the stream is not walked */
+  /* smb.asm: an active slot jumps to the enemy runners, so the data
+   * stream is not walked */
   static const uint8_t stream[] = {0x29u, 0x06u, 0xffu};
   Smbc smbc;
   init_interp(&smbc, stream);
   smbc.state.ram[SMBC_ENEMY_FLAG + 0] = 0x01u;
   enemies_and_loops_core(&smbc.state, 0x00u);
   assert(smbc.state.ram[SMBC_ENEMY_DATA_OFFSET] == 0x00u);
+}
+
+static void active_flag_dispatches(void) {
+  /* smb.asm: an active warp zone slot at the top runs
+   * RunEnemyObjectsCore through the loop: the lock releases and the
+   * warp control rises */
+  static const uint8_t stream[] = {0xffu};
+  Smbc smbc;
+  init_interp(&smbc, stream);
+  smbc.state.ram[SMBC_ENEMY_FLAG + 1] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_ID + 1] = 0x34u;
+  smbc.state.ram[SMBC_SCROLL_LOCK] = 0x01u;
+  smbc.state.ram[SMBC_PLAYER_Y_HIGH_POS] = 0x01u;
+  enemies_and_loops_core(&smbc.state, 0x01u);
+  assert(smbc.state.ram[SMBC_WARP_ZONE_CONTROL] == 0x01u);
+  assert(smbc.state.ram[SMBC_ENEMY_FLAG + 1] == 0x00u);
 }
 
 static void bowser_pair_flag(void) {
@@ -408,6 +424,7 @@ static void loop_command_world7_multi(void) {
 int main(void) {
   task_seven_leaves();
   active_flag_pending();
+  active_flag_dispatches();
   bowser_pair_flag();
   eod_leaves();
   frenzy_queue_spawn();

@@ -4,6 +4,7 @@
 #include <stdio.h>
 
 #include "../../src/core/collide.h"
+#include "../../src/core/enemies.h"
 #include "../../src/core/frame.h"
 
 static void masked_bits_park_the_box(void) {
@@ -116,12 +117,76 @@ static void bound_box_ofs_helper(void) {
   assert(all_set == 0x00u);
 }
 
+
+static void stun_demotes_and_sets_state(void) {
+  /* green paratroopa jump ($0e) demotes to green koopa ($00) */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = 0x0eu;
+  smbc.state.ram[SMBC_ENEMY_STATE + 0] = 0xa5u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x40u;
+  smbc.state.ram[SMBC_AREA_TYPE] = 0x01u; /* not water */
+  chk_to_stun_enemies(&smbc.state, 0x00u, 0x0eu);
+  assert(smbc.state.ram[SMBC_ENEMY_ID + 0] == 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_STATE + 0] == 0xa2u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] == 0x3eu);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_SPEED + 0] == 0xfdu);
+  /* enemy right of player: direction 1, speed $10 */
+  assert(smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] == 0x01u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] == 0x10u);
+
+  /* id $09 demotes to $01 */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_AREA_TYPE] = 0x01u;
+  chk_to_stun_enemies(&smbc.state, 0x00u, 0x09u);
+  assert(smbc.state.ram[SMBC_ENEMY_ID + 0] == 0x01u);
+
+  /* a goomba keeps its id; enemy left of player faces left */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = 0x06u;
+  smbc.state.ram[SMBC_AREA_TYPE] = 0x01u;
+  smbc.state.ram[SMBC_PLAYER_PAGE_LOC] = 0x01u;
+  chk_to_stun_enemies(&smbc.state, 0x00u, 0x06u);
+  assert(smbc.state.ram[SMBC_ENEMY_ID + 0] == 0x06u);
+  assert(smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] == 0x02u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] == 0xf0u);
+}
+
+static void stun_speeds_by_area_and_id(void) {
+  /* a bloober always gets the $ff water speed */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_BLOOBER;
+  smbc.state.ram[SMBC_AREA_TYPE] = 0x01u;
+  chk_to_stun_enemies(&smbc.state, 0x00u, SMBC_BLOOBER);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_SPEED + 0] == 0xffu);
+
+  /* anyone in a water area too */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = 0x06u;
+  smbc.state.ram[SMBC_AREA_TYPE] = 0x00u;
+  chk_to_stun_enemies(&smbc.state, 0x00u, 0x06u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_SPEED + 0] == 0xffu);
+
+  /* a frenzy bullet bill keeps its direction but still takes
+   * the horizontal speed */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_BULLET_BILL_FRENZY;
+  smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] = 0x02u;
+  smbc.state.ram[SMBC_AREA_TYPE] = 0x01u;
+  chk_to_stun_enemies(&smbc.state, 0x00u, SMBC_BULLET_BILL_FRENZY);
+  assert(smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] == 0x02u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] == 0x10u);
+}
+
 int main(void) {
   masked_bits_park_the_box();
   corners_from_ctrl_data();
   right_edge_wraps_offscreen();
   left_edge_wraps_onscreen();
   bound_box_ofs_helper();
+  stun_demotes_and_sets_state();
+  stun_speeds_by_area_and_id();
   puts("collide: ok");
   return 0;
 }

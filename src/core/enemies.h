@@ -27,6 +27,12 @@
 #define SMBC_VINE_OBJECT 0x2fu   /* smb.asm: VineObject */
 #define SMBC_LAKITU 0x11u        /* smb.asm: Lakitu */
 #define SMBC_SPINY 0x12u         /* smb.asm: Spiny */
+#define SMBC_HAMMER_BRO 0x05u    /* smb.asm: HammerBro */
+#define SMBC_BLOOBER 0x07u       /* smb.asm: Bloober */
+#define SMBC_BULLET_BILL_FRENZY 0x08u   /* smb.asm: BulletBill_FrenzyVar */
+#define SMBC_PIRANHA_PLANT 0x0du /* smb.asm: PiranhaPlant */
+#define SMBC_GREEN_PARATROOPA_JUMP 0x0eu /* smb.asm: GreenParatroopaJump */
+#define SMBC_BULLET_BILL_CANNON 0x33u  /* smb.asm: BulletBill_CannonVar */
 
 /* smb.asm: EnemiesAndLoopsCore — one enemy slot's per-frame entry. An
  * active slot jumps to the (pending) enemy runners; an idle slot checks

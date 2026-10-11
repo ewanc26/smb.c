@@ -21,4 +21,14 @@ void get_enemy_bound_box(CoreState *state, uint8_t x);
 uint8_t get_enemy_bound_box_ofs(CoreState *state, uint8_t slot,
                                 uint8_t *all_set);
 
+/* smb.asm: ChkToStunEnemies — the shared stun setup for defeated
+ * enemies: ids $09, $0e, $0f and $10 demote to plain koopa
+ * (the LSB), the state takes d1 under the preserved high nybble,
+ * the enemy lifts two pixels and gets the water-dependent
+ * vertical speed, and the horizontal speed and direction face the
+ * player — bullet bills keep their direction. A arrives as the
+ * caller's accumulator: the asm's piranha-plant caller passes the
+ * adjusted Y coordinate, which always fails the demote tests */
+void chk_to_stun_enemies(CoreState *state, uint8_t x, uint8_t a);
+
 #endif

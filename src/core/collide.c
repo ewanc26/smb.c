@@ -1,6 +1,7 @@
 /* src/core/collide.c — smb.asm's bounding box and collision layer. */
 #include "collide.h"
 
+#include "enemies.h"
 #include "offscreen.h"
 
 /* smb.asm: BoundBoxCtrlData — left/top/right/bottom offsets per
@@ -99,4 +100,36 @@ uint8_t get_enemy_bound_box_ofs(CoreState *st, uint8_t slot,
   uint8_t masked = (uint8_t)(st->ram[SMBC_ENEMY_OFFSCREEN_BITS] & 0x0fu);
   *all_set = masked == 0x0fu ? 0x01u : 0x00u;
   return (uint8_t)(slot * 4u + 4u);
+}
+
+/* smb.asm: EnemyBGCXSpdData — the post-stun horizontal speeds,
+ * right then left */
+static const uint8_t SMBC_ENEMY_BG_CX_SPD_DATA[2] = {0x10u, 0xf0u};
+
+void chk_to_stun_enemies(CoreState *st, uint8_t x, uint8_t a) {
+  if (a >= 0x09u && a < 0x11u) {
+    if (a < 0x0au || a >= SMBC_PIRANHA_PLANT) {
+      /* smb.asm: Demote — erase all but the LSB */
+      a = (uint8_t)(a & 0x01u);
+      st->ram[SMBC_ENEMY_ID + x] = a;
+    }
+  }
+  /* smb.asm: SetStun */
+  st->ram[SMBC_ENEMY_STATE + x] =
+      (uint8_t)((st->ram[SMBC_ENEMY_STATE + x] & 0xf0u) | 0x02u);
+  st->ram[SMBC_ENEMY_Y_POSITION + x]--;
+  st->ram[SMBC_ENEMY_Y_POSITION + x]--;
+  uint8_t speed = 0xfdu;
+  if (st->ram[SMBC_ENEMY_ID + x] == SMBC_BLOOBER ||
+      st->ram[SMBC_AREA_TYPE] == 0x00u) {
+    speed = 0xffu; /* smb.asm: SetWYSpd — bloober or water area */
+  }
+  st->ram[SMBC_ENEMY_Y_SPEED + x] = speed;
+  uint8_t dir = 0x01u; /* enemy right of player */
+  if (player_enemy_diff(st, x) < 0) dir = 0x02u;
+  uint8_t id = st->ram[SMBC_ENEMY_ID + x];
+  if (id != SMBC_BULLET_BILL_CANNON && id != SMBC_BULLET_BILL_FRENZY) {
+    st->ram[SMBC_ENEMY_MOVING_DIR + x] = dir;
+  }
+  st->ram[SMBC_ENEMY_X_SPEED + x] = SMBC_ENEMY_BG_CX_SPD_DATA[dir - 1u];
 }

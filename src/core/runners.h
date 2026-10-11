@@ -107,4 +107,9 @@ void move_lakitu(CoreState *state, uint8_t x);
  * in the asm */
 void move_flying_cheep_cheep(CoreState *state, uint8_t x);
 
+/* smb.asm: EnemyMovementSubs — the jump engine over Enemy_ID for
+ * objects $00-$14, dispatching to the movers above; ids $09 and
+ * $13 are the asm's NoMoveCode dummies */
+void enemy_movement_subs(CoreState *state, uint8_t x);
+
 #endif /* SMBC_CORE_RUNNERS_H */

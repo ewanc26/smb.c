@@ -605,3 +605,60 @@ void move_flying_cheep_cheep(CoreState *st, uint8_t x) {
   if (y > 0x04u) y = 0x04u;
   st->ram[SMBC_ENEMY_SPR_ATTRIB + x] = SMBC_FLY_CC_B_PRIORITY[y];
 }
+
+/* smb.asm: NoMoveCode — ids $09 and $13 have no mover */
+static void no_move_code(void) {}
+
+void enemy_movement_subs(CoreState *st, uint8_t x) {
+  switch (st->ram[SMBC_ENEMY_ID + x]) {
+    case 0x00u: /* GreenKoopa */
+    case 0x01u:
+    case 0x02u: /* BuzzyBeetle */
+    case 0x03u: /* RedKoopa */
+    case 0x04u:
+    case 0x06u: /* Goomba */
+    case 0x12u: /* Spiny */
+      move_normal_enemy(st, x);
+      break;
+    case 0x05u:
+      proc_hammer_bro(st, x);
+      break;
+    case 0x07u:
+      move_bloober(st, x);
+      break;
+    case 0x08u:
+      move_bullet_bill(st, x);
+      break;
+    case 0x09u:
+    case 0x13u:
+      no_move_code();
+      break;
+    case 0x0au:
+    case 0x0bu:
+      move_swimming_cheep_cheep(st, x);
+      break;
+    case 0x0cu:
+      move_podoboo(st, x);
+      break;
+    case 0x0du:
+      move_piranha_plant(st, x);
+      break;
+    case 0x0eu:
+      move_jumping_enemy(st, x);
+      break;
+    case 0x0fu:
+      proc_move_red_p_troopa(st, x);
+      break;
+    case 0x10u:
+      move_fly_green_p_troopa(st, x);
+      break;
+    case 0x11u:
+      move_lakitu(st, x);
+      break;
+    case 0x14u:
+      move_flying_cheep_cheep(st, x);
+      break;
+    default:
+      break;
+  }
+}

@@ -874,6 +874,64 @@ static void defeated_flying_cheep_cheep(void) {
   assert(smbc.state.ram[SMBC_ENEMY_Y_MOVE_FORCE + 0] == 0x1cu);
 }
 
+
+static void movement_subs_dispatches(void) {
+  /* the dummy ids do nothing at all */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = 0x09u;
+  enemy_movement_subs(&smbc.state, 0x00u);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = 0x13u;
+  enemy_movement_subs(&smbc.state, 0x00u);
+  /* untouched apart from the id byte: compare a fresh baseline */
+  Smbc baseline;
+  smbc_init(&baseline);
+  for (int i = 0; i < 0x800; i++) {
+    if (i == SMBC_ENEMY_ID) continue; /* the id byte itself */
+    assert(smbc.state.ram[i] == baseline.state.ram[i]);
+  }
+
+  /* a goomba ($06) walks: left by default under the master timer */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = 0x06u;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] = 0x40u;
+  smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] = 0xf0u; /* one pixel left */
+  enemy_movement_subs(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] == 0x3fu);
+
+  /* a hammer bro ($05) onscreen, mid jump timer, with an expired
+   * throw timer re-arms and throws */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = 0x05u;
+  smbc.state.ram[SMBC_HAMMER_BRO_JUMP_TIMER + 0] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_STATE + 0] = 0x00u;
+  enemy_movement_subs(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_HAMMER_THROWING_TIMER + 0] == 0x30u);
+  assert(smbc.state.ram[SMBC_HAMMER_BRO_JUMP_TIMER + 0] == 0x00u);
+  assert((smbc.state.ram[SMBC_ENEMY_STATE + 0] & 0x08u) != 0x00u);
+
+  /* a podoboo ($0c) with an active interval timer moves with its
+   * old speed under the $1c jumping gravity */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = 0x0cu;
+  smbc.state.ram[SMBC_ENEMY_INTERVAL_TIMER + 0] = 0x40u;
+  smbc.state.ram[SMBC_ENEMY_Y_SPEED + 0] = 0xc1u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0xfbu;
+  smbc.state.ram[SMBC_ENEMY_Y_HIGH_POS + 0] = 0x01u;
+  enemy_movement_subs(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_MOVE_FORCE + 0] == 0x1cu);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] < 0xfbu);
+
+  /* a piranha plant ($0d) in a state byte stays in its pipe */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = 0x0du;
+  smbc.state.ram[SMBC_ENEMY_STATE + 0] = 0x02u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x30u;
+  enemy_movement_subs(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] == 0x30u);
+  assert(smbc.state.ram[SMBC_ENEMY_SPR_ATTRIB + 0] == 0x20u);
+}
+
 int main(void) {
   onscreen_survives();
   too_far_left_erased();
@@ -912,6 +970,7 @@ int main(void) {
   lakitu_turns_around();
   flying_cheep_cheep_moves();
   defeated_flying_cheep_cheep();
+  movement_subs_dispatches();
   puts("tests/core/runners: ok");
   return 0;
 }

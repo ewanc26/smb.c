@@ -62,6 +62,11 @@ void get_player_colors_core(CoreState *state);
  * `nybbles`, then zero-suppress the score's highest digit. */
 void update_number(CoreState *state, uint8_t nybbles);
 
+/* smb.asm: EndAreaPoints — award the digit modifier (game timer
+ * intervals or fireworks 500s) to the current player's score and
+ * print the updated score and timer */
+void end_area_points(CoreState *state);
+
 /* smb.asm: GetSBNybbles — UpdateNumber with the current player's
  * StatusBarNybbles entry. */
 void get_sb_nybbles(CoreState *state);

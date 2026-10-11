@@ -1076,6 +1076,61 @@ static void bowser_flame_family(void) {
   assert(smbc.state.ram[SMBC_SPRITE_TILENUMBER] == 0x51u);
 }
 
+
+static void fireworks_family(void) {
+  /* a mid-flight frame: the timer ticks down and the explosion
+   * draws four tiles around the centre with the quadrant flips */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = 0x16u; /* Fireworks */
+  smbc.state.ram[SMBC_EXPLOSION_TIMER_COUNTER + 0] = 0x03u;
+  smbc.state.ram[SMBC_EXPLOSION_GFX_COUNTER + 0] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] = 0x40u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x50u;
+  smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0xa0u;
+  run_fireworks(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_EXPLOSION_TIMER_COUNTER + 0] == 0x02u);
+  assert(smbc.state.ram[SMBC_SPRITE_TILENUMBER] == 0x67u);
+  assert(smbc.state.ram[SMBC_SPRITE_TILENUMBER + 12u] == 0x67u);
+  assert(smbc.state.ram[SMBC_SPRITE_ATTRIBUTES] == 0x02u);
+  assert(smbc.state.ram[SMBC_SPRITE_ATTRIBUTES + 4u] == 0x82u);
+  assert(smbc.state.ram[SMBC_SPRITE_ATTRIBUTES + 8u] == 0x42u);
+  assert(smbc.state.ram[SMBC_SPRITE_ATTRIBUTES + 12u] == 0xc2u);
+  /* y rel 0x50: rows at 0x4c and 0x54 */
+  assert(smbc.state.ram[SMBC_SPRITE_Y_POSITION] == 0x4cu);
+  assert(smbc.state.ram[SMBC_SPRITE_Y_POSITION + 4u] == 0x54u);
+  /* x rel 0x40: columns at 0x3c and 0x44 */
+  assert(smbc.state.ram[SMBC_SPRITE_X_POSITION] == 0x3cu);
+  assert(smbc.state.ram[SMBC_SPRITE_X_POSITION + 8u] == 0x44u);
+
+  /* the timer expiry bumps the frame and rearms to 8 */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = 0x16u;
+  smbc.state.ram[SMBC_EXPLOSION_TIMER_COUNTER + 0] = 0x01u;
+  smbc.state.ram[SMBC_EXPLOSION_GFX_COUNTER + 0] = 0x00u;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] = 0x40u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x50u;
+  smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0xa0u;
+  run_fireworks(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_EXPLOSION_TIMER_COUNTER + 0] == 0x08u);
+  assert(smbc.state.ram[SMBC_EXPLOSION_GFX_COUNTER + 0] == 0x01u);
+  assert(smbc.state.ram[SMBC_SPRITE_TILENUMBER] == 0x67u);
+
+  /* the third frame kills the object: 500 points and the blast */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = 0x16u;
+  smbc.state.ram[SMBC_ENEMY_FLAG + 0] = 0x01u;
+  smbc.state.ram[SMBC_EXPLOSION_TIMER_COUNTER + 0] = 0x01u;
+  smbc.state.ram[SMBC_EXPLOSION_GFX_COUNTER + 0] = 0x02u;
+  smbc.state.ram[SMBC_OPER_MODE] = 0x01u; /* gameplay */
+  run_fireworks(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_FLAG + 0] == 0x00u);
+  /* the 5 lands in the score and the modifier is consumed */
+  assert(smbc.state.ram[SMBC_DISPLAY_DIGITS + 0x0au] == 0x05u);
+  assert(smbc.state.ram[SMBC_DIGIT_MODIFIER + 4u] == 0x00u);
+  assert((smbc.state.ram[SMBC_SQUARE2_SOUND_QUEUE] & 0x08u) != 0x00u);
+}
+
 int main(void) {
   onscreen_survives();
   too_far_left_erased();
@@ -1117,6 +1172,7 @@ int main(void) {
   movement_subs_dispatches();
   run_normal_family();
   bowser_flame_family();
+  fireworks_family();
   puts("tests/core/runners: ok");
   return 0;
 }

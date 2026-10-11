@@ -132,4 +132,8 @@ void proc_bowser_flame(CoreState *state, uint8_t x);
  * the offscreen bounds check */
 void run_bowser_flame(CoreState *state, uint8_t x);
 
+/* smb.asm: RunFireworks — tick the explosion, draw the frame, and
+ * at the end award 500 points with the blast sound */
+void run_fireworks(CoreState *state, uint8_t x);
+
 #endif /* SMBC_CORE_RUNNERS_H */

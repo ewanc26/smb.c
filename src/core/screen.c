@@ -511,3 +511,12 @@ void screen_routines(Smbc *smbc) {
       break;
   }
 }
+
+/* smb.asm: EndAreaPoints — award the digit modifier to the
+ * current player's score, then print score and timer */
+void end_area_points(CoreState *st) {
+  uint8_t y = st->ram[SMBC_CURRENT_PLAYER] == 0x00u ? 0x0bu : 0x11u;
+  digits_math_routine(st, y);
+  uint8_t nybbles = (uint8_t)(st->ram[SMBC_CURRENT_PLAYER] << 2);
+  update_number(st, (uint8_t)(nybbles | 0x04u));
+}

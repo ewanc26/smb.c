@@ -330,6 +330,8 @@ void state_init(CoreState *state);
 #define SMBC_PLAYER_X_SPEED 0x0057u       /* smb.asm: Player_X_Speed */
 #define SMBC_LAKITU_MOVE_SPEED 0x0058u    /* smb.asm: LakituMoveSpeed (shared) */
 #define SMBC_EXPLOSION_GFX_COUNTER 0x0058u /* smb.asm: ExplosionGfxCounter (shared) */
+#define SMBC_FIREBALL_REL_XPOS 0x03afu    /* smb.asm: Fireball_Rel_XPos (shared) */
+#define SMBC_FIREBALL_REL_YPOS 0x03bau    /* smb.asm: Fireball_Rel_YPos (shared) */
 #define SMBC_LAKITU_MOVE_DIRECTION 0x00a0u /* smb.asm: LakituMoveDirection (shared) */
 #define SMBC_EXPLOSION_TIMER_COUNTER 0x00a0u /* smb.asm: ExplosionTimerCounter (shared) */
 #define SMBC_BOWSER_FLAME_TIMER_CTRL 0x0367u /* smb.asm: BowserFlameTimerCtrl */

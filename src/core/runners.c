@@ -6,6 +6,7 @@
 #include "enemies.h"
 #include "collide.h"
 #include "move.h"
+#include "screen.h"
 #include "offscreen.h"
 #include "../data/enemies.h"
 
@@ -748,4 +749,63 @@ void run_bowser_flame(CoreState *st, uint8_t x) {
   get_enemy_bound_box(st, x);
   player_enemy_collision(st, x);
   offscreen_bounds_check(st, x);
+}
+
+/* smb.asm: ExplosionTiles */
+static const uint8_t SMBC_EXPLOSION_TILES[3] = {0x68u, 0x67u, 0x66u};
+
+/* smb.asm: DrawExplosion_Fireworks — four tiles around the
+ * explosion centre with the flips spread across the quadrants */
+static void draw_explosion_fireworks(CoreState *st, uint8_t x, uint8_t y,
+                                     uint8_t frame) {
+  uint8_t tile = SMBC_EXPLOSION_TILES[frame];
+  y++;
+  st->ram[SMBC_SPRITE_DATA + y] = tile;
+  st->ram[SMBC_SPRITE_DATA + 4u + y] = tile;
+  st->ram[SMBC_SPRITE_DATA + 8u + y] = tile;
+  st->ram[SMBC_SPRITE_DATA + 12u + y] = tile;
+  y--;
+  (void)x;
+  uint8_t rel_y = (uint8_t)(st->ram[SMBC_FIREBALL_REL_YPOS] - 0x04u);
+  st->ram[SMBC_SPRITE_Y_POSITION + y] = rel_y;
+  st->ram[SMBC_SPRITE_Y_POSITION + 8u + y] = rel_y;
+  rel_y = (uint8_t)(rel_y + 0x08u);
+  st->ram[SMBC_SPRITE_Y_POSITION + 4u + y] = rel_y;
+  st->ram[SMBC_SPRITE_Y_POSITION + 12u + y] = rel_y;
+  uint8_t rel_x = (uint8_t)(st->ram[SMBC_FIREBALL_REL_XPOS] - 0x04u);
+  st->ram[SMBC_SPRITE_X_POSITION + y] = rel_x;
+  st->ram[SMBC_SPRITE_X_POSITION + 4u + y] = rel_x;
+  rel_x = (uint8_t)(rel_x + 0x08u);
+  st->ram[SMBC_SPRITE_X_POSITION + 8u + y] = rel_x;
+  st->ram[SMBC_SPRITE_X_POSITION + 12u + y] = rel_x;
+  st->ram[SMBC_SPRITE_ATTRIBUTES + y] = 0x02u;
+  st->ram[SMBC_SPRITE_ATTRIBUTES + 4u + y] = 0x82u;
+  st->ram[SMBC_SPRITE_ATTRIBUTES + 8u + y] = 0x42u;
+  st->ram[SMBC_SPRITE_ATTRIBUTES + 12u + y] = 0xc2u;
+}
+
+/* smb.asm: RunFireworks — count the explosion frames, draw the
+ * current frame, and at the end award 500 with the blast sound */
+void run_fireworks(CoreState *st, uint8_t x) {
+  st->ram[SMBC_EXPLOSION_TIMER_COUNTER + x]--;
+  if (st->ram[SMBC_EXPLOSION_TIMER_COUNTER + x] == 0x00u) {
+    st->ram[SMBC_EXPLOSION_TIMER_COUNTER + x] = 0x08u;
+    st->ram[SMBC_EXPLOSION_GFX_COUNTER + x]++;
+    if (st->ram[SMBC_EXPLOSION_GFX_COUNTER + x] >= 0x03u) {
+      /* smb.asm: FireworksSoundScore */
+      st->ram[SMBC_ENEMY_FLAG + x] = 0x00u;
+      st->ram[SMBC_SQUARE2_SOUND_QUEUE] |= 0x08u; /* Sfx_Blast */
+      st->ram[SMBC_DIGIT_MODIFIER + 4u] = 0x05u;
+      end_area_points(st);
+      return;
+    }
+  }
+  /* smb.asm: SetupExpl — the explosion rides the fireball's
+   * relative coordinates */
+  relative_enemy_position(st, x);
+  st->ram[SMBC_FIREBALL_REL_YPOS] = st->ram[SMBC_ENEMY_REL_YPOS];
+  st->ram[SMBC_FIREBALL_REL_XPOS] = st->ram[SMBC_ENEMY_REL_XPOS];
+  uint8_t y = st->ram[SMBC_ENEMY_SPR_DATA_OFFSET + x];
+  draw_explosion_fireworks(st, x, y,
+                           st->ram[SMBC_EXPLOSION_GFX_COUNTER + x]);
 }

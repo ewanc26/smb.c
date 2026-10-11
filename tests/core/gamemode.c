@@ -109,7 +109,9 @@ static void scroll_var_update(void) {
   assert(smbc.state.ram[SMBC_SCROLL_THIRTY_TWO] == 0x01u);
   assert(smbc.state.ram[SMBC_VRAM_BUFFER2_OFFSET] == 0x00u);
 
-  /* inside the range: untouched */
+  /* inside the range: untouched — the parser ran one task with the
+   * last call, so reset its counter to reach the scroll-range path */
+  smbc.state.ram[SMBC_AREA_PARSER_TASK_NUM] = 0x00u;
   smbc.state.ram[SMBC_SCROLL_THIRTY_TWO] = 0x1fu;
   smbc.state.ram[SMBC_VRAM_BUFFER2_OFFSET] = 0x12u;
   upd_scroll_var(&smbc);

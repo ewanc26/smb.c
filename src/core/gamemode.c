@@ -4,9 +4,11 @@
 #include "blocks.h"
 #include "cannon.h"
 #include "colour.h"
+#include "enemies.h"
 #include "frame.h"
 #include "initialize.h"
 #include "offscreen.h"
+#include "parser.h"
 #include "screen.h"
 #include "setup.h"
 #include "state.h"
@@ -24,8 +26,8 @@ void upd_scroll_var(Smbc *smbc) {
     st->ram[SMBC_SCROLL_THIRTY_TWO] -= 0x20u;
     st->ram[SMBC_VRAM_BUFFER2_OFFSET] = 0x00;
   }
-  /* RunParser — TODO(port): smb.asm: AreaParserTaskHandler
-   * (core/areaparser) */
+  /* smb.asm: RunParser — AreaParserTaskHandler */
+  area_parser_task_handler(st);
 }
 
 /* smb.asm: GameRoutines — jump table order:

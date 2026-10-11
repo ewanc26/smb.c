@@ -294,6 +294,7 @@ void state_init(CoreState *state);
 #define SMBC_SPROBJ_REL_YPOS 0x03b8u       /* smb.asm: SprObject_Rel_YPos */
 #define SMBC_SPROBJ_BOUND_BOX_CTRL 0x0499u /* smb.asm: SprObj_BoundBoxCtrl */
 #define SMBC_BOUNDING_BOX_UL_CORNER 0x04acu /* smb.asm: BoundingBox_UL_Corner */
+#define SMBC_BOUNDING_BOX_LR_CORNER 0x04aeu /* smb.asm: BoundingBox_LR_Corner */
 #define SMBC_BOUNDING_BOX_UL_XPOS 0x04acu  /* smb.asm: BoundingBox_UL_XPos */
 #define SMBC_BOUNDING_BOX_DR_XPOS 0x04aeu  /* smb.asm: BoundingBox_DR_XPos */
 #define SMBC_ENEMY_BBOX_COORD 0x04b0u      /* smb.asm: EnemyBoundingBoxCoord */

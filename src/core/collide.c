@@ -157,3 +157,40 @@ void shell_or_block_defeat(CoreState *st, uint8_t x) {
   setup_floatey_number(st, x, score);
   st->ram[SMBC_SQUARE1_SOUND_QUEUE] = SMBC_SFX_ENEMY_SMACK;
 }
+
+uint8_t spr_object_collision_core(CoreState *st, uint8_t x, uint8_t y) {
+  for (uint8_t pass = 0x02u; pass != 0x00u; pass--) {
+    uint8_t ul_x = st->ram[SMBC_BOUNDING_BOX_UL_CORNER + x];
+    uint8_t ul_y = st->ram[SMBC_BOUNDING_BOX_UL_CORNER + y];
+    uint8_t lr_x = st->ram[SMBC_BOUNDING_BOX_LR_CORNER + x];
+    uint8_t lr_y = st->ram[SMBC_BOUNDING_BOX_LR_CORNER + y];
+    uint8_t hit = 0x00u;
+    if (ul_y < ul_x) {
+      if (ul_y == lr_x) {
+        hit = 0x01u;
+      } else if (ul_y > lr_x) {
+        /* smb.asm: the first box's bottom above its own top, or
+         * past the second's top, is a vertical wrap collision */
+        hit = lr_y < ul_y || lr_y >= ul_x;
+      } else {
+        /* smb.asm: SecondBoxVerticalChk */
+        hit = lr_x < ul_x || lr_y >= ul_x;
+      }
+    } else {
+      /* smb.asm: FirstBoxGreater */
+      if (ul_y == ul_x || ul_y <= lr_x) {
+        hit = 0x01u;
+      } else if (ul_y > lr_y) {
+        hit = lr_y >= ul_x;
+      }
+    }
+    if (hit == 0x00u) return 0x00u;
+    x++;
+    y++;
+  }
+  return 0x01u;
+}
+
+uint8_t player_collision_core(CoreState *st, uint8_t y) {
+  return spr_object_collision_core(st, 0x00u, y);
+}

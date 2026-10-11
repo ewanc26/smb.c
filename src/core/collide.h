@@ -43,4 +43,13 @@ void setup_floatey_number(CoreState *state, uint8_t x, uint8_t score);
  * smack sound */
 void shell_or_block_defeat(CoreState *state, uint8_t x);
 
+/* smb.asm: SprObjectCollisionCore / PlayerCollisionCore — the
+ * bounding box overlap test, horizontal then vertical, returning
+ * nonzero on collision. x and y index the bounding box arrays by
+ * coordinate (slot * 4); the player entry uses x = 0. The asm's
+ * vertical wrap cases — a box whose bottom is above its top —
+ * count as collisions */
+uint8_t spr_object_collision_core(CoreState *state, uint8_t x, uint8_t y);
+uint8_t player_collision_core(CoreState *state, uint8_t y);
+
 #endif

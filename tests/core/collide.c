@@ -223,6 +223,67 @@ static void shell_defeat_scores_and_stuns(void) {
   assert(smbc.state.ram[SMBC_FLOATEY_NUM_Y_POS + 0] == 0x36u);
 }
 
+
+static void collision_core_overlaps(void) {
+  /* overlapping boxes collide */
+  Smbc smbc;
+  smbc_init(&smbc);
+  uint16_t a = SMBC_BOUNDING_BOX_UL_CORNER;     /* box a: slots 0 */
+  uint16_t b = SMBC_BOUNDING_BOX_UL_CORNER + 8u; /* box b: slot 1's */
+  smbc.state.ram[a] = 0x10u;
+  smbc.state.ram[a + 1u] = 0x10u;
+  smbc.state.ram[a + 2u] = 0x20u;
+  smbc.state.ram[a + 3u] = 0x20u;
+  smbc.state.ram[b] = 0x18u;
+  smbc.state.ram[b + 1u] = 0x18u;
+  smbc.state.ram[b + 2u] = 0x28u;
+  smbc.state.ram[b + 3u] = 0x28u;
+  assert(spr_object_collision_core(&smbc.state, 0x00u, 0x08u) == 0x01u);
+
+  /* touching edges count */
+  smbc.state.ram[b] = 0x20u; /* left edge == a's right edge */
+  smbc.state.ram[b + 1u] = 0x20u;
+  assert(spr_object_collision_core(&smbc.state, 0x00u, 0x08u) == 0x01u);
+
+  /* separated horizontally: no collision */
+  smbc.state.ram[b] = 0x30u;
+  smbc.state.ram[b + 2u] = 0x40u;
+  assert(spr_object_collision_core(&smbc.state, 0x00u, 0x08u) == 0x00u);
+
+  /* the player entry compares against slot 0's box */
+  smbc.state.ram[b] = 0x18u;
+  smbc.state.ram[b + 2u] = 0x28u;
+  assert(player_collision_core(&smbc.state, 0x08u) == 0x01u);
+}
+
+static void collision_core_wraps(void) {
+  /* a wrapped first box (right above its left) collides via the
+   * second box's vertical check */
+  Smbc smbc;
+  smbc_init(&smbc);
+  uint16_t a = SMBC_BOUNDING_BOX_UL_CORNER;
+  uint16_t b = SMBC_BOUNDING_BOX_UL_CORNER + 8u;
+  smbc.state.ram[a] = 0x30u;      /* left */
+  smbc.state.ram[a + 1u] = 0x10u; /* top */
+  smbc.state.ram[a + 2u] = 0x10u; /* right < left: wrapped */
+  smbc.state.ram[a + 3u] = 0x20u;
+  smbc.state.ram[b] = 0x05u;
+  smbc.state.ram[b + 1u] = 0x18u; /* vertical overlaps a's */
+  smbc.state.ram[b + 2u] = 0x08u;
+  smbc.state.ram[b + 3u] = 0x28u;
+  assert(spr_object_collision_core(&smbc.state, 0x00u, 0x08u) == 0x01u);
+
+  /* but a wrapped second box on the greater path is NOT a
+   * collision — the asm's asymmetry */
+  smbc.state.ram[a] = 0x10u;
+  smbc.state.ram[a + 2u] = 0x20u;
+  smbc.state.ram[b] = 0x30u;
+  smbc.state.ram[b + 1u] = 0x30u;
+  smbc.state.ram[b + 2u] = 0x08u; /* right < left */
+  smbc.state.ram[b + 3u] = 0x08u;
+  assert(spr_object_collision_core(&smbc.state, 0x00u, 0x08u) == 0x00u);
+}
+
 int main(void) {
   masked_bits_park_the_box();
   corners_from_ctrl_data();
@@ -232,6 +293,8 @@ int main(void) {
   stun_demotes_and_sets_state();
   stun_speeds_by_area_and_id();
   shell_defeat_scores_and_stuns();
+  collision_core_overlaps();
+  collision_core_wraps();
   puts("collide: ok");
   return 0;
 }

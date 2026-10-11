@@ -40,6 +40,7 @@ void state_init(CoreState *state);
 #define SMBC_VICTORY_WALK_CONTROL 0x0035u /* smb.asm: VictoryWalkControl */
 #define SMBC_PLAYER_PAGE_LOC     0x006du /* smb.asm: Player_PageLoc */
 #define SMBC_PLAYER_X_POSITION   0x0086u /* smb.asm: Player_X_Position */
+#define SMBC_PLAYER_MOVING_DIR   0x0045u /* smb.asm: Player_MovingDir */
 #define SMBC_PLAYER_Y_HIGH_POS   0x00b5u /* smb.asm: Player_Y_HighPos */
 
 /* $0700 page */

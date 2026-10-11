@@ -4,6 +4,7 @@
 #include "../data/objects.h"
 #include "enemies.h"
 #include "move.h"
+#include "offscreen.h"
 
 /* smb.asm's enemy object constants used here */
 #define SMBC_PIRANHA_PLANT 0x0du        /* smb.asm: PiranhaPlant */
@@ -221,4 +222,85 @@ void offscreen_bounds_check(CoreState *st, uint8_t x) {
     return;
   }
   erase_enemy_object(st, x);
+}
+
+/* smb.asm: Floatdown — sink one pixel every other frame */
+static void floatdown(CoreState *st, uint8_t x) {
+  if ((st->ram[SMBC_FRAME_COUNTER] & 0x01u) != 0x00u) return;
+  st->ram[SMBC_ENEMY_Y_POSITION + x]++;
+}
+
+/* smb.asm: ProcSwimmingB — the swim cycle. While d1 of the movement
+ * counter is clear, the movement force (mirrored into the move
+ * speed) counts up to two on every eighth frame, then back down;
+ * reaching zero sets the float-down timer. With d1 set the bloober
+ * floats down until the timer expires and it has caught up with the
+ * player, restarting the cycle. The asm's adc into ChkNearPlayer
+ * carries whatever the caller left; the port adds $10 flat */
+static void proc_swimming_b(CoreState *st, uint8_t x) {
+  uint8_t counter = st->ram[SMBC_X_MOVE_PRIMARY_COUNTER + x];
+  if ((counter & 0x02u) != 0x00u) {
+    /* smb.asm: ChkForFloatdown */
+    if (st->ram[SMBC_ENEMY_INTERVAL_TIMER + x] != 0x00u) {
+      floatdown(st, x);
+      return;
+    }
+    /* smb.asm: ChkNearPlayer */
+    if ((uint8_t)(st->ram[SMBC_ENEMY_Y_POSITION + x] + 0x10u) <
+        st->ram[SMBC_PLAYER_Y_POSITION]) {
+      floatdown(st, x);
+      return;
+    }
+    st->ram[SMBC_X_MOVE_PRIMARY_COUNTER + x] = 0x00u;
+    return;
+  }
+  if ((st->ram[SMBC_FRAME_COUNTER] & 0x07u) != 0x00u) return;
+  if ((counter & 0x01u) == 0x00u) {
+    uint8_t f = (uint8_t)(st->ram[SMBC_ENEMY_Y_MOVE_FORCE + x] + 0x01u);
+    st->ram[SMBC_ENEMY_Y_MOVE_FORCE + x] = f;
+    st->ram[SMBC_ENEMY_X_SPEED + x] = f; /* BlooperMoveSpeed */
+    if (f == 0x02u) st->ram[SMBC_X_MOVE_PRIMARY_COUNTER + x]++;
+    return;
+  }
+  /* smb.asm: SlowSwim */
+  uint8_t f = (uint8_t)(st->ram[SMBC_ENEMY_Y_MOVE_FORCE + x] - 0x01u);
+  st->ram[SMBC_ENEMY_Y_MOVE_FORCE + x] = f;
+  st->ram[SMBC_ENEMY_X_SPEED + x] = f;
+  if (f != 0x00u) return;
+  st->ram[SMBC_X_MOVE_PRIMARY_COUNTER + x]++;
+  st->ram[SMBC_ENEMY_INTERVAL_TIMER + x] = 0x02u;
+}
+
+void move_bloober(CoreState *st, uint8_t x) {
+  if ((st->ram[SMBC_ENEMY_STATE + x] & 0x20u) != 0x00u) {
+    move_enemy_slow_vert(st, x); /* smb.asm: MoveDefeatedBloober */
+    return;
+  }
+  uint8_t mask = SMBC_BLOOBER_BITMASKS[st->ram[SMBC_SECONDARY_HARD_MODE]];
+  if ((st->ram[SMBC_PSEUDO_RANDOM_BIT_REG + 1u + x] & mask) == 0x00u) {
+    uint8_t dir;
+    if ((x & 0x01u) != 0x00u) {
+      dir = st->ram[SMBC_PLAYER_MOVING_DIR]; /* odd slots follow the player */
+    } else {
+      dir = 0x02u; /* left by default */
+      if (player_enemy_diff(st, x) < 0) dir = 0x01u; /* player to the left */
+    }
+    st->ram[SMBC_ENEMY_MOVING_DIR + x] = dir;
+  }
+  /* smb.asm: BlooberSwim — the movement force bobs the bloober up
+   * unless that would cross the status bar edge */
+  proc_swimming_b(st, x);
+  uint8_t new_y = (uint8_t)(st->ram[SMBC_ENEMY_Y_POSITION + x] -
+                            st->ram[SMBC_ENEMY_Y_MOVE_FORCE + x]);
+  if (new_y >= 0x20u) st->ram[SMBC_ENEMY_Y_POSITION + x] = new_y;
+  uint8_t speed = st->ram[SMBC_ENEMY_X_SPEED + x]; /* BlooperMoveSpeed */
+  if (st->ram[SMBC_ENEMY_MOVING_DIR + x] == 0x01u) {
+    uint16_t pos = (uint16_t)st->ram[SMBC_ENEMY_X_POSITION + x] + speed;
+    st->ram[SMBC_ENEMY_X_POSITION + x] = (uint8_t)pos;
+    st->ram[SMBC_ENEMY_PAGE_LOC + x] += (uint8_t)(pos >> 8);
+  } else {
+    int pos = (int)st->ram[SMBC_ENEMY_X_POSITION + x] - speed;
+    st->ram[SMBC_ENEMY_X_POSITION + x] = (uint8_t)pos;
+    st->ram[SMBC_ENEMY_PAGE_LOC + x] -= (pos < 0) ? 0x01u : 0x00u;
+  }
 }

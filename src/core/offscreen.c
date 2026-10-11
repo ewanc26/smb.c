@@ -84,3 +84,13 @@ void get_enemy_offscreen_bits(CoreState *st, uint8_t x) {
   st->ram[SMBC_ENEMY_OFFSCREEN_BITS] =
       (uint8_t)((ybits << 4) | (xbits >> 4));
 }
+
+/* smb.asm: PlayerEnemyDiff — the low byte is discarded by callers;
+ * the sign of the page difference is what branches on */
+int8_t player_enemy_diff(CoreState *st, uint8_t x) {
+  int16_t d = (int16_t)((((uint16_t)st->ram[SMBC_ENEMY_PAGE_LOC + x] << 8) |
+                         st->ram[SMBC_ENEMY_X_POSITION + x]) -
+                        (((uint16_t)st->ram[SMBC_PLAYER_PAGE_LOC] << 8) |
+                         st->ram[SMBC_PLAYER_X_POSITION]));
+  return (int8_t)(d >> 8);
+}

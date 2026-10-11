@@ -74,4 +74,8 @@ extern const uint8_t SMBC_HIGH_POS_UNIT_DATA[2];
 extern const uint8_t SMBC_X_SPEED_ADDER_DATA[4];
 extern const uint8_t SMBC_REVIVED_X_SPEED[4];
 
+/* smb.asm: BlooberBitmasks — the LSFR mask gating a bloober's
+ * direction change, indexed by the secondary hard mode flag */
+extern const uint8_t SMBC_BLOOBER_BITMASKS[2];
+
 #endif /* SMBC_DATA_OBJECTS_H */

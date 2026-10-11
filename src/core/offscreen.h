@@ -24,4 +24,9 @@ void relative_enemy_position(CoreState *state, uint8_t x);
  * Enemy_OffscreenBits */
 void get_enemy_offscreen_bits(CoreState *state, uint8_t x);
 
+/* smb.asm: PlayerEnemyDiff — the sixteen-bit horizontal distance
+ * from the player to the object; the returned value is the high
+ * byte, whose sign says which side the object is on */
+int8_t player_enemy_diff(CoreState *state, uint8_t x);
+
 #endif /* SMBC_CORE_OFFSCREEN_H */

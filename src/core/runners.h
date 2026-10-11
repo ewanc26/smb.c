@@ -42,4 +42,13 @@ void proc_move_red_p_troopa(CoreState *state, uint8_t x);
  * or up by the frame counter's d6 */
 void move_fly_green_p_troopa(CoreState *state, uint8_t x);
 
+/* smb.asm: MoveBloober — the bloober: defeated ones sink slowly;
+ * otherwise the LSFR (masked by secondary hard mode) occasionally
+ * picks a moving direction, ProcSwimmingB runs the swim cycle of
+ * speeding up, slowing down and floating down towards the player,
+ * and the movement force bobs the bloober up while its speed swims
+ * it sideways (BlooperMoveSpeed aliases the X speed at $58,
+ * BlooperMoveCounter the primary movement counter at $a0) */
+void move_bloober(CoreState *state, uint8_t x);
+
 #endif /* SMBC_CORE_RUNNERS_H */

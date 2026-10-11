@@ -330,6 +330,114 @@ static void fly_green_rightward_leg(void) {
   assert(smbc.state.ram[SMBC_ENEMY_X_MOVE_FORCE + 0] == 0x10u);
 }
 
+
+static void bloober_direction_pick(void) {
+  /* LSFR masked to zero picks a direction: even slots by the player
+   * difference, odd slots by the player's own direction */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_PSEUDO_RANDOM_BIT_REG + 1] = 0x00u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x60u;
+  /* enemy right of player → keep left */
+  smbc.state.ram[SMBC_ENEMY_PAGE_LOC + 0] = 0x01u;
+  move_bloober(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] == 0x02u);
+
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_PSEUDO_RANDOM_BIT_REG + 1] = 0x00u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x60u;
+  /* enemy left of player → right */
+  smbc.state.ram[SMBC_PLAYER_PAGE_LOC] = 0x01u;
+  move_bloober(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] == 0x01u);
+
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_PSEUDO_RANDOM_BIT_REG + 2] = 0x00u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 1] = 0x60u;
+  smbc.state.ram[SMBC_PLAYER_MOVING_DIR] = 0x02u;
+  move_bloober(&smbc.state, 0x01u); /* odd slot: follows the player */
+  assert(smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 1] == 0x02u);
+
+  /* a nonzero masked LSFR skips the pick entirely (0x40 would be
+   * masked away by $3f, so use a value inside the mask) */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_PSEUDO_RANDOM_BIT_REG + 1] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x60u;
+  smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] = 0x01u;
+  move_bloober(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] == 0x01u);
+}
+
+static void bloober_swim_cycle(void) {
+  /* every eighth frame the force counts up to two, advancing the
+   * counter; d0 then counts it back down, and zero sets the
+   * float-down timer */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x60u;
+  smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] = 0x02u;
+  smbc.state.ram[SMBC_PSEUDO_RANDOM_BIT_REG + 1] = 0xffu; /* no pick */
+  move_bloober(&smbc.state, 0x00u); /* frame 0: force to one */
+  assert(smbc.state.ram[SMBC_ENEMY_Y_MOVE_FORCE + 0] == 0x01u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] == 0x01u);
+  assert(smbc.state.ram[SMBC_X_MOVE_PRIMARY_COUNTER + 0] == 0x00u);
+  /* the bob subtracts the force from the vertical position */
+  assert(smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] == 0x5fu);
+  /* and the swim moved one pixel left */
+  assert(smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] == 0xffu);
+  assert(smbc.state.ram[SMBC_ENEMY_PAGE_LOC + 0] == 0xffu);
+
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x60u;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] = 0x00u;
+  smbc.state.ram[SMBC_ENEMY_PAGE_LOC + 0] = 0x00u;
+  move_bloober(&smbc.state, 0x00u); /* force to two: counter up */
+  assert(smbc.state.ram[SMBC_ENEMY_Y_MOVE_FORCE + 0] == 0x02u);
+  assert(smbc.state.ram[SMBC_X_MOVE_PRIMARY_COUNTER + 0] == 0x01u);
+
+  move_bloober(&smbc.state, 0x00u); /* d0 set: back down to one */
+  assert(smbc.state.ram[SMBC_ENEMY_Y_MOVE_FORCE + 0] == 0x01u);
+  move_bloober(&smbc.state, 0x00u); /* down to zero: float-down timer */
+  assert(smbc.state.ram[SMBC_ENEMY_Y_MOVE_FORCE + 0] == 0x00u);
+  assert(smbc.state.ram[SMBC_X_MOVE_PRIMARY_COUNTER + 0] == 0x02u);
+  assert(smbc.state.ram[SMBC_ENEMY_INTERVAL_TIMER + 0] == 0x02u);
+}
+
+static void bloober_floatdown(void) {
+  /* with the counter's d1 set and the timer expired, the bloober
+   * sinks every other frame until within sixteen pixels above the
+   * player, then the cycle restarts */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_X_MOVE_PRIMARY_COUNTER + 0] = 0x02u;
+  smbc.state.ram[SMBC_ENEMY_INTERVAL_TIMER + 0] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x60u;
+  smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] = 0x01u;
+  smbc.state.ram[SMBC_PSEUDO_RANDOM_BIT_REG + 1] = 0xffu;
+  smbc.state.ram[SMBC_FRAME_COUNTER] = 0x00u; /* even frame: sink */
+  move_bloober(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] == 0x61u);
+
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_X_MOVE_PRIMARY_COUNTER + 0] = 0x02u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x20u;
+  smbc.state.ram[SMBC_PLAYER_Y_POSITION] = 0x28u; /* caught up */
+  smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] = 0x01u;
+  smbc.state.ram[SMBC_PSEUDO_RANDOM_BIT_REG + 1] = 0xffu;
+  move_bloober(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_X_MOVE_PRIMARY_COUNTER + 0] == 0x00u);
+}
+
+static void defeated_bloober_sinks(void) {
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_STATE + 0] = 0x20u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x60u;
+  move_bloober(&smbc.state, 0x00u);
+  /* MoveEnemySlowVert: a quarter of the force per frame */
+  assert(smbc.state.ram[SMBC_ENEMY_Y_MOVE_FORCE + 0] >= 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] == 0x60u);
+}
+
 int main(void) {
   onscreen_survives();
   too_far_left_erased();
@@ -349,6 +457,10 @@ int main(void) {
   fly_green_counter_ramps();
   fly_green_counter_limits();
   fly_green_rightward_leg();
+  bloober_direction_pick();
+  bloober_swim_cycle();
+  bloober_floatdown();
+  defeated_bloober_sinks();
   puts("tests/core/runners: ok");
   return 0;
 }

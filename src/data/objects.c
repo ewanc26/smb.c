@@ -78,3 +78,6 @@ const uint8_t SMBC_X_SPEED_ADDER_DATA[4] = {0x00u, 0xe8u, 0x00u, 0x18u};
 
 /* smb.asm: RevivedXSpeed */
 const uint8_t SMBC_REVIVED_X_SPEED[4] = {0x08u, 0xf8u, 0x0cu, 0xf4u};
+
+/* smb.asm: BlooberBitmasks */
+const uint8_t SMBC_BLOOBER_BITMASKS[2] = {0x3fu, 0x03u};

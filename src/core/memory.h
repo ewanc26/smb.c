@@ -11,9 +11,10 @@
 
 struct Smbc;
 
-/* smb.asm: InitializeMemory — clear pages $07 down to $00 from the given
- * starting offset in each page's first iteration (warm/cold boot offset),
- * skipping $0160-$01FF (the stack). */
+/* smb.asm: InitializeMemory — clear pages $07 down to $00, skipping
+ * $0160-$01FF (the stack). Only the first page stops at the given
+ * starting offset; the loop underflows Y to $ff afterwards, so every
+ * later page is erased in full. */
 void initialize_memory(CoreState *state, uint8_t offset);
 
 /* smb.asm: InitializeNameTables — select the pattern tables, then clear

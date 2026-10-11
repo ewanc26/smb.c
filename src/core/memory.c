@@ -6,10 +6,12 @@
 #include "state.h"
 
 void initialize_memory(CoreState *state, uint8_t offset) {
-  /* smb.asm: InitializeMemory. Y starts at the caller's boot offset and
-   * runs down to $00 on every page; X walks pages $07..$00. */
+  /* smb.asm: InitializeMemory. X walks pages $07..$00. Y starts at the
+   * caller's boot offset on the first page and runs down to $00; the
+   * loop then decrements it once more to $ff, so every later page is
+   * cleared in full. Only the first page stops at the offset. */
   for (int page = 0x07; page >= 0; page--) {
-    for (int y = offset; y >= 0; y--) {
+    for (int y = (page == 0x07) ? offset : 0xff; y >= 0; y--) {
       if (page == 0x01 && y >= 0x60) {
         continue; /* smb.asm: SkipByte — the stack at $0160-$01FF */
       }

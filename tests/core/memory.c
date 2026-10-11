@@ -19,6 +19,11 @@ int main(void) {
   assert(state.ram[0x07fe] == 0xffu); /* above the warm boot offset */
   assert(state.ram[0x015f] == 0x00u);
   assert(state.ram[0x0160] == 0xffu);
+  /* only the first page stops at the offset; every later page is cleared
+   * in full (Y underflows to $ff after the first byte loop) */
+  assert(state.ram[0x06ff] == 0x00u);
+  assert(state.ram[0x00ff] == 0x00u);
+  assert(state.ram[0x05ff] == 0x00u);
 
   /* InitializeNameTables, through boot for a realistic mirror state */
   Smbc smbc;

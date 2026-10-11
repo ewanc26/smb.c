@@ -544,3 +544,71 @@ void player_enemy_collision(CoreState *st, uint8_t x) {
   }
   handle_pe_collisions(st, x);
 }
+
+/* smb.asm: BlockBuffer_X_Adder / BlockBuffer_Y_Adder */
+static const uint8_t SMBC_BLOCK_BUFFER_X_ADDER[28] = {
+    0x08u, 0x03u, 0x0cu, 0x02u, 0x02u, 0x0du, 0x0du, 0x08u,
+    0x03u, 0x0cu, 0x02u, 0x02u, 0x0du, 0x0du, 0x08u, 0x03u,
+    0x0cu, 0x02u, 0x02u, 0x0du, 0x0du, 0x08u, 0x00u, 0x10u,
+    0x04u, 0x14u, 0x04u, 0x04u};
+static const uint8_t SMBC_BLOCK_BUFFER_Y_ADDER[28] = {
+    0x04u, 0x20u, 0x20u, 0x08u, 0x18u, 0x08u, 0x18u, 0x02u,
+    0x20u, 0x20u, 0x08u, 0x18u, 0x08u, 0x18u, 0x12u, 0x20u,
+    0x20u, 0x18u, 0x18u, 0x18u, 0x18u, 0x18u, 0x14u, 0x14u,
+    0x06u, 0x06u, 0x08u, 0x10u};
+
+void get_block_buffer_addr(CoreState *st, uint8_t column) {
+  /* smb.asm: BlockBufferAddr — low bytes {00, d0}, both high $05 */
+  uint16_t addr = SMBC_BLOCK_BUFFER_1 +
+                  (uint16_t)((column >> 4u) * 0xd0u) + (column & 0x0fu);
+  st->ram[SMBC_BB_PTR_LO] = (uint8_t)(addr & 0xffu);
+  st->ram[SMBC_BB_PTR_HI] = (uint8_t)(addr >> 8u);
+}
+
+uint8_t block_buffer_chk_enemy(CoreState *st, uint8_t x, uint8_t y_ofs,
+                               uint8_t return_x) {
+  /* the asm adds one to X, the enemy slots following the player
+   * in the SprObject arrays */
+  uint8_t slot = (uint8_t)(x + 1u);
+  uint16_t sum =
+      (uint16_t)st->ram[SMBC_SPROBJ_X_POSITION + slot] +
+      SMBC_BLOCK_BUFFER_X_ADDER[y_ofs];
+  st->ram[SMBC_BB_X_COORD] = (uint8_t)sum;
+  uint8_t page =
+      (uint8_t)((st->ram[SMBC_SPROBJ_PAGE_LOC + slot] + (sum >> 8u)) & 0x01u);
+  uint8_t column = (uint8_t)(((sum & 0xffu) >> 4u) | (page << 4u));
+  get_block_buffer_addr(st, column);
+  uint8_t row = (uint8_t)(
+      ((st->ram[SMBC_SPROBJ_Y_POSITION + slot] +
+        SMBC_BLOCK_BUFFER_Y_ADDER[y_ofs]) &
+       0xf0u) -
+      0x20u);
+  st->ram[SMBC_BB_Y_COORD] = row;
+  uint16_t ptr =
+      (uint16_t)(st->ram[SMBC_BB_PTR_LO] | (st->ram[SMBC_BB_PTR_HI] << 8u));
+  uint8_t metatile = st->ram[ptr + row];
+  st->ram[SMBC_BB_METATILE] = metatile;
+  uint8_t coord = return_x != 0x00u ? st->ram[SMBC_SPROBJ_X_POSITION + slot]
+                                    : st->ram[SMBC_SPROBJ_Y_POSITION + slot];
+  st->ram[SMBC_BB_LOW_NYBBLE] = (uint8_t)(coord & 0x0fu);
+  return metatile;
+}
+
+uint8_t chk_under_enemy(CoreState *st, uint8_t x) {
+  return block_buffer_chk_enemy(st, x, 0x15u, 0x00u);
+}
+
+uint8_t chk_for_non_solids(uint8_t metatile) {
+  return metatile != 0x26u && metatile != 0xc2u && metatile != 0xc3u &&
+         metatile != 0x5fu && metatile != 0x60u;
+}
+
+uint8_t subt_enemy_y_pos(CoreState *st, uint8_t x) {
+  return (uint8_t)(st->ram[SMBC_ENEMY_Y_POSITION + x] + 0x3eu) >= 0x44u;
+}
+
+void enemy_landing(CoreState *st, uint8_t x) {
+  init_vstf(st, x);
+  st->ram[SMBC_ENEMY_Y_POSITION + x] =
+      (uint8_t)((st->ram[SMBC_ENEMY_Y_POSITION + x] & 0xf0u) | 0x08u);
+}

@@ -764,6 +764,66 @@ static void player_enemy_collision_gates(void) {
   assert((smbc.state.ram[SMBC_ENEMY_STATE + 0] & 0x20u) != 0x00u);
 }
 
+
+static void block_buffer_primitives(void) {
+  /* the address: column 0 lands at $0500, column 16 at $05d0 */
+  Smbc smbc;
+  smbc_init(&smbc);
+  get_block_buffer_addr(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_BB_PTR_LO] == 0x00u);
+  assert(smbc.state.ram[SMBC_BB_PTR_HI] == 0x05u);
+  get_block_buffer_addr(&smbc.state, 0x10u);
+  assert(smbc.state.ram[SMBC_BB_PTR_LO] == 0xd0u);
+  assert(smbc.state.ram[SMBC_BB_PTR_HI] == 0x05u);
+
+  /* chk_under_enemy: enemy slot 0 at x $84 page 0, y $50 —
+   * adders at $15 are (08, 14): column (84+08)>>4 = 8, row
+   * (50+14)&f0-20 = 40. Buffer 1 column 8 = $0508, + $40 */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_SPROBJ_X_POSITION + 1] = 0x84u;
+  smbc.state.ram[SMBC_SPROBJ_Y_POSITION + 1] = 0x50u;
+  smbc.state.ram[0x0508u + 0x40u] = 0x24u;
+  assert(chk_under_enemy(&smbc.state, 0x00u) == 0x24u);
+  assert(smbc.state.ram[SMBC_BB_Y_COORD] == 0x40u);
+  assert(smbc.state.ram[SMBC_BB_METATILE] == 0x24u);
+  assert(smbc.state.ram[SMBC_BB_LOW_NYBBLE] == 0x00u);
+  assert(smbc.state.ram[SMBC_BB_PTR_LO] == 0x08u);
+
+  /* a page overflow selects buffer 2 */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_SPROBJ_X_POSITION + 1] = 0xf8u;
+  smbc.state.ram[SMBC_SPROBJ_PAGE_LOC + 1] = 0x00u;
+  smbc.state.ram[SMBC_SPROBJ_Y_POSITION + 1] = 0x50u;
+  smbc.state.ram[0x05d0u + 0x40u] = 0xc2u;
+  assert(chk_under_enemy(&smbc.state, 0x00u) == 0xc2u);
+  assert(smbc.state.ram[SMBC_BB_PTR_LO] == 0xd0u);
+
+  /* the non-solid set */
+  assert(chk_for_non_solids(0x26u) == 0x00u);
+  assert(chk_for_non_solids(0xc2u) == 0x00u);
+  assert(chk_for_non_solids(0xc3u) == 0x00u);
+  assert(chk_for_non_solids(0x5fu) == 0x00u);
+  assert(chk_for_non_solids(0x60u) == 0x00u);
+  assert(chk_for_non_solids(0x24u) == 0x01u);
+
+  /* subt_enemy_y_pos: $06 + $3e = $44 reaches */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x06u;
+  assert(subt_enemy_y_pos(&smbc.state, 0x00u) == 0x01u);
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x05u;
+  assert(subt_enemy_y_pos(&smbc.state, 0x00u) == 0x00u);
+
+  /* enemy_landing snaps to the block with d3 set */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x47u;
+  smbc.state.ram[SMBC_ENEMY_Y_SPEED + 0] = 0x22u;
+  smbc.state.ram[SMBC_ENEMY_Y_MOVE_FORCE + 0] = 0x11u;
+  enemy_landing(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] == 0x48u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_SPEED + 0] == 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_MOVE_FORCE + 0] == 0x00u);
+}
+
 int main(void) {
   masked_bits_park_the_box();
   corners_from_ctrl_data();
@@ -784,6 +844,7 @@ int main(void) {
   power_up_collision();
   pe_collisions_dispatch();
   player_enemy_collision_gates();
+  block_buffer_primitives();
   puts("collide: ok");
   return 0;
 }

@@ -210,6 +210,7 @@ void state_init(CoreState *state);
                                           * (shares $58 with Jumpspring) */
 #define SMBC_SPROBJ_PAGE_LOC 0x006du     /* smb.asm: SprObject_PageLoc */
 #define SMBC_SPROBJ_X_POSITION 0x0086u   /* smb.asm: SprObject_X_Position */
+#define SMBC_SPROBJ_Y_POSITION 0x00ceu   /* smb.asm: SprObject_Y_Position */
 #define SMBC_ENEMY_PAGE_LOC 0x006eu      /* smb.asm: Enemy_PageLoc */
 #define SMBC_ENEMY_X_POSITION 0x0087u    /* smb.asm: Enemy_X_Position */
 #define SMBC_PIRANHA_PLANT_MOVE_FLAG 0xa0u /* smb.asm: PiranhaPlant_MoveFlag */
@@ -334,6 +335,15 @@ void state_init(CoreState *state);
 
 /* zero page scratch used by the screen update path */
 #define SMBC_TEMP_VRAM_PTR 0x0000u /* smb.asm: $00/$01, the ($00),y indirect */
+
+/* zero page scratch used by the block buffer path (smb.asm:
+ * BlockBufferCollision's $02-$07 outputs) */
+#define SMBC_BB_Y_COORD 0x0002u   /* block row offset into the buffer */
+#define SMBC_BB_METATILE 0x0003u  /* metatile found */
+#define SMBC_BB_LOW_NYBBLE 0x0004u /* low nybble of the x or y coord */
+#define SMBC_BB_X_COORD 0x0005u   /* x coordinate plus adder */
+#define SMBC_BB_PTR_LO 0x0006u    /* block buffer pointer, low */
+#define SMBC_BB_PTR_HI 0x0007u    /* block buffer pointer, high */
 
 /* boot entry offsets, low bytes into the RAM page (smb.asm: constants) */
 #define SMBC_WARM_BOOT_OFFSET 0xd6u /* smb.asm: WarmBootOffset = <$07d6 */

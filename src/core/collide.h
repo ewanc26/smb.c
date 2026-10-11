@@ -156,4 +156,34 @@ void handle_pe_collisions(CoreState *state, uint8_t x);
  * HandlePECollisions */
 void player_enemy_collision(CoreState *state, uint8_t x);
 
+/* smb.asm: GetBlockBufferAddr — the block buffer address for a
+ * column (0-31 across both buffers) into the $06/$07 scratch */
+void get_block_buffer_addr(CoreState *state, uint8_t column);
+
+/* smb.asm: BlockBufferCollision, entered as BlockBufferChk_Enemy
+ * — the metatile at the enemy's position plus the adder pair at
+ * y_ofs, with the row offset in $02, the low nybble of the
+ * vertical (return_x = 0) or horizontal coordinate in $04, and
+ * the buffer pointer in $06/$07. Returns the metatile (also in
+ * $03) */
+uint8_t block_buffer_chk_enemy(CoreState *state, uint8_t x, uint8_t y_ofs,
+                               uint8_t return_x);
+
+/* smb.asm: ChkUnderEnemy — the metatile under the enemy's bottom
+ * middle */
+uint8_t chk_under_enemy(CoreState *state, uint8_t x);
+
+/* smb.asm: ChkForNonSolids — nonzero unless the metatile is a
+ * vine blank ($26), either coin ($c2/$c3), or a hidden block
+ * ($5f/$60) */
+uint8_t chk_for_non_solids(uint8_t metatile);
+
+/* smb.asm: SubtEnemyYPos — nonzero when the enemy's vertical
+ * coordinate + 62 reaches 68 (wrapping), the asm's carry */
+uint8_t subt_enemy_y_pos(CoreState *state, uint8_t x);
+
+/* smb.asm: EnemyLanding — zero the vertical speed and force and
+ * snap the vertical coordinate to the block, d3 set */
+void enemy_landing(CoreState *state, uint8_t x);
+
 #endif

@@ -1220,3 +1220,52 @@ hammer_chk:
   }
   bowser_gfx_handler(st, x);
 }
+
+/* smb.asm: PowerUpObjHandler — the power-up owns the last enemy
+ * slot: rise out of the block for sixteen frames, then move by
+ * type (mushrooms walk, the star bounces) with the full draw,
+ * collide, and bounds suite */
+void power_up_obj_handler(CoreState *st) {
+  const uint8_t x = 0x05u;
+  uint8_t state = st->ram[SMBC_ENEMY_STATE + 5u];
+  if (state == 0x00u) return;
+  if ((state & 0x80u) != 0x00u) {
+    /* smb.asm: the grown power-up moves by type */
+    if (st->ram[SMBC_TIMER_CONTROL] == 0x00u) {
+      uint8_t type = st->ram[SMBC_POWER_UP_TYPE];
+      if (type == 0x00u || type == 0x03u) {
+        /* smb.asm: ShroomM */
+        move_normal_enemy(st, x);
+        enemy_to_bg_collision_det(st, x);
+      } else if (type == 0x02u) {
+        /* smb.asm: the star bounces */
+        move_jumping_enemy(st, x);
+        enemy_jump(st, x);
+      }
+    }
+  } else {
+    /* smb.asm: GrowThePowerUp — one pixel per four frames until
+     * the state passes the sixteenth, then walk right */
+    if ((st->ram[SMBC_FRAME_COUNTER] & 0x03u) == 0x00u) {
+      st->ram[SMBC_ENEMY_Y_POSITION + 5u]--;
+      uint8_t grown = st->ram[SMBC_ENEMY_STATE + 5u];
+      st->ram[SMBC_ENEMY_STATE + 5u]++;
+      if (grown >= 0x11u) {
+        st->ram[SMBC_ENEMY_X_SPEED + x] = 0x10u;
+        st->ram[SMBC_ENEMY_STATE + 5u] = 0x80u;
+        /* smb.asm: the asl/rol pair — zero attribute, direction
+         * right via the carry */
+        st->ram[SMBC_ENEMY_SPR_ATTRIB + 5u] = 0x00u;
+        st->ram[SMBC_ENEMY_MOVING_DIR + x] = 0x01u;
+      }
+    }
+    if (st->ram[SMBC_ENEMY_STATE + 5u] < 0x06u) return;
+  }
+  /* smb.asm: RunPUSubs */
+  relative_enemy_position(st, x);
+  get_enemy_offscreen_bits(st, x);
+  get_enemy_bound_box(st, x);
+  draw_power_up(st, x);
+  player_enemy_collision(st, x);
+  offscreen_bounds_check(st, x);
+}

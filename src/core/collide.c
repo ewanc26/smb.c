@@ -1237,3 +1237,59 @@ offscr_chk:;
     }
   }
 }
+
+/* smb.asm: PowerUpGfxTable — mushroom, fire flower, star, 1-up */
+static const uint8_t SMBC_POWER_UP_GFX_TABLE[16] = {
+    0x76u, 0x77u, 0x78u, 0x79u, 0xd6u, 0xd6u, 0xd9u, 0xd9u,
+    0x8du, 0x8du, 0xe4u, 0xe4u, 0x76u, 0x77u, 0x78u, 0x79u};
+
+/* smb.asm: PowerUpAttributes */
+static const uint8_t SMBC_POWER_UP_ATTRIBUTES[4] = {
+    0x02u, 0x01u, 0x02u, 0x01u};
+
+/* smb.asm: DrawPowerUp — two rows from the type's tile quad; the
+ * fire flower and star cycle palettes every two frames and flip
+ * their right side, then the shared offscreen check parks any
+ * exposed columns and rows */
+void draw_power_up(CoreState *st, uint8_t x) {
+  uint8_t t[6] = {0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u};
+  uint8_t y = st->ram[SMBC_ENEMY_SPR_DATA_OFFSET + 5u];
+  t[2] = (uint8_t)(st->ram[SMBC_ENEMY_REL_YPOS] + 0x08u);
+  t[5] = st->ram[SMBC_ENEMY_REL_XPOS];
+  uint8_t type = st->ram[SMBC_POWER_UP_TYPE];
+  t[4] = (uint8_t)(SMBC_POWER_UP_ATTRIBUTES[type] |
+                   st->ram[SMBC_ENEMY_SPR_ATTRIB + 5u]);
+  t[3] = 0x01u; /* smb.asm: init d1 of flip control */
+  uint8_t ofs = (uint8_t)(type << 2u);
+  y = smbc_draw_sprite_object(st, y, t, SMBC_POWER_UP_GFX_TABLE[ofs],
+                              SMBC_POWER_UP_GFX_TABLE[ofs + 1u]);
+  y = smbc_draw_sprite_object(st, y, t, SMBC_POWER_UP_GFX_TABLE[ofs + 2u],
+                              SMBC_POWER_UP_GFX_TABLE[ofs + 3u]);
+  y = st->ram[SMBC_ENEMY_SPR_DATA_OFFSET + 5u];
+  if (type != 0x00u && type != 0x03u) {
+    /* smb.asm: the flower and star flash through the palettes */
+    uint8_t pal = (uint8_t)(((st->ram[SMBC_FRAME_COUNTER] >> 1u) & 0x03u) |
+                            st->ram[SMBC_ENEMY_SPR_ATTRIB + 5u]);
+    st->ram[SMBC_SPRITE_ATTRIBUTES + y] = pal;
+    st->ram[SMBC_SPRITE_ATTRIBUTES + 4u + y] = pal;
+    if (type != 0x01u) { /* the star flashes the bottom row too */
+      st->ram[SMBC_SPRITE_ATTRIBUTES + 8u + y] = pal;
+      st->ram[SMBC_SPRITE_ATTRIBUTES + 12u + y] = pal;
+    }
+    st->ram[SMBC_SPRITE_ATTRIBUTES + 4u + y] |= 0x40u;
+    st->ram[SMBC_SPRITE_ATTRIBUTES + 12u + y] |= 0x40u;
+  }
+  /* smb.asm: SprObjectOffscrChk */
+  uint8_t bits = st->ram[SMBC_ENEMY_OFFSCREEN_BITS];
+  if ((bits & 0x04u) != 0x00u) smbc_move_e_spr_col_offscreen(st, x, 0x04u);
+  if ((bits & 0x08u) != 0x00u) smbc_move_e_spr_col_offscreen(st, x, 0x00u);
+  if ((bits & 0x20u) != 0x00u) smbc_move_e_spr_row_offscreen(st, x, 0x10u);
+  if ((bits & 0x40u) != 0x00u) smbc_move_e_spr_row_offscreen(st, x, 0x08u);
+  if ((bits & 0x80u) != 0x00u) {
+    smbc_move_e_spr_row_offscreen(st, x, 0x00u);
+    if (st->ram[SMBC_ENEMY_ID + x] != SMBC_PODOBOO &&
+        st->ram[SMBC_ENEMY_Y_HIGH_POS + x] == 0x02u) {
+      erase_enemy_object(st, x);
+    }
+  }
+}

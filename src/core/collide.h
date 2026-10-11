@@ -273,4 +273,9 @@ void enemy_to_bg_collision_det(CoreState *state, uint8_t x);
  * offscreen columns and rows at $f8 */
 void enemy_gfx_handler(CoreState *state, uint8_t x);
 
+/* smb.asm: DrawPowerUp — two tile rows from the power-up type,
+ * palette cycling and right-side flips for the flower and star,
+ * then the shared offscreen check */
+void draw_power_up(CoreState *state, uint8_t x);
+
 #endif

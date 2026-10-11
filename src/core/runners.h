@@ -158,4 +158,9 @@ void vine_object_handler(CoreState *state, uint8_t x);
  * spit with the mouth toggle, and the two-half draw */
 void run_bowser(CoreState *state, uint8_t x);
 
+/* smb.asm: PowerUpObjHandler — rise the power-up out of its
+ * block, then move it by type with the draw, collide, and bounds
+ * suite; the power-up always lives in the last enemy slot */
+void power_up_obj_handler(CoreState *state);
+
 #endif /* SMBC_CORE_RUNNERS_H */

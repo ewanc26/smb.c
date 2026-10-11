@@ -1522,6 +1522,114 @@ static void bowser_family(void) {
   assert(smbc.state.ram[SMBC_ENEMY_Y_SPEED + 0] == 0xfeu);
 }
 
+
+static void power_up_family(void) {
+  /* no state: nothing happens */
+  Smbc smbc;
+  smbc_init(&smbc);
+  power_up_obj_handler(&smbc.state);
+  assert(smbc.state.ram[SMBC_ENEMY_STATE + 5] == 0x00u);
+
+  /* growing: every fourth frame the power-up rises one pixel and
+   * the state ticks */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 5] = SMBC_POWER_UP_OBJECT;
+  smbc.state.ram[SMBC_ENEMY_STATE + 5] = 0x06u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 5] = 0x60u;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 5] = 0x40u;
+  smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0xa0u;
+  smbc.state.ram[SMBC_SCREEN_LEFT_PAGE_LOC + 1u] = 0x01u;
+  smbc.state.ram[SMBC_FRAME_COUNTER] = 0x04u;
+  power_up_obj_handler(&smbc.state);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_POSITION + 5] == 0x5fu);
+  assert(smbc.state.ram[SMBC_ENEMY_STATE + 5] == 0x07u);
+
+  /* too small to run the subs: state under 6 exits early */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 5] = SMBC_POWER_UP_OBJECT;
+  smbc.state.ram[SMBC_ENEMY_STATE + 5] = 0x02u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 5] = 0x60u;
+  power_up_obj_handler(&smbc.state);
+  assert(smbc.state.ram[SMBC_SPRITE_TILENUMBER] == 0x00u);
+
+  /* fully grown on the rise: speed, the d7 state, direction */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 5] = SMBC_POWER_UP_OBJECT;
+  smbc.state.ram[SMBC_ENEMY_STATE + 5] = 0x11u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 5] = 0x60u;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 5] = 0x40u;
+  smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0xa0u;
+  smbc.state.ram[SMBC_SCREEN_LEFT_PAGE_LOC + 1u] = 0x01u;
+  smbc.state.ram[SMBC_FRAME_COUNTER] = 0x00u;
+  power_up_obj_handler(&smbc.state);
+  assert(smbc.state.ram[SMBC_ENEMY_STATE + 5] == 0x80u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 5] == 0x10u);
+  assert(smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 5] == 0x01u);
+
+  /* the mushroom draws: $76 $77 top row, $78 $79 bottom, palette
+   * 2, the top row $08 below the relative position */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 5] = SMBC_POWER_UP_OBJECT;
+  smbc.state.ram[SMBC_ENEMY_STATE + 5] = 0x80u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 5] = 0x60u;
+  smbc.state.ram[SMBC_ENEMY_Y_HIGH_POS + 5] = 0x01u; /* onscreen */
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 5] = 0x40u;
+  smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0xa0u;
+  smbc.state.ram[SMBC_SCREEN_LEFT_PAGE_LOC + 1u] = 0x01u;
+  smbc.state.ram[SMBC_POWER_UP_TYPE] = 0x00u;
+  smbc.state.ram[SMBC_TIMER_CONTROL] = 0x01u; /* skip movement */
+  power_up_obj_handler(&smbc.state);
+  assert(smbc.state.ram[SMBC_SPRITE_TILENUMBER] == 0x76u);
+  assert(smbc.state.ram[SMBC_SPRITE_TILENUMBER + 4u] == 0x77u);
+  assert(smbc.state.ram[SMBC_SPRITE_TILENUMBER + 8u] == 0x78u);
+  assert(smbc.state.ram[SMBC_SPRITE_TILENUMBER + 12u] == 0x79u);
+  assert(smbc.state.ram[SMBC_SPRITE_ATTRIBUTES] == 0x02u);
+  assert(smbc.state.ram[SMBC_SPRITE_Y_POSITION] == 0x68u);
+  assert(smbc.state.ram[SMBC_SPRITE_Y_POSITION + 8u] == 0x70u);
+
+  /* the star flashes: palette cycles with the frame counter and
+   * the right side flips horizontally */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 5] = SMBC_POWER_UP_OBJECT;
+  smbc.state.ram[SMBC_ENEMY_STATE + 5] = 0x80u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 5] = 0x60u;
+  smbc.state.ram[SMBC_ENEMY_Y_HIGH_POS + 5] = 0x01u; /* onscreen */
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 5] = 0x40u;
+  smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0xa0u;
+  smbc.state.ram[SMBC_SCREEN_LEFT_PAGE_LOC + 1u] = 0x01u;
+  smbc.state.ram[SMBC_POWER_UP_TYPE] = 0x02u;
+  smbc.state.ram[SMBC_TIMER_CONTROL] = 0x01u;
+  smbc.state.ram[SMBC_FRAME_COUNTER] = 0x06u; /* (>>1)&3 = 3 */
+  power_up_obj_handler(&smbc.state);
+  assert(smbc.state.ram[SMBC_SPRITE_TILENUMBER] == 0x8du);
+  assert(smbc.state.ram[SMBC_SPRITE_TILENUMBER + 8u] == 0xe4u);
+  assert(smbc.state.ram[SMBC_SPRITE_ATTRIBUTES] == 0x03u);
+  assert(smbc.state.ram[SMBC_SPRITE_ATTRIBUTES + 4u] == 0x43u);
+  assert(smbc.state.ram[SMBC_SPRITE_ATTRIBUTES + 8u] == 0x03u);
+  assert(smbc.state.ram[SMBC_SPRITE_ATTRIBUTES + 12u] == 0x43u);
+
+  /* the fire flower flashes the top row only */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 5] = SMBC_POWER_UP_OBJECT;
+  smbc.state.ram[SMBC_ENEMY_STATE + 5] = 0x80u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 5] = 0x60u;
+  smbc.state.ram[SMBC_ENEMY_Y_HIGH_POS + 5] = 0x01u; /* onscreen */
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 5] = 0x40u;
+  smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0xa0u;
+  smbc.state.ram[SMBC_SCREEN_LEFT_PAGE_LOC + 1u] = 0x01u;
+  smbc.state.ram[SMBC_POWER_UP_TYPE] = 0x01u;
+  smbc.state.ram[SMBC_TIMER_CONTROL] = 0x01u;
+  smbc.state.ram[SMBC_FRAME_COUNTER] = 0x02u; /* (>>1)&3 = 1 */
+  power_up_obj_handler(&smbc.state);
+  assert(smbc.state.ram[SMBC_SPRITE_TILENUMBER] == 0xd6u);
+  assert(smbc.state.ram[SMBC_SPRITE_TILENUMBER + 8u] == 0xd9u);
+  assert(smbc.state.ram[SMBC_SPRITE_ATTRIBUTES] == 0x01u);
+  assert(smbc.state.ram[SMBC_SPRITE_ATTRIBUTES + 4u] == 0x41u);
+  /* the bottom row keeps the draw attribute ($01), no flash */
+  assert(smbc.state.ram[SMBC_SPRITE_ATTRIBUTES + 8u] == 0x01u);
+  assert(smbc.state.ram[SMBC_SPRITE_ATTRIBUTES + 12u] == 0x41u);
+}
+
 int main(void) {
   onscreen_survives();
   too_far_left_erased();
@@ -1568,6 +1676,7 @@ int main(void) {
   jumpspring_family();
   vine_family();
   bowser_family();
+  power_up_family();
   puts("tests/core/runners: ok");
   return 0;
 }

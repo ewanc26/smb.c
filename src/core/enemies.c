@@ -26,8 +26,9 @@ static void init_enemy_object(CoreState *st, uint8_t x) {
   checkpoint_enemy_id(st, x);
 }
 
-/* smb.asm: EraseEnemyObject — clear all of a slot's variables */
-static void erase_enemy_object(CoreState *st, uint8_t x) {
+/* smb.asm: EraseEnemyObject — clear all of a slot's variables.
+ * Exported for the runner layer's OffscreenBoundsCheck */
+void erase_enemy_object(CoreState *st, uint8_t x) {
   st->ram[SMBC_ENEMY_FLAG + x] = 0x00u;
   st->ram[SMBC_ENEMY_ID + x] = 0x00u;
   st->ram[SMBC_ENEMY_STATE + x] = 0x00u;

@@ -38,4 +38,7 @@ void enemies_and_loops_core(CoreState *state, uint8_t x);
  * in core/enemyinit, whose bullet bill / cheep-cheep path jumps here */
 void checkpoint_enemy_id(CoreState *state, uint8_t x);
 
+/* smb.asm: EraseEnemyObject — clear all of a slot's variables */
+void erase_enemy_object(CoreState *state, uint8_t x);
+
 #endif /* SMBC_CORE_ENEMIES_H */

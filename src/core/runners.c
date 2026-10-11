@@ -3,8 +3,10 @@
 
 #include "../data/objects.h"
 #include "enemies.h"
+#include "enemies.h"
 #include "move.h"
 #include "offscreen.h"
+#include "../data/enemies.h"
 
 /* smb.asm's enemy object constants used here */
 #define SMBC_PIRANHA_PLANT 0x0du        /* smb.asm: PiranhaPlant */
@@ -504,4 +506,79 @@ void move_piranha_plant(CoreState *st, uint8_t x) {
   }
 put_in_pipe:
   st->ram[SMBC_ENEMY_SPR_ATTRIB + x] = 0x20u;
+}
+
+/* smb.asm: PlayerLakituDiff — the speed lakitu (or a thrown spiny)
+ * should fly at. The horizontal player distance caps at $3c; beyond
+ * it a lakitu moving away from the player turns around, slowly if
+ * already moving right. The capped distance, quartered, is then
+ * subtracted from an adjustment picked by movement class — running
+ * player with fast scroll, moving player, or neither — with a spiny
+ * or a vertically-moving enemy keeping the richer classes. The
+ * asm's SPixelLak loop subtracts once more than the pixel count */
+static uint8_t player_lakitu_diff(CoreState *st, uint8_t x) {
+  uint8_t side = 0x00u; /* enemy right of player */
+  uint8_t diff = (uint8_t)(st->ram[SMBC_ENEMY_X_POSITION + x] -
+                           st->ram[SMBC_PLAYER_X_POSITION]);
+  if (player_enemy_diff(st, x) < 0) {
+    side = 0x01u;
+    diff = (uint8_t)(~diff + 1u);
+  }
+  if (diff >= 0x3cu) {
+    diff = 0x3cu;
+    if (st->ram[SMBC_ENEMY_ID + x] == SMBC_LAKITU &&
+        side != st->ram[SMBC_LAKITU_MOVE_DIRECTION + x]) {
+      if (st->ram[SMBC_LAKITU_MOVE_DIRECTION + x] != 0x00u) {
+        st->ram[SMBC_ENEMY_X_SPEED + x]--; /* LakituMoveSpeed */
+        if (st->ram[SMBC_ENEMY_X_SPEED + x] != 0x00u) {
+          return st->ram[SMBC_ENEMY_X_SPEED + x];
+        }
+      }
+      st->ram[SMBC_LAKITU_MOVE_DIRECTION + x] = side; /* smb.asm: SetLMovD */
+    }
+  }
+  diff = (uint8_t)((diff & 0x3cu) >> 2);
+  uint8_t adj = 0x00u;
+  if (st->ram[SMBC_PLAYER_X_SPEED] != 0x00u &&
+      st->ram[SMBC_SCROLL_AMOUNT] != 0x00u) {
+    adj = 0x01u;
+    if (st->ram[SMBC_PLAYER_X_SPEED] >= 0x19u &&
+        st->ram[SMBC_SCROLL_AMOUNT] >= 0x02u) {
+      adj = 0x02u;
+    }
+  }
+  /* smb.asm: ChkSpinyO */
+  if (st->ram[SMBC_ENEMY_ID + x] == SMBC_SPINY) {
+    if (st->ram[SMBC_PLAYER_X_SPEED] == 0x00u &&
+        st->ram[SMBC_ENEMY_Y_SPEED + x] == 0x00u) {
+      adj = 0x00u;
+    }
+  } else if (st->ram[SMBC_ENEMY_Y_SPEED + x] == 0x00u) {
+    adj = 0x00u;
+  }
+  return (uint8_t)(SMBC_LAKITU_DIFF_ADJ_DATA[adj] - diff - 0x01u);
+}
+
+void move_lakitu(CoreState *st, uint8_t x) {
+  if ((st->ram[SMBC_ENEMY_STATE + x] & 0x20u) != 0x00u) {
+    move_d_enemy_vertically(st, x);
+    return;
+  }
+  uint8_t speed;
+  if (st->ram[SMBC_ENEMY_STATE + x] != 0x00u) {
+    st->ram[SMBC_LAKITU_MOVE_DIRECTION + x] = 0x00u;
+    st->ram[SMBC_ENEMY_FRENZY_BUFFER] = 0x00u;
+    speed = 0x10u;
+  } else {
+    st->ram[SMBC_ENEMY_FRENZY_BUFFER] = SMBC_SPINY;
+    speed = player_lakitu_diff(st, x);
+  }
+  st->ram[SMBC_ENEMY_X_SPEED + x] = speed; /* LakituMoveSpeed */
+  uint8_t dir = 0x01u; /* right */
+  if ((st->ram[SMBC_LAKITU_MOVE_DIRECTION + x] & 0x01u) == 0x00u) {
+    st->ram[SMBC_ENEMY_X_SPEED + x] = (uint8_t)(~speed + 1u);
+    dir = 0x02u; /* left */
+  }
+  st->ram[SMBC_ENEMY_MOVING_DIR + x] = dir;
+  move_enemy_horizontally(st, x);
 }

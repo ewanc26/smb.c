@@ -25,6 +25,8 @@
 #define SMBC_BUZZY_BEETLE 0x02u  /* smb.asm: BuzzyBeetle */
 #define SMBC_GOOMBA 0x06u        /* smb.asm: Goomba */
 #define SMBC_VINE_OBJECT 0x2fu   /* smb.asm: VineObject */
+#define SMBC_LAKITU 0x11u        /* smb.asm: Lakitu */
+#define SMBC_SPINY 0x12u         /* smb.asm: Spiny */
 
 /* smb.asm: EnemiesAndLoopsCore — one enemy slot's per-frame entry. An
  * active slot jumps to the (pending) enemy runners; an idle slot checks

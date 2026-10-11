@@ -89,4 +89,13 @@ void proc_hammer_bro(CoreState *state, uint8_t x);
  * is always set, for the inside-the-pipe illusion */
 void move_piranha_plant(CoreState *state, uint8_t x);
 
+/* smb.asm: MoveLakitu — a defeated lakitu falls; a spawning one
+ * (any nonzero state) resets its direction and the frenzy buffer
+ * and flies at $10. Otherwise the frenzy buffer holds the spiny
+ * identifier and PlayerLakituDiff derives the speed: the capped
+ * player distance, quartered, subtracted from a movement-class
+ * adjustment, with the direction flipping beyond $3c pixels away.
+ * The direction's d0 then negates the speed for leftward flight */
+void move_lakitu(CoreState *state, uint8_t x);
+
 #endif /* SMBC_CORE_RUNNERS_H */

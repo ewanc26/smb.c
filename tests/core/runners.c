@@ -4,6 +4,7 @@
 #include <stdio.h>
 
 #include "../../src/core/frame.h"
+#include "../../src/core/enemies.h"
 #include "../../src/core/runners.h"
 
 /* screen spanning $0020-$0110 */
@@ -725,6 +726,107 @@ static void piranha_emerges_and_moves(void) {
   assert(smbc.state.ram[SMBC_PIRANHA_PLANT_MOVE_FLAG + 0] == 0x01u);
 }
 
+
+static void lakitu_spawning_state(void) {
+  /* any nonzero state resets the direction and frenzy buffer and
+   * flies at $10, negated for the reset (leftward) direction */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_STATE + 0] = 0x01u;
+  smbc.state.ram[SMBC_LAKITU_MOVE_DIRECTION + 0] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_FRENZY_BUFFER] = 0x99u;
+  move_lakitu(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_LAKITU_MOVE_DIRECTION + 0] == 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_FRENZY_BUFFER] == 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] == 0xf0u); /* -$10 */
+  assert(smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] == 0x02u);
+
+  /* defeated: falls with the $3d gravity, frenzy buffer untouched */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_STATE + 0] = 0x20u;
+  smbc.state.ram[SMBC_ENEMY_FRENZY_BUFFER] = 0x99u;
+  move_lakitu(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_MOVE_FORCE + 0] == 0x3du);
+  assert(smbc.state.ram[SMBC_ENEMY_FRENZY_BUFFER] == 0x99u);
+}
+
+static void lakitu_chases_player(void) {
+  /* active and close: the frenzy buffer takes the spiny id and the
+   * speed comes from the quartered distance off the adjustment */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_LAKITU;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] = 0x40u; /* $40 right of player */
+  move_lakitu(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_FRENZY_BUFFER] == SMBC_SPINY);
+  /* diff $40 capped to $3c, quartered to $0f; no movement class:
+   * $15 - $0f - 1 = $05, leftward */
+  assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] == 0xfbu);
+  assert(smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] == 0x02u);
+
+  /* running player with fast scroll: the $40 class */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_LAKITU;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] = 0x10u;
+  smbc.state.ram[SMBC_PLAYER_X_SPEED] = 0x20u;
+  smbc.state.ram[SMBC_SCROLL_AMOUNT] = 0x02u;
+  /* keep the class with a vertical speed — but $a0 is also the
+   * move direction, so use $02: nonzero, with d0 clear */
+  smbc.state.ram[SMBC_ENEMY_Y_SPEED + 0] = 0x02u;
+  move_lakitu(&smbc.state, 0x00u);
+  /* diff $10, quartered $04: $40 - $04 - 1 = $3b, leftward */
+  assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] == 0xc5u);
+
+  /* moving right (direction d0 set): no negation */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_LAKITU;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] = 0x10u;
+  smbc.state.ram[SMBC_LAKITU_MOVE_DIRECTION + 0] = 0x01u;
+  move_lakitu(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] == 0x01u);
+  assert((smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] & 0x80u) == 0x00u);
+}
+
+static void lakitu_turns_around(void) {
+  /* beyond $3c and moving away: a right-moving lakitu (direction
+   * d0 set, enemy right of the player) bleeds speed and the
+   * decremented value is returned as-is */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_LAKITU;
+  smbc.state.ram[SMBC_LAKITU_MOVE_DIRECTION + 0] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] = 0x80u; /* side 0 */
+  smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] = 0x05u;
+  move_lakitu(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] == 0x04u);
+  assert(smbc.state.ram[SMBC_LAKITU_MOVE_DIRECTION + 0] == 0x01u);
+  assert(smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] == 0x01u);
+
+  /* bled to zero: the direction flips, and the speed comes from
+   * the distance calc for the new (leftward) direction */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_LAKITU;
+  smbc.state.ram[SMBC_LAKITU_MOVE_DIRECTION + 0] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] = 0x80u;
+  smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] = 0x01u;
+  move_lakitu(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_LAKITU_MOVE_DIRECTION + 0] == 0x00u);
+  /* capped $3c quartered to $0f: $15 - $0f - 1 = $05, leftward */
+  assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] == 0xfbu);
+  assert(smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] == 0x02u);
+
+  /* a left-moving lakitu left of the player flips immediately */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_LAKITU;
+  smbc.state.ram[SMBC_LAKITU_MOVE_DIRECTION + 0] = 0x00u;
+  smbc.state.ram[SMBC_PLAYER_PAGE_LOC] = 0x01u; /* side 1 */
+  smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0x80u;
+  move_lakitu(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_LAKITU_MOVE_DIRECTION + 0] == 0x01u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] == 0x05u);
+  assert(smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] == 0x01u);
+}
+
 int main(void) {
   onscreen_survives();
   too_far_left_erased();
@@ -758,6 +860,9 @@ int main(void) {
   hammer_bro_shimmy_and_walk();
   piranha_stays_in_pipe();
   piranha_emerges_and_moves();
+  lakitu_spawning_state();
+  lakitu_chases_player();
+  lakitu_turns_around();
   puts("tests/core/runners: ok");
   return 0;
 }

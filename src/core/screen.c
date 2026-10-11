@@ -1,5 +1,6 @@
 /* core/screen.c — see core/screen.h for the contract. */
 #include "screen.h"
+#include "enemies.h"
 
 #include "parser.h"
 #include "../hw/ppu.h"
@@ -519,4 +520,82 @@ void end_area_points(CoreState *st) {
   digits_math_routine(st, y);
   uint8_t nybbles = (uint8_t)(st->ram[SMBC_CURRENT_PLAYER] << 2);
   update_number(st, (uint8_t)(nybbles | 0x04u));
+}
+
+/* smb.asm: AddToScore — apply the digit modifiers to the current
+ * player's score, then refresh the status bar through
+ * GetSBNybbles/UpdateNumber */
+void add_to_score(CoreState *st) {
+  digits_math_routine(st, SMBC_SCORE_OFFSETS[st->ram[SMBC_CURRENT_PLAYER]]);
+  get_sb_nybbles(st);
+}
+
+/* smb.asm: FloateyNumTileData — the two tile halves of each
+ * point value, 1-UP last */
+static const uint8_t SMBC_FLOATEY_NUM_TILE_DATA[24] = {
+    0xffu, 0xffu, 0xf6u, 0xfbu, 0xf7u, 0xfbu, 0xf8u, 0xfbu,
+    0xf9u, 0xfbu, 0xfau, 0xfbu, 0xf6u, 0x50u, 0xf7u, 0x50u,
+    0xf8u, 0x50u, 0xf9u, 0x50u, 0xfau, 0x50u, 0xfdu, 0xfeu};
+
+/* smb.asm: ScoreUpdateData — high nybble the score digit, low
+ * nybble the amount added to it */
+static const uint8_t SMBC_SCORE_UPDATE_DATA[12] = {
+    0xffu, 0x41u, 0x42u, 0x44u, 0x45u, 0x48u,
+    0x31u, 0x32u, 0x34u, 0x35u, 0x38u, 0x00u};
+
+/* smb.asm: FloateyNumbersRoutine — the rising point number over
+ * a defeated enemy: counts down its timer, banks the points at
+ * $2b (a 1-up for control $0b), rises a pixel a frame, and draws
+ * its two sprite halves */
+void floatey_numbers_routine(CoreState *st, uint8_t x) {
+  uint8_t ctrl = st->ram[SMBC_FLOATEY_NUM_CONTROL + x];
+  if (ctrl == 0x00u) return;
+  if (ctrl >= 0x0bu) {
+    ctrl = 0x0bu;
+    st->ram[SMBC_FLOATEY_NUM_CONTROL + x] = 0x0bu;
+  }
+  uint8_t timer = st->ram[SMBC_FLOATEY_NUM_TIMER + x];
+  if (timer == 0x00u) {
+    st->ram[SMBC_FLOATEY_NUM_CONTROL + x] = 0x00u;
+    return;
+  }
+  st->ram[SMBC_FLOATEY_NUM_TIMER + x]--;
+  if (timer == 0x2bu) {
+    if (ctrl == 0x0bu) {
+      st->ram[SMBC_NUMBEROF_LIVES]++;
+      st->ram[SMBC_SQUARE2_SOUND_QUEUE] = SMBC_SFX_EXTRA_LIFE;
+    }
+    uint8_t update = SMBC_SCORE_UPDATE_DATA[ctrl];
+    st->ram[SMBC_DIGIT_MODIFIER + (update >> 4u)] =
+        (uint8_t)(update & 0x0fu);
+    add_to_score(st);
+  }
+  /* smb.asm: ChkTallEnemy — tall enemies not on the exemption
+   * list, the hammer bro, and active short enemies use the
+   * alternate sprite data offset */
+  uint8_t y = st->ram[SMBC_ENEMY_SPR_DATA_OFFSET + x];
+  uint8_t id = st->ram[SMBC_ENEMY_ID + x];
+  if (id != SMBC_SPINY && id != SMBC_PIRANHA_PLANT && id != 0x0au &&
+      id != 0x0bu &&
+      (id == SMBC_HAMMER_BRO || id >= 0x09u ||
+       st->ram[SMBC_ENEMY_STATE + x] < 0x02u)) {
+    y = st->ram[SMBC_ALT_SPR_DATA_OFFSET +
+                st->ram[SMBC_SPDATA_OFFSET_CTRL]];
+  }
+  if (st->ram[SMBC_FLOATEY_NUM_Y_POS + x] >= 0x18u) {
+    st->ram[SMBC_FLOATEY_NUM_Y_POS + x]--;
+  }
+  /* smb.asm: SetupNumSpr + DumpTwoSpr */
+  uint8_t a = (uint8_t)(st->ram[SMBC_FLOATEY_NUM_Y_POS + x] - 0x08u);
+  st->ram[SMBC_SPRITE_Y_POSITION + y] = a;
+  st->ram[SMBC_SPRITE_Y_POSITION + 4u + y] = a;
+  uint8_t xpos = st->ram[SMBC_FLOATEY_NUM_X_POS + x];
+  st->ram[SMBC_SPRITE_X_POSITION + y] = xpos;
+  st->ram[SMBC_SPRITE_X_POSITION + 4u + y] = (uint8_t)(xpos + 0x08u);
+  st->ram[SMBC_SPRITE_ATTRIBUTES + y] = 0x02u;
+  st->ram[SMBC_SPRITE_ATTRIBUTES + 4u + y] = 0x02u;
+  st->ram[SMBC_SPRITE_TILENUMBER + y] =
+      SMBC_FLOATEY_NUM_TILE_DATA[ctrl * 2u];
+  st->ram[SMBC_SPRITE_TILENUMBER + 4u + y] =
+      SMBC_FLOATEY_NUM_TILE_DATA[ctrl * 2u + 1u];
 }

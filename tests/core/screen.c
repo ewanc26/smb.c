@@ -6,6 +6,7 @@
 
 #include "../../src/core/frame.h"
 #include "../../src/core/screen.h"
+#include "../../src/core/enemies.h"
 #include "../../src/core/state.h"
 
 int main(void) {
@@ -172,6 +173,74 @@ int main(void) {
   assert(smbc.ppu.vram[0x25c5] == 0x0bu); /* B of BUT */
   assert(smbc.ppu.vram[0x2605] == 0x0au); /* A of ANOTHER */
   assert(smbc.ppu.vram[0x2613] == 0x2bu); /* ! */
+
+  /* smb.asm: AddToScore — a +100 modifier lands on the score digits
+   * through the current player's offset */
+  state_init(&state);
+  state.ram[SMBC_OPER_MODE] = SMBC_MODE_GAME;
+  state.ram[SMBC_CURRENT_PLAYER] = 0x00u;
+  state.ram[SMBC_DIGIT_MODIFIER + 2] = 0x01u; /* hundreds digit */
+  add_to_score(&state);
+  assert(state.ram[SMBC_DISPLAY_DIGITS + 0x0bu - 3] == 0x01u);
+  assert(state.ram[SMBC_DIGIT_MODIFIER + 2] == 0x00u);
+
+  /* smb.asm: FloateyNumbersRoutine — control $00 leaves untouched */
+  Smbc fl;
+  smbc_init(&fl);
+  fl.state.ram[SMBC_FLOATEY_NUM_CONTROL + 0] = 0x00u;
+  fl.state.ram[SMBC_FLOATEY_NUM_TIMER + 0] = 0x30u;
+  floatey_numbers_routine(&fl.state, 0x00u);
+  assert(fl.state.ram[SMBC_FLOATEY_NUM_TIMER + 0] == 0x30u);
+
+  /* control $0b clamped, an expired timer clears the control */
+  smbc_init(&fl);
+  fl.state.ram[SMBC_FLOATEY_NUM_CONTROL + 0] = 0x7fu;
+  fl.state.ram[SMBC_FLOATEY_NUM_TIMER + 0] = 0x00u;
+  floatey_numbers_routine(&fl.state, 0x00u);
+  assert(fl.state.ram[SMBC_FLOATEY_NUM_CONTROL + 0] == 0x00u);
+
+  /* timer at $2b with control $0b: a 1-up, its sound, and the score
+   * update; the number rises a pixel and draws its sprite halves */
+  smbc_init(&fl);
+  fl.state.ram[SMBC_OPER_MODE] = SMBC_MODE_GAME;
+  fl.state.ram[SMBC_FLOATEY_NUM_CONTROL + 0] = 0x0bu;
+  fl.state.ram[SMBC_FLOATEY_NUM_TIMER + 0] = 0x2bu;
+  fl.state.ram[SMBC_FLOATEY_NUM_Y_POS + 0] = 0x40u;
+  fl.state.ram[SMBC_FLOATEY_NUM_X_POS + 0] = 0x50u;
+  fl.state.ram[SMBC_ENEMY_ID + 0] = 0x06u; /* short enemy, alive */
+  fl.state.ram[SMBC_ENEMY_SPR_DATA_OFFSET + 0] = 0x00u;
+  fl.state.ram[SMBC_SPDATA_OFFSET_CTRL] = 0x01u;
+  fl.state.ram[SMBC_ALT_SPR_DATA_OFFSET + 1] = 0x30u;
+  floatey_numbers_routine(&fl.state, 0x00u);
+  assert(fl.state.ram[SMBC_FLOATEY_NUM_TIMER + 0] == 0x2au);
+  assert(fl.state.ram[SMBC_NUMBEROF_LIVES] == 0x01u);
+  assert(fl.state.ram[SMBC_SQUARE2_SOUND_QUEUE] == SMBC_SFX_EXTRA_LIFE);
+  assert(fl.state.ram[SMBC_FLOATEY_NUM_Y_POS + 0] == 0x3fu);
+  /* the alternate OAM offset was chosen for an active short enemy */
+  assert(fl.state.ram[SMBC_SPRITE_Y_POSITION + 0x30] == 0x37u);
+  assert(fl.state.ram[SMBC_SPRITE_Y_POSITION + 0x34] == 0x37u);
+  assert(fl.state.ram[SMBC_SPRITE_X_POSITION + 0x30] == 0x50u);
+  assert(fl.state.ram[SMBC_SPRITE_X_POSITION + 0x34] == 0x58u);
+  assert(fl.state.ram[SMBC_SPRITE_TILENUMBER + 0x30] == 0xfdu);
+  assert(fl.state.ram[SMBC_SPRITE_TILENUMBER + 0x34] == 0xfeu);
+
+  /* a spiny keeps its own OAM offset and a "200" rises in the bar */
+  smbc_init(&fl);
+  fl.state.ram[SMBC_OPER_MODE] = SMBC_MODE_GAME;
+  fl.state.ram[SMBC_FLOATEY_NUM_CONTROL + 0] = 0x02u;
+  fl.state.ram[SMBC_FLOATEY_NUM_TIMER + 0] = 0x2bu;
+  fl.state.ram[SMBC_FLOATEY_NUM_Y_POS + 0] = 0x10u; /* status bar */
+  fl.state.ram[SMBC_FLOATEY_NUM_X_POS + 0] = 0x20u;
+  fl.state.ram[SMBC_ENEMY_ID + 0] = SMBC_SPINY;
+  fl.state.ram[SMBC_ENEMY_SPR_DATA_OFFSET + 0] = 0x18u;
+  fl.state.ram[SMBC_SPDATA_OFFSET_CTRL] = 0x00u;
+  fl.state.ram[SMBC_ALT_SPR_DATA_OFFSET + 0] = 0x30u;
+  floatey_numbers_routine(&fl.state, 0x00u);
+  assert(fl.state.ram[SMBC_NUMBEROF_LIVES] == 0x00u);
+  assert(fl.state.ram[SMBC_DISPLAY_DIGITS + 0x0bu - 1] == 0x02u);
+  assert(fl.state.ram[SMBC_FLOATEY_NUM_Y_POS + 0] == 0x10u); /* no rise */
+  assert(fl.state.ram[SMBC_SPRITE_TILENUMBER + 0x18] == 0xf7u);
+  assert(fl.state.ram[SMBC_SPRITE_TILENUMBER + 0x1c] == 0xfbu);
 
   printf("tests/core/screen: ok\n");
   return 0;

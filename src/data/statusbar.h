@@ -20,6 +20,11 @@ extern const uint8_t SMBC_STATUS_BAR_DATA[SMBC_STATUS_BAR_DATA_SIZE];
 extern const uint8_t SMBC_STATUS_BAR_OFFSET[SMBC_STATUS_BAR_OFFSET_SIZE];
 
 /* smb.asm: StatusBarNybbles — per-player (score, coins) selector pair */
+#define SMBC_SCORE_OFFSETS_SIZE 2u
+
+/* smb.asm: ScoreOffsets */
+extern const uint8_t SMBC_SCORE_OFFSETS[SMBC_SCORE_OFFSETS_SIZE];
+
 extern const uint8_t SMBC_STATUS_BAR_NYBBLES[SMBC_STATUS_BAR_NYBBLES_SIZE];
 
 #endif /* SMBC_DATA_STATUSBAR_H */

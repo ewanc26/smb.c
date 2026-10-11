@@ -49,6 +49,14 @@ void print_status_bar_numbers(CoreState *state, uint8_t nybbles);
  * only the erase happens. */
 void digits_math_routine(CoreState *state, uint8_t y);
 
+/* smb.asm: AddToScore / GetSBNybbles / UpdateNumber — apply the digit
+ * modifiers to the current player's score and refresh the status bar */
+void add_to_score(CoreState *state);
+
+/* smb.asm: FloateyNumbersRoutine — the rising point number over a
+ * defeated enemy */
+void floatey_numbers_routine(CoreState *state, uint8_t x);
+
 /* smb.asm: GetPlayerColors — append the player's palette set to VRAM
  * buffer 1 at its current offset: $3f $10, length 4, the background
  * colour (from BackgroundColorCtrl when set, else AreaType) followed by

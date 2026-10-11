@@ -16,6 +16,9 @@ const uint8_t SMBC_STATUS_BAR_OFFSET[SMBC_STATUS_BAR_OFFSET_SIZE] = {
     0x06u, 0x0cu, 0x12u, 0x18u, 0x1eu, 0x24u,
 };
 
+/* smb.asm: ScoreOffsets — per-player score digit offset */
+const uint8_t SMBC_SCORE_OFFSETS[SMBC_SCORE_OFFSETS_SIZE] = {0x0bu, 0x11u};
+
 const uint8_t SMBC_STATUS_BAR_NYBBLES[SMBC_STATUS_BAR_NYBBLES_SIZE] = {
     /* smb.asm: StatusBarNybbles */
     0x02u, 0x13u,

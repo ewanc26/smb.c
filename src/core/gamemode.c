@@ -45,16 +45,23 @@ static void game_routines(Smbc *smbc) {
 }
 
 /* smb.asm: GameEngine — the per-frame object and music processing. The
- * fireball/bubble, translation, offscreen, block, cannon, whirlpool
- * and timer calls run, as do the music check, palette-cycle control
- * computation and the SaveAB tail; the enemy, player-graphics,
+ * fireball/bubble, enemy, translation, offscreen, block, cannon,
+ * whirlpool and timer calls run, as do the music check, palette-cycle
+ * control computation and the SaveAB tail; the player-graphics,
  * misc-object and flagpole calls still wait on their atoms. */
 static void game_engine(Smbc *smbc) {
   CoreState *st = &smbc->state;
-  /* TODO(port): smb.asm: the ProcELoop enemy and floatey-number
-   * passes, PlayerGfxHandler, MiscObjectsCore, FlagpoleRoutine */
+  /* TODO(port): smb.asm: PlayerGfxHandler, MiscObjectsCore,
+   * FlagpoleRoutine */
   /* smb.asm: ProcFireball_Bubble */
   proc_fireball_bubble(st);
+  /* smb.asm: ProcELoop — the enemy and floatey-number passes over all
+   * six slots */
+  for (uint8_t x = 0x00u; x < 0x06u; x++) {
+    st->ram[SMBC_OBJECT_OFFSET] = x;
+    enemies_and_loops_core(st, x);
+    floatey_numbers_routine(st, x);
+  }
   /* smb.asm: GetPlayerOffscreenBits, then RelativePlayerPosition — the
    * player's offscreen bits and screen-relative coordinates, ahead of
    * PlayerGfxHandler */

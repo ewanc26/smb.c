@@ -14,6 +14,7 @@ static void master_joypad_copy(void) {
   smbc_init(&smbc);
   smbc.state.ram[SMBC_OPER_MODE] = SMBC_MODE_GAME;
   smbc.state.ram[SMBC_OPER_MODE_TASK] = 0x03u;
+  smbc.state.ram[SMBC_AREA_PARSER_TASK_NUM] = 0x07u;
   smbc.state.ram[SMBC_CURRENT_PLAYER] = 0x01u;
   smbc.state.ram[SMBC_SAVED_JOYPAD2_BITS] = 0x83u;
 
@@ -43,6 +44,7 @@ static void engine_save_ab_tail(void) {
   smbc_init(&smbc);
   smbc.state.ram[SMBC_OPER_MODE] = SMBC_MODE_GAME;
   smbc.state.ram[SMBC_OPER_MODE_TASK] = 0x03u;
+  smbc.state.ram[SMBC_AREA_PARSER_TASK_NUM] = 0x07u;
   smbc.state.ram[SMBC_PLAYER_Y_HIGH_POS] = 0x10u; /* onscreen: bpl taken */
   smbc.state.ram[SMBC_A_B_BUTTONS] = 0xc0u;
   smbc.state.ram[SMBC_LEFT_RIGHT_BUTTONS] = 0x03u;
@@ -60,6 +62,7 @@ static void engine_reattains_music_when_star_fades(void) {
   smbc_init(&smbc);
   smbc.state.ram[SMBC_OPER_MODE] = SMBC_MODE_GAME;
   smbc.state.ram[SMBC_OPER_MODE_TASK] = 0x03u;
+  smbc.state.ram[SMBC_AREA_PARSER_TASK_NUM] = 0x07u;
   smbc.state.ram[SMBC_PLAYER_Y_HIGH_POS] = 0x00u; /* below screen */
   smbc.state.ram[SMBC_STAR_INVINCIBLE_TIMER] = 0x04u;
   smbc.state.ram[SMBC_INTERVAL_TIMER_CONTROL] = 0x00u;
@@ -73,6 +76,7 @@ static void engine_reattains_music_when_star_fades(void) {
   smbc_init(&gated);
   gated.state.ram[SMBC_OPER_MODE] = SMBC_MODE_GAME;
   gated.state.ram[SMBC_OPER_MODE_TASK] = 0x03u;
+  smbc.state.ram[SMBC_AREA_PARSER_TASK_NUM] = 0x07u;
   gated.state.ram[SMBC_PLAYER_Y_HIGH_POS] = 0x00u;
   gated.state.ram[SMBC_STAR_INVINCIBLE_TIMER] = 0x04u;
   gated.state.ram[SMBC_INTERVAL_TIMER_CONTROL] = 0x07u;
@@ -84,6 +88,7 @@ static void engine_reattains_music_when_star_fades(void) {
   smbc_init(&nostar);
   nostar.state.ram[SMBC_OPER_MODE] = SMBC_MODE_GAME;
   nostar.state.ram[SMBC_OPER_MODE_TASK] = 0x03u;
+  smbc.state.ram[SMBC_AREA_PARSER_TASK_NUM] = 0x07u;
   nostar.state.ram[SMBC_PLAYER_Y_HIGH_POS] = 0x00u;
   nostar.state.ram[SMBC_A_B_BUTTONS] = 0x40u;
   oper_mode_execution_tree(&nostar);

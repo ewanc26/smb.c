@@ -112,4 +112,15 @@ void move_flying_cheep_cheep(CoreState *state, uint8_t x);
  * $13 are the asm's NoMoveCode dummies */
 void enemy_movement_subs(CoreState *state, uint8_t x);
 
+/* smb.asm: RunRetainerObj — offscreen bits, relative position,
+ * and graphics for the mushroom retainer */
+void run_retainer_obj(CoreState *state, uint8_t x);
+
+/* smb.asm: RunNormalEnemies — clear the sprite attributes, then
+ * the full per-frame pipeline: offscreen bits, relative position,
+ * graphics, bounding box, background collision, enemy and player
+ * collisions, movement (unless the master timer control is set),
+ * and the offscreen bounds check */
+void run_normal_enemies(CoreState *state, uint8_t x);
+
 #endif /* SMBC_CORE_RUNNERS_H */

@@ -932,6 +932,66 @@ static void movement_subs_dispatches(void) {
   assert(smbc.state.ram[SMBC_ENEMY_SPR_ATTRIB + 0] == 0x20u);
 }
 
+
+static void run_normal_family(void) {
+  /* a walking goomba: the full pipeline draws it and the timer
+   * control being clear lets the movement sub run; the sprite
+   * attributes start cleared */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_GOOMBA;
+  smbc.state.ram[SMBC_ENEMY_STATE + 0] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_FLAG + 0] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x40u;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] = 0x40u;
+  smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0xa0u;
+  smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] = 0xf0u;
+  smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] = 0x01u;
+  smbc.state.ram[SMBC_FRAME_COUNTER] = 0x08u;
+  smbc.state.ram[SMBC_AREA_TYPE] = 0x02u;
+  run_normal_enemies(&smbc.state, 0x00u);
+  /* the goomba frame was drawn */
+  assert(smbc.state.ram[SMBC_SPRITE_TILENUMBER + 8u] == 0x70u);
+  /* the movement sub walked it one pixel left */
+  assert(smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] == 0x3fu);
+  /* the bound box was computed: slot x + 1 */
+  assert(smbc.state.ram[SMBC_BOUNDING_BOX_UL_CORNER + 4] != 0x00u);
+
+  /* with the master timer control set the movement sub is
+   * skipped but everything else still runs */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_GOOMBA;
+  smbc.state.ram[SMBC_ENEMY_STATE + 0] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_FLAG + 0] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x40u;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] = 0x40u;
+  smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0xa0u;
+  smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] = 0xf0u;
+  smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] = 0x01u;
+  smbc.state.ram[SMBC_FRAME_COUNTER] = 0x08u;
+  smbc.state.ram[SMBC_AREA_TYPE] = 0x02u;
+  smbc.state.ram[SMBC_TIMER_CONTROL] = 0x01u;
+  run_normal_enemies(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_SPRITE_TILENUMBER + 8u] == 0x70u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] == 0x40u);
+
+  /* the retainer draws with no movement and no collisions */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_RETAINER_OBJECT;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x40u;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] = 0x40u;
+  smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0xa0u;
+  smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] = 0x01u;
+  smbc.state.ram[SMBC_FRAME_COUNTER] = 0x08u;
+  run_retainer_obj(&smbc.state, 0x00u);
+  /* retainer graphics at offset $a2: $cd $cd $ce $ce $cf $cf */
+  assert(smbc.state.ram[SMBC_SPRITE_TILENUMBER] == 0xcdu);
+  assert(smbc.state.ram[SMBC_SPRITE_TILENUMBER + 8u] == 0xceu);
+  assert(smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] == 0x40u);
+  /* the bound box stays untouched */
+  assert(smbc.state.ram[SMBC_BOUNDING_BOX_UL_CORNER + 4] == 0x00u);
+}
+
 int main(void) {
   onscreen_survives();
   too_far_left_erased();
@@ -971,6 +1031,7 @@ int main(void) {
   flying_cheep_cheep_moves();
   defeated_flying_cheep_cheep();
   movement_subs_dispatches();
+  run_normal_family();
   puts("tests/core/runners: ok");
   return 0;
 }

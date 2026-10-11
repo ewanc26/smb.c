@@ -4,6 +4,7 @@
 #include "../data/objects.h"
 #include "enemies.h"
 #include "enemies.h"
+#include "collide.h"
 #include "move.h"
 #include "offscreen.h"
 #include "../data/enemies.h"
@@ -661,4 +662,27 @@ void enemy_movement_subs(CoreState *st, uint8_t x) {
     default:
       break;
   }
+}
+
+/* smb.asm: RunRetainerObj — the mushroom retainer only needs its
+ * position resolved and drawn */
+void run_retainer_obj(CoreState *st, uint8_t x) {
+  get_enemy_offscreen_bits(st, x);
+  relative_enemy_position(st, x);
+  enemy_gfx_handler(st, x);
+}
+
+/* smb.asm: RunNormalEnemies — draw, bound, collide, move, and
+ * bounds-check the ordinary enemies */
+void run_normal_enemies(CoreState *st, uint8_t x) {
+  st->ram[SMBC_ENEMY_SPR_ATTRIB + x] = 0x00u;
+  get_enemy_offscreen_bits(st, x);
+  relative_enemy_position(st, x);
+  enemy_gfx_handler(st, x);
+  get_enemy_bound_box(st, x);
+  enemy_to_bg_collision_det(st, x);
+  enemies_collision(st, x);
+  player_enemy_collision(st, x);
+  if (st->ram[SMBC_TIMER_CONTROL] == 0x00u) enemy_movement_subs(st, x);
+  offscreen_bounds_check(st, x);
 }

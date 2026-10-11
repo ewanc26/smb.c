@@ -72,3 +72,9 @@ const uint8_t SMBC_DEFAULT_Y_ONSCREEN_OFS[3] = {0x04u, 0x00u, 0x04u};
 
 /* smb.asm: HighPosUnitData */
 const uint8_t SMBC_HIGH_POS_UNIT_DATA[2] = {0xffu, 0x00u};
+
+/* smb.asm: XSpeedAdderData */
+const uint8_t SMBC_X_SPEED_ADDER_DATA[4] = {0x00u, 0xe8u, 0x00u, 0x18u};
+
+/* smb.asm: RevivedXSpeed */
+const uint8_t SMBC_REVIVED_X_SPEED[4] = {0x08u, 0xf8u, 0x0cu, 0xf4u};

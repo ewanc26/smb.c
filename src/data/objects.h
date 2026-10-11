@@ -67,4 +67,11 @@ extern const uint8_t SMBC_DEFAULT_X_ONSCREEN_OFS[3];
 extern const uint8_t SMBC_DEFAULT_Y_ONSCREEN_OFS[3];
 extern const uint8_t SMBC_HIGH_POS_UNIT_DATA[2];
 
+/* smb.asm: XSpeedAdderData — the temporary speed adder used to slow
+ * horizontal movement, indexed by direction and the slow flag;
+ * RevivedXSpeed — the speed a revived stunned enemy gets, by
+ * direction and primary hard mode */
+extern const uint8_t SMBC_X_SPEED_ADDER_DATA[4];
+extern const uint8_t SMBC_REVIVED_X_SPEED[4];
+
 #endif /* SMBC_DATA_OBJECTS_H */

@@ -113,6 +113,157 @@ static void flying_cheep_cheep_exempt(void) {
   assert(!erased(&smbc));
 }
 
+
+/* the following exercises were added with the MoveNormalEnemy atom */
+
+static void normal_state_moves_horizontally(void) {
+  /* state $00: plain horizontal movement, speed preserved */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = 0x06u;
+  smbc.state.ram[SMBC_ENEMY_STATE + 0] = 0x00u;
+  smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] = 0x08u;
+  move_normal_enemy(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] == 0x00u); /* 0.5px */
+  assert(smbc.state.ram[SMBC_ENEMY_X_MOVE_FORCE + 0] == 0x80u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] == 0x08u); /* restored */
+  move_normal_enemy(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] == 0x01u);
+}
+
+static void d6_state_slows_non_powerup(void) {
+  /* d6 set, state $02: gravity runs, then slowed horizontal movement
+   * with the $e8 adder for a rightward speed */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = 0x06u;
+  smbc.state.ram[SMBC_ENEMY_STATE + 0] = 0x42u; /* d6 plus state $02 */
+  smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] = 0x10u;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] = 0x00u;
+  move_normal_enemy(&smbc.state, 0x00u);
+  /* temp speed $10 + $e8 = $f8: high nybble $f (sign-extended $ff),
+   * force $80 → position $00 + $ff + $00 = $ff, page borrow */
+  assert(smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] == 0xffu);
+  assert(smbc.state.ram[SMBC_ENEMY_PAGE_LOC + 0] == 0xffu);
+  assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] == 0x10u); /* restored */
+}
+
+static void d6_powerup_not_slowed(void) {
+  /* the same state on a power-up object skips the slow adder */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = 0x2eu;
+  smbc.state.ram[SMBC_ENEMY_STATE + 0] = 0x41u; /* d6 plus state $01 */
+  smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] = 0x10u;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] = 0x00u;
+  move_normal_enemy(&smbc.state, 0x00u);
+  /* state $01 is not $02, d6 set, power-up: plain steady movement */
+  assert(smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] == 0x01u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] == 0x10u);
+}
+
+static void defeated_enemy_falls(void) {
+  /* d5 set: gravity and horizontal movement, nothing else */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = 0x06u;
+  smbc.state.ram[SMBC_ENEMY_STATE + 0] = 0x20u;
+  smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] = 0x08u;
+  move_normal_enemy(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_MOVE_FORCE + 0] == 0x80u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_MOVE_FORCE + 0] != 0x00u);
+}
+
+static void stunned_revives_on_timer_expiry(void) {
+  /* state $03 with an expired interval timer: state cleared, a
+   * pseudorandom direction from the frame counter, revived speed */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = 0x00u; /* green koopa troopa */
+  smbc.state.ram[SMBC_ENEMY_STATE + 0] = 0x03u;
+  smbc.state.ram[SMBC_ENEMY_INTERVAL_TIMER + 0] = 0x00u;
+  smbc.state.ram[SMBC_FRAME_COUNTER] = 0x05u; /* d0 set: direction 2 */
+  move_normal_enemy(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_STATE + 0] == 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] == 0x02u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] == 0xf8u);
+
+  /* hard mode uses the faster pair */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_STATE + 0] = 0x03u;
+  smbc.state.ram[SMBC_ENEMY_INTERVAL_TIMER + 0] = 0x00u;
+  smbc.state.ram[SMBC_FRAME_COUNTER] = 0x04u; /* d0 clear: direction 1 */
+  smbc.state.ram[SMBC_PRIMARY_HARD_MODE] = 0x01u;
+  move_normal_enemy(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] == 0x01u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] == 0x0cu);
+}
+
+static void stunned_goomba_killed_at_timer_0e(void) {
+  /* an unexpired timer of $0e erases a goomba but no other enemy */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = 0x06u;
+  smbc.state.ram[SMBC_ENEMY_FLAG + 0] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_STATE + 0] = 0x03u;
+  smbc.state.ram[SMBC_ENEMY_INTERVAL_TIMER + 0] = 0x0eu;
+  move_normal_enemy(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_FLAG + 0] == 0x00u);
+
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = 0x00u; /* not a goomba */
+  smbc.state.ram[SMBC_ENEMY_FLAG + 0] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_STATE + 0] = 0x03u;
+  smbc.state.ram[SMBC_ENEMY_INTERVAL_TIMER + 0] = 0x0eu;
+  move_normal_enemy(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_FLAG + 0] == 0x01u);
+  /* and the state is untouched while the timer runs */
+  assert(smbc.state.ram[SMBC_ENEMY_STATE + 0] == 0x03u);
+}
+
+static void jumping_enemy_moves(void) {
+  /* MoveJumpingEnemy: jumping gravity plus horizontal movement */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] = 0x08u;
+  move_jumping_enemy(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_MOVE_FORCE + 0] == 0x80u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_MOVE_FORCE + 0] != 0x00u);
+}
+
+static void red_p_troopa_resting_nudge(void) {
+  /* at rest above the origin: one pixel up every eighth frame */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x30u;
+  smbc.state.ram[SMBC_RED_PTROOPA_ORIG_X_POS + 0] = 0x40u;
+  smbc.state.ram[SMBC_ENEMY_YMF_DUMMY + 0] = 0x55u;
+  smbc.state.ram[SMBC_FRAME_COUNTER] = 0x10u; /* 3 LSB clear */
+  proc_move_red_p_troopa(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] == 0x31u);
+  assert(smbc.state.ram[SMBC_ENEMY_YMF_DUMMY + 0] == 0x00u);
+
+  smbc.state.ram[SMBC_FRAME_COUNTER] = 0x11u; /* 3 LSB set: no nudge */
+  proc_move_red_p_troopa(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] == 0x31u);
+}
+
+static void red_p_troopa_seeks_centre(void) {
+  /* with speed or force present, the paratroopa gravitates towards
+   * its central coordinate: below it moves up, above it moves down */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_Y_SPEED + 0] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x50u;
+  smbc.state.ram[SMBC_RED_PTROOPA_CENTER_Y_POS + 0] = 0x40u;
+  proc_move_red_p_troopa(&smbc.state, 0x00u);
+  /* below centre: MoveRedPTroopaUp — the force ($03) underflows the
+   * up amount ($06), so the borrow takes the speed down a notch */
+  assert(smbc.state.ram[SMBC_ENEMY_Y_SPEED + 0] == 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] == 0x51u);
+}
+
+
 int main(void) {
   onscreen_survives();
   too_far_left_erased();
@@ -120,6 +271,15 @@ int main(void) {
   too_far_right_erased();
   right_side_exemptions();
   flying_cheep_cheep_exempt();
+  normal_state_moves_horizontally();
+  d6_state_slows_non_powerup();
+  d6_powerup_not_slowed();
+  defeated_enemy_falls();
+  stunned_revives_on_timer_expiry();
+  stunned_goomba_killed_at_timer_0e();
+  jumping_enemy_moves();
+  red_p_troopa_resting_nudge();
+  red_p_troopa_seeks_centre();
   puts("tests/core/runners: ok");
   return 0;
 }

@@ -905,6 +905,132 @@ static void fireball_bg_clears_flag(void) {
   assert(smbc.state.ram[SMBC_FIREBALL_STATE + 0] == 0x00u);
 }
 
+/* an overlapping fireball 0 / enemy pair on an even frame: fireball
+ * box at $1c, enemy 0's at $04 */
+static void fball_col_setup(Smbc *smbc, uint8_t id) {
+  smbc_init(smbc);
+  smbc->state.ram[SMBC_FIREBALL_STATE + 0] = 0x01u;
+  smbc->state.ram[SMBC_ENEMY_FLAG + 0] = 0x01u;
+  smbc->state.ram[SMBC_ENEMY_ID + 0] = id;
+  uint16_t f = SMBC_BOUNDING_BOX_UL_CORNER + 0x1cu;
+  uint16_t e = SMBC_BOUNDING_BOX_UL_CORNER + 0x04u;
+  smbc->state.ram[f] = 0x10u;
+  smbc->state.ram[f + 1u] = 0x10u;
+  smbc->state.ram[f + 2u] = 0x20u;
+  smbc->state.ram[f + 3u] = 0x20u;
+  smbc->state.ram[e] = 0x18u;
+  smbc->state.ram[e + 1u] = 0x18u;
+  smbc->state.ram[e + 2u] = 0x28u;
+  smbc->state.ram[e + 3u] = 0x28u;
+}
+
+static void fireball_enemy_gates(void) {
+  /* smb.asm: no state, the exploding bit, or an odd frame leaves
+   * everything alone */
+  Smbc smbc;
+  fball_col_setup(&smbc, SMBC_GOOMBA);
+  smbc.state.ram[SMBC_FIREBALL_STATE + 0] = 0x00u;
+  fireball_enemy_collision(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_STATE + 0] == 0x00u);
+
+  fball_col_setup(&smbc, SMBC_GOOMBA);
+  smbc.state.ram[SMBC_FIREBALL_STATE + 0] = 0x80u;
+  fireball_enemy_collision(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_STATE + 0] == 0x00u);
+
+  fball_col_setup(&smbc, SMBC_GOOMBA);
+  smbc.state.ram[SMBC_FRAME_COUNTER] = 0x01u; /* odd frame */
+  fireball_enemy_collision(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_STATE + 0] == 0x00u);
+  assert(smbc.state.ram[SMBC_FIREBALL_STATE + 0] == 0x01u);
+}
+
+static void fireball_enemy_skips(void) {
+  /* smb.asm: defeated-state enemies, dead slots, the $24-$2a range,
+   * an already-defeated goomba and masked offscreen bits all skip */
+  Smbc smbc;
+  fball_col_setup(&smbc, SMBC_GOOMBA);
+  smbc.state.ram[SMBC_ENEMY_STATE + 0] = 0x20u; /* d5 */
+  fireball_enemy_collision(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_FIREBALL_STATE + 0] == 0x01u);
+
+  fball_col_setup(&smbc, SMBC_GOOMBA);
+  smbc.state.ram[SMBC_ENEMY_FLAG + 0] = 0x00u;
+  fireball_enemy_collision(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_FIREBALL_STATE + 0] == 0x01u);
+
+  fball_col_setup(&smbc, 0x24u); /* in the skip range */
+  fireball_enemy_collision(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_FIREBALL_STATE + 0] == 0x01u);
+
+  fball_col_setup(&smbc, SMBC_GOOMBA);
+  smbc.state.ram[SMBC_ENEMY_STATE + 0] = 0x02u; /* defeated goomba */
+  fireball_enemy_collision(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_FIREBALL_STATE + 0] == 0x01u);
+
+  fball_col_setup(&smbc, SMBC_GOOMBA);
+  smbc.state.ram[SMBC_ENEMY_OFFSCR_MASKED + 0] = 0x08u;
+  fireball_enemy_collision(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_FIREBALL_STATE + 0] == 0x01u);
+}
+
+static void fireball_enemy_defeats(void) {
+  /* smb.asm: a hit explodes the fireball and takes the
+   * shell-or-block defeat — d5 state, 100 points for a goomba,
+   * the smack sound */
+  Smbc smbc;
+  fball_col_setup(&smbc, SMBC_GOOMBA);
+  fireball_enemy_collision(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_FIREBALL_STATE + 0] == 0x80u);
+  assert((smbc.state.ram[SMBC_ENEMY_STATE + 0] & 0x20u) == 0x20u);
+  assert(smbc.state.ram[SMBC_FLOATEY_NUM_CONTROL + 0] == 0x01u);
+  assert(smbc.state.ram[SMBC_SQUARE1_SOUND_QUEUE] == SMBC_SFX_ENEMY_SMACK);
+
+  /* smb.asm: buzzy beetles are fireproof — the fireball explodes,
+   * the beetle walks on */
+  fball_col_setup(&smbc, SMBC_BUZZY_BEETLE);
+  fireball_enemy_collision(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_FIREBALL_STATE + 0] == 0x80u);
+  assert(smbc.state.ram[SMBC_ENEMY_STATE + 0] == 0x00u);
+  assert(smbc.state.ram[SMBC_FLOATEY_NUM_CONTROL + 0] == 0x00u);
+
+  /* smb.asm: podoboo and the frenzy variant cannot be fireballed */
+  fball_col_setup(&smbc, SMBC_PODOBOO);
+  fireball_enemy_collision(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_FIREBALL_STATE + 0] == 0x80u);
+  assert(smbc.state.ram[SMBC_ENEMY_STATE + 0] == 0x00u);
+}
+
+static void fireball_hurts_bowser(void) {
+  /* smb.asm: HurtBowser — hit points first; the last hit reveals the
+   * fake bowser's identity, gives the little jump and 5000 points */
+  Smbc smbc;
+  fball_col_setup(&smbc, 0x2du);
+  smbc.state.ram[SMBC_BOWSER_HIT_POINTS] = 0x02u;
+  fireball_enemy_collision(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_BOWSER_HIT_POINTS] == 0x01u);
+  assert(smbc.state.ram[SMBC_ENEMY_ID + 0] == 0x2du); /* still bowser */
+
+  fball_col_setup(&smbc, 0x2du);
+  smbc.state.ram[SMBC_BOWSER_HIT_POINTS] = 0x01u;
+  smbc.state.ram[SMBC_WORLD_NUMBER] = 0x00u; /* world 1: goomba */
+  fireball_enemy_collision(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_BOWSER_HIT_POINTS] == 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_ID + 0] == SMBC_GOOMBA);
+  assert(smbc.state.ram[SMBC_ENEMY_STATE + 0] == 0x23u); /* 20|03 */
+  assert(smbc.state.ram[SMBC_ENEMY_Y_SPEED + 0] == 0xfeu);
+  assert(smbc.state.ram[SMBC_SQUARE2_SOUND_QUEUE] == SMBC_SFX_BOWSER_FALL);
+  assert(smbc.state.ram[SMBC_FLOATEY_NUM_CONTROL + 0] == 0x09u);
+
+  /* world 3 and beyond: the state without the low bits */
+  fball_col_setup(&smbc, 0x2du);
+  smbc.state.ram[SMBC_BOWSER_HIT_POINTS] = 0x01u;
+  smbc.state.ram[SMBC_WORLD_NUMBER] = 0x07u; /* world 8: real bowser */
+  fireball_enemy_collision(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_ID + 0] == 0x2du);
+  assert(smbc.state.ram[SMBC_ENEMY_STATE + 0] == 0x20u);
+}
+
 static void landing_family(void) {
   /* a landing inside the window in the walking state goes to
    * the side check — here nothing blocks, nothing changes */
@@ -1232,6 +1358,10 @@ int main(void) {
   fireball_bg_bounces();
   fireball_bg_explodes();
   fireball_bg_clears_flag();
+  fireball_enemy_gates();
+  fireball_enemy_skips();
+  fireball_enemy_defeats();
+  fireball_hurts_bowser();
   landing_family();
   jump_and_hammer_bro_bg();
   bg_collision_entry();

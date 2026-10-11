@@ -63,6 +63,10 @@ void shell_or_block_defeat(CoreState *state, uint8_t x);
  * coordinate (slot * 4); the player entry uses x = 0. The asm's
  * vertical wrap cases — a box whose bottom is above its top —
  * count as collisions */
+/* smb.asm: FireballEnemyCollision — the fireball's bounding box
+ * against each live, onscreen, fireable enemy every other frame */
+void fireball_enemy_collision(CoreState *state, uint8_t x);
+
 uint8_t spr_object_collision_core(CoreState *state, uint8_t x, uint8_t y);
 uint8_t player_collision_core(CoreState *state, uint8_t y);
 

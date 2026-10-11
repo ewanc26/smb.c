@@ -197,6 +197,83 @@ void shell_or_block_defeat(CoreState *st, uint8_t x) {
   st->ram[SMBC_SQUARE1_SOUND_QUEUE] = SMBC_SFX_ENEMY_SMACK;
 }
 
+/* smb.asm: BowserIdentities — the fake bowser's true identity per
+ * world, the real one only from world 8 */
+static const uint8_t SMBC_BOWSER_IDENTITIES[8] = {
+    0x06u, 0x00u, 0x02u, 0x12u, 0x11u, 0x07u, 0x05u, 0x2du};
+
+/* smb.asm: HandleEnemyFBallCol — buzzy beetles are fireproof;
+ * bowser takes hit points and falls with 5000 points; the other
+ * fireable enemies take the shell-or-block defeat */
+static void handle_enemy_fball_col(CoreState *st, uint8_t x) {
+  relative_enemy_position(st, x);
+  uint8_t slot = x;
+  if ((int8_t)st->ram[SMBC_ENEMY_FLAG + x] < 0) {
+    /* smb.asm: d7 in the flag: the low nybble indexes the slot that
+     * might be bowser */
+    uint8_t alt = (uint8_t)(st->ram[SMBC_ENEMY_FLAG + x] & 0x0fu);
+    if (st->ram[SMBC_ENEMY_ID + alt] != 0x2du) {
+      slot = x; /* smb.asm: not bowser — back to the current enemy */
+    } else {
+      slot = alt;
+    }
+  }
+  uint8_t id = st->ram[SMBC_ENEMY_ID + slot];
+  if (id == 0x02u) return; /* smb.asm: BuzzyBeetle — fireproof */
+  if (id == 0x2du) {
+    /* smb.asm: HurtBowser */
+    st->ram[SMBC_BOWSER_HIT_POINTS]--;
+    if (st->ram[SMBC_BOWSER_HIT_POINTS] != 0x00u) return;
+    init_vstf(st, slot);
+    st->ram[SMBC_ENEMY_X_SPEED + slot] = 0x00u;
+    st->ram[SMBC_ENEMY_FRENZY_BUFFER] = 0x00u;
+    st->ram[SMBC_ENEMY_Y_SPEED + slot] = 0xfeu; /* the little jump */
+    uint8_t world = st->ram[SMBC_WORLD_NUMBER];
+    st->ram[SMBC_ENEMY_ID + slot] = SMBC_BOWSER_IDENTITIES[world];
+    uint8_t state = 0x20u; /* defeated */
+    if (world < 0x03u) state |= 0x03u;
+    st->ram[SMBC_ENEMY_STATE + slot] = state;
+    st->ram[SMBC_SQUARE2_SOUND_QUEUE] = SMBC_SFX_BOWSER_FALL;
+    setup_floatey_number(st, x, 0x09u); /* 5000 */
+    st->ram[SMBC_SQUARE1_SOUND_QUEUE] = SMBC_SFX_ENEMY_SMACK;
+    return;
+  }
+  /* smb.asm: ChkOtherEnemies — the frenzy variant, podoboo and
+   * anything at $15 or beyond cannot be fireballed */
+  if (id == SMBC_BULLET_BILL_FRENZY || id == SMBC_PODOBOO ||
+      id >= 0x15u) {
+    return;
+  }
+  shell_or_block_defeat(st, x);
+}
+
+/* smb.asm: FireballEnemyCollision — every other frame, the fireball's
+ * bounding box against each live, onscreen, fireable enemy; a hit
+ * explodes the fireball and defeats the enemy */
+void fireball_enemy_collision(CoreState *st, uint8_t x) {
+  uint8_t state = st->ram[SMBC_FIREBALL_STATE + x];
+  if (state == 0x00u || (state & 0x80u) != 0x00u) return;
+  if ((st->ram[SMBC_FRAME_COUNTER] & 0x01u) != 0x00u) return;
+  uint8_t fball_box = (uint8_t)(x * 4u + 0x1cu);
+  for (int enemy = 4; enemy >= 0; enemy--) {
+    if ((st->ram[SMBC_ENEMY_STATE + enemy] & 0x20u) != 0x00u) continue;
+    if (st->ram[SMBC_ENEMY_FLAG + enemy] == 0x00u) continue;
+    uint8_t id = st->ram[SMBC_ENEMY_ID + enemy];
+    if (id >= 0x24u && id < 0x2bu) continue;
+    /* smb.asm: GoombaDie — a goomba already stomped or defeated */
+    if (id == SMBC_GOOMBA && st->ram[SMBC_ENEMY_STATE + enemy] >= 0x02u) {
+      continue;
+    }
+    if (st->ram[SMBC_ENEMY_OFFSCR_MASKED + enemy] != 0x00u) continue;
+    uint8_t enemy_box = (uint8_t)(enemy * 4 + 0x04);
+    if (spr_object_collision_core(st, enemy_box, fball_box) == 0x00u) {
+      continue;
+    }
+    st->ram[SMBC_FIREBALL_STATE + x] = 0x80u;
+    handle_enemy_fball_col(st, (uint8_t)enemy);
+  }
+}
+
 uint8_t spr_object_collision_core(CoreState *st, uint8_t x, uint8_t y) {
   for (uint8_t pass = 0x02u; pass != 0x00u; pass--) {
     uint8_t ul_x = st->ram[SMBC_BOUNDING_BOX_UL_CORNER + x];

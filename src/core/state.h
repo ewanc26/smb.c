@@ -209,6 +209,8 @@ void state_init(CoreState *state);
 #define SMBC_ENEMY_ID 0x0016u            /* smb.asm: Enemy_ID */
 #define SMBC_ENEMY_STATE 0x001eu         /* smb.asm: Enemy_State */
 #define SMBC_JUMPSPRING_FIXED_Y_POS 0x58u /* smb.asm: Jumpspring_FixedYPos */
+#define SMBC_JUMPSPRING_FORCE 0x06dbu     /* smb.asm: JumpspringForce */
+#define SMBC_JUMPSPRING_TIMER 0x0786u     /* smb.asm: JumpspringTimer */
 #define SMBC_PIRANHA_PLANT_Y_SPEED 0x58u /* smb.asm: PiranhaPlant_Y_Speed
                                           * (shares $58 with Jumpspring) */
 #define SMBC_SPROBJ_PAGE_LOC 0x006du     /* smb.asm: SprObject_PageLoc */

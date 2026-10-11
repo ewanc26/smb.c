@@ -142,4 +142,10 @@ void run_fireworks(CoreState *state, uint8_t x);
  * with fireworks, then the delay to the area end */
 void run_star_flag_obj(CoreState *state, uint8_t x);
 
+/* smb.asm: JumpspringHandler — the spring's compression frames
+ * carry the player, a fresh A press on the third frame loads the
+ * high-bounce force, the fifth frame launches, and the frame
+ * control steps every four frames */
+void jumpspring_handler(CoreState *state, uint8_t x);
+
 #endif /* SMBC_CORE_RUNNERS_H */

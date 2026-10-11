@@ -1227,6 +1227,94 @@ static void star_flag_family(void) {
   assert(smbc.state.ram[SMBC_STAR_FLAG_TASK_CONTROL] == 0x05u);
 }
 
+
+static void jumpspring_family(void) {
+  /* frame control 1 (compression): the player sinks two pixels,
+   * the spring sits at fixed + $08, and the timer starts the
+   * frame stepping */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_JUMPSPRING_OBJECT;
+  smbc.state.ram[SMBC_JUMPSPRING_ANIM_CTRL] = 0x01u;
+  smbc.state.ram[SMBC_PLAYER_Y_POSITION] = 0x40u;
+  smbc.state.ram[SMBC_JUMPSPRING_FIXED_Y_POS + 0] = 0x30u;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] = 0x40u;
+  smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0xa0u;
+  jumpspring_handler(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_PLAYER_Y_POSITION] == 0x42u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] == 0x38u);
+  assert(smbc.state.ram[SMBC_JUMPSPRING_TIMER] == 0x04u);
+  assert(smbc.state.ram[SMBC_JUMPSPRING_ANIM_CTRL] == 0x02u);
+
+  /* frame 3 (second frame value): d1 of (3-1) set, the player
+   * rises; a held A from the previous frame does not reload the
+   * force */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_JUMPSPRING_OBJECT;
+  smbc.state.ram[SMBC_JUMPSPRING_ANIM_CTRL] = 0x03u;
+  smbc.state.ram[SMBC_PLAYER_Y_POSITION] = 0x40u;
+  smbc.state.ram[SMBC_JUMPSPRING_FIXED_Y_POS + 0] = 0x30u;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] = 0x40u;
+  smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0xa0u;
+  smbc.state.ram[SMBC_A_B_BUTTONS] = 0x80u;
+  smbc.state.ram[SMBC_PREV_A_B_BUTTONS] = 0x80u;
+  jumpspring_handler(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_PLAYER_Y_POSITION] == 0x3eu);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] == 0x38u);
+  assert(smbc.state.ram[SMBC_JUMPSPRING_FORCE] == 0x00u);
+
+  /* a fresh A press loads the high bounce force */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_JUMPSPRING_OBJECT;
+  smbc.state.ram[SMBC_JUMPSPRING_ANIM_CTRL] = 0x03u;
+  smbc.state.ram[SMBC_PLAYER_Y_POSITION] = 0x40u;
+  smbc.state.ram[SMBC_JUMPSPRING_FIXED_Y_POS + 0] = 0x30u;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] = 0x40u;
+  smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0xa0u;
+  smbc.state.ram[SMBC_A_B_BUTTONS] = 0x80u;
+  jumpspring_handler(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_JUMPSPRING_FORCE] == 0xf4u);
+
+  /* the fifth frame launches: the force becomes the player's
+   * vertical speed and the control resets */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_JUMPSPRING_OBJECT;
+  smbc.state.ram[SMBC_JUMPSPRING_ANIM_CTRL] = 0x04u;
+  smbc.state.ram[SMBC_PLAYER_Y_POSITION] = 0x40u;
+  smbc.state.ram[SMBC_JUMPSPRING_FIXED_Y_POS + 0] = 0x30u;
+  smbc.state.ram[SMBC_JUMPSPRING_FORCE] = 0xf4u;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] = 0x40u;
+  smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0xa0u;
+  jumpspring_handler(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_PLAYER_Y_SPEED] == 0xf4u);
+  assert(smbc.state.ram[SMBC_JUMPSPRING_ANIM_CTRL] == 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] == 0x30u);
+
+  /* control zero draws only */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_JUMPSPRING_OBJECT;
+  smbc.state.ram[SMBC_PLAYER_Y_POSITION] = 0x40u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x60u;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] = 0x40u;
+  smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0xa0u;
+  jumpspring_handler(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_PLAYER_Y_POSITION] == 0x40u);
+  assert(smbc.state.ram[SMBC_JUMPSPRING_TIMER] == 0x00u);
+  /* jumpspring frame tiles drawn (offset $f2 default ctrl 0) */
+  assert(smbc.state.ram[SMBC_SPRITE_TILENUMBER + 8u] == 0xf3u);
+
+  /* the master timer control skips the ride but still draws */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_JUMPSPRING_OBJECT;
+  smbc.state.ram[SMBC_JUMPSPRING_ANIM_CTRL] = 0x01u;
+  smbc.state.ram[SMBC_PLAYER_Y_POSITION] = 0x40u;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] = 0x40u;
+  smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0xa0u;
+  smbc.state.ram[SMBC_TIMER_CONTROL] = 0x01u;
+  jumpspring_handler(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_PLAYER_Y_POSITION] == 0x40u);
+}
+
 int main(void) {
   onscreen_survives();
   too_far_left_erased();
@@ -1270,6 +1358,7 @@ int main(void) {
   bowser_flame_family();
   fireworks_family();
   star_flag_family();
+  jumpspring_family();
   puts("tests/core/runners: ok");
   return 0;
 }

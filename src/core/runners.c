@@ -925,3 +925,49 @@ void run_star_flag_obj(CoreState *st, uint8_t x) {
       break;
   }
 }
+
+/* smb.asm: Jumpspring_Y_PosData */
+static const uint8_t SMBC_JUMPSPRING_Y_POS_DATA[4] = {
+    0x08u, 0x10u, 0x08u, 0x00u};
+
+/* smb.asm: JumpspringHandler — ride the player with the spring's
+ * compression frames, catch a fresh A press on the third frame
+ * for the high bounce, launch on the fifth, and step the frame
+ * control every four frames */
+void jumpspring_handler(CoreState *st, uint8_t x) {
+  get_enemy_offscreen_bits(st, x);
+  if (st->ram[SMBC_TIMER_CONTROL] == 0x00u &&
+      st->ram[SMBC_JUMPSPRING_ANIM_CTRL] != 0x00u) {
+    uint8_t frame = (uint8_t)(st->ram[SMBC_JUMPSPRING_ANIM_CTRL] - 0x01u);
+    if ((frame & 0x02u) != 0x00u) {
+      st->ram[SMBC_PLAYER_Y_POSITION] -= 0x02u;
+    } else {
+      st->ram[SMBC_PLAYER_Y_POSITION] += 0x02u;
+    }
+    st->ram[SMBC_ENEMY_Y_POSITION + x] =
+        (uint8_t)(st->ram[SMBC_JUMPSPRING_FIXED_Y_POS + x] +
+                  SMBC_JUMPSPRING_Y_POS_DATA[frame]);
+    if (frame >= 0x01u) {
+      uint8_t a_btn =
+          (uint8_t)(st->ram[SMBC_A_B_BUTTONS] & 0x80u); /* A_Button */
+      if (a_btn != 0x00u &&
+          (a_btn & st->ram[SMBC_PREV_A_B_BUTTONS]) == 0x00u) {
+        st->ram[SMBC_JUMPSPRING_FORCE] = 0xf4u;
+      }
+    }
+    if (frame == 0x03u) {
+      /* smb.asm: BounceJS — launch with the spring force */
+      st->ram[SMBC_PLAYER_Y_SPEED] = st->ram[SMBC_JUMPSPRING_FORCE];
+      st->ram[SMBC_JUMPSPRING_ANIM_CTRL] = 0x00u;
+    }
+  }
+  /* smb.asm: DrawJSpr */
+  relative_enemy_position(st, x);
+  enemy_gfx_handler(st, x);
+  offscreen_bounds_check(st, x);
+  if (st->ram[SMBC_JUMPSPRING_ANIM_CTRL] != 0x00u &&
+      st->ram[SMBC_JUMPSPRING_TIMER] == 0x00u) {
+    st->ram[SMBC_JUMPSPRING_TIMER] = 0x04u;
+    st->ram[SMBC_JUMPSPRING_ANIM_CTRL]++;
+  }
+}

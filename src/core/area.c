@@ -21,6 +21,18 @@ void load_area_pointer(Smbc *smbc) {
   smbc->state.ram[SMBC_AREA_TYPE] = (a >> 5) & 0x03u;
 }
 
+uint8_t get_screen_position(CoreState *st) {
+  /* smb.asm: GetScreenPosition — the right boundary is the screen's left
+   * boundary advanced by 255 pixels; the page carries when the low byte
+   * is at least one. A holds the resulting right page location on exit,
+   * which callers (InitializeArea, ScrollHandler) reuse. */
+  uint16_t sum = (uint16_t)st->ram[SMBC_SCREEN_LEFT_X_POS] + 0xffu;
+  st->ram[SMBC_SCREEN_RIGHT_X_POS] = (uint8_t)sum;
+  sum = (uint16_t)st->ram[SMBC_SCREEN_LEFT_PAGE_LOC] + (uint8_t)(sum >> 8);
+  st->ram[SMBC_SCREEN_RIGHT_PAGE_LOC] = (uint8_t)sum;
+  return (uint8_t)sum;
+}
+
 void get_area_data_addrs(Smbc *smbc) {
   CoreState *st = &smbc->state;
   /* smb.asm: GetAreaDataAddrs — the area pointer's 2 MSB select the table

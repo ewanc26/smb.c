@@ -160,6 +160,8 @@ void state_init(CoreState *state);
 
 /* world values */
 #define SMBC_WORLD_8             0x07u   /* smb.asm: World8 */
+#define SMBC_WORLD5              0x04u   /* smb.asm: World5 (zero-based world 5) */
+#define SMBC_LEVEL3              0x02u   /* smb.asm: Level3 (zero-based level 3) */
 
 /* controller bits in the game's saved-bit layout (smb.asm: A_Button etc.).
  * The serial read accumulates A first into d7, so this differs from the
@@ -278,6 +280,7 @@ void state_init(CoreState *state);
 #define SMBC_ENEMY_OBJECT_PAGE_LOC 0x073au /* smb.asm: EnemyObjectPageLoc */
 #define SMBC_ENEMY_OBJECT_PAGE_SEL 0x073bu /* smb.asm: EnemyObjectPageSel */
 #define SMBC_ENTRANCE_PAGE 0x0751u        /* smb.asm: EntrancePage */
+#define SMBC_HALFWAY_PAGE  0x075bu        /* smb.asm: HalfwayPage */
 #define SMBC_ENEMY_FRAME_TIMER 0x078au    /* smb.asm: EnemyFrameTimer */
 #define SMBC_ENEMY_INTERVAL_TIMER 0x0796u /* smb.asm: EnemyIntervalTimer */
 

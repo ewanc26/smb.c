@@ -5,6 +5,8 @@
  * resolving that pointer into the object streams in data/areadata —
  * GetAreaDataAddrs, which also unpacks the level header into the
  * scenery, entrance, timer, terrain and style state the parser reads.
+ * Also the screen-edge geometry the area setup and scroll handler share
+ * (GetScreenPosition).
  */
 #ifndef SMBC_CORE_AREA_H
 #define SMBC_CORE_AREA_H
@@ -28,5 +30,10 @@ void load_area_pointer(struct Smbc *smbc);
  * header's two bytes. Advances the level stream past the header, as the
  * original's address increment does. */
 void get_area_data_addrs(struct Smbc *smbc);
+
+/* smb.asm: GetScreenPosition — right screen boundary = left + 255 pixels,
+ * with the page carrying. Returns the right page location (the value A
+ * holds on exit). */
+uint8_t get_screen_position(CoreState *state);
 
 #endif /* SMBC_CORE_AREA_H */

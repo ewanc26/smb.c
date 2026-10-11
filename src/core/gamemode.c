@@ -5,6 +5,7 @@
 #include "cannon.h"
 #include "colour.h"
 #include "frame.h"
+#include "initialize.h"
 #include "offscreen.h"
 #include "screen.h"
 #include "setup.h"
@@ -113,7 +114,7 @@ void game_mode(Smbc *smbc) {
    *   0 InitializeArea, 1 ScreenRoutines, 2 SecondaryGameSetup,
    *   3 GameCoreRoutine */
   switch (smbc->state.ram[SMBC_OPER_MODE_TASK]) {
-    case 0: /* TODO(port): smb.asm: InitializeArea (core/area) */ break;
+    case 0: initialize_area(smbc); break;
     case 1: screen_routines(smbc); break;
     case 2: secondary_game_setup(smbc); break;
     case 3: game_core_routine(smbc); break;

@@ -1293,3 +1293,172 @@ void draw_power_up(CoreState *st, uint8_t x) {
     }
   }
 }
+
+/* smb.asm: SmallPlatformBoundBox — the small platform keeps the
+ * tight masks ($08 right of the edge, $04 at or beyond) */
+void small_platform_bound_box(CoreState *st, uint8_t x) {
+  get_masked_off_scr_bits(st, x, 0x08u, 0x04u);
+  if (st->ram[SMBC_ENEMY_OFFSCR_MASKED + x] != 0x00u) {
+    move_bound_box_offscreen(st, x);
+    return;
+  }
+  bounding_box_core(st, (uint8_t)(x + 1u), 0x01u);
+  check_right_screen_bbox(st, (uint8_t)(x + 1u), (uint8_t)((x + 1u) * 4u));
+}
+
+/* smb.asm: LargePlatformBoundBox — the wide platform derives its
+ * fate from the horizontal bits of the slot one up; $fe or worse
+ * parks the whole box */
+void large_platform_bound_box(CoreState *st, uint8_t x) {
+  uint8_t xbits = get_x_offscreen_bits(st, (uint8_t)(x + 1u));
+  if (xbits >= 0xfeu) {
+    move_bound_box_offscreen(st, x);
+    return;
+  }
+  bounding_box_core(st, (uint8_t)(x + 1u), 0x01u);
+  check_right_screen_bbox(st, (uint8_t)(x + 1u), (uint8_t)((x + 1u) * 4u));
+}
+
+/* smb.asm: ImpedePlayerMove — a side touch kills the player's
+ * horizontal speed, nudges them a pixel out of the platform, and
+ * starts the side collision timer; walking away just clears the
+ * collision bit */
+static void impede_player_move(CoreState *st, uint8_t side) {
+  uint8_t a = 0x00u;
+  uint8_t bit;
+  int8_t speed = (int8_t)st->ram[SMBC_PLAYER_X_SPEED];
+  if (side == 0x01u) {
+    /* smb.asm: left side — only a rightward walk is blocked */
+    bit = 0x01u;
+    if (speed < 0) {
+      st->ram[SMBC_PLAYER_COLLISION_BITS] &= (uint8_t)~bit;
+      return;
+    }
+    a = 0xffu;
+  } else {
+    /* smb.asm: RImpd — right side, mirrored */
+    bit = 0x02u;
+    if (speed >= 0x01) {
+      st->ram[SMBC_PLAYER_COLLISION_BITS] &= (uint8_t)~bit;
+      return;
+    }
+    a = 0x01u;
+  }
+  st->ram[SMBC_SIDE_COLLISION_TIMER] = 0x10u;
+  st->ram[SMBC_PLAYER_X_SPEED] = 0x00u;
+  uint8_t high = (a == 0xffu) ? 0xffu : 0x00u;
+  uint16_t sum = (uint16_t)st->ram[SMBC_PLAYER_X_POSITION] + a;
+  st->ram[SMBC_PLAYER_X_POSITION] = (uint8_t)sum;
+  st->ram[SMBC_PLAYER_PAGE_LOC] =
+      (uint8_t)(st->ram[SMBC_PLAYER_PAGE_LOC] + high + ((sum >> 8u) & 0x01u));
+  st->ram[SMBC_PLAYER_COLLISION_BITS] &= (uint8_t)~bit;
+}
+
+/* smb.asm: ProcLPlatCollisions — the platform touch: a landing
+ * close to the player's feet with upward speed kills the jump;
+ * close enough to the platform's top sets the collision flag and
+ * grounds the player; otherwise a side check impedes */
+static void proc_l_plat_collisions(CoreState *st, uint8_t x, uint8_t y,
+                                   uint8_t scratch00, uint8_t obj) {
+  uint8_t feet = (uint8_t)(st->ram[SMBC_BOUNDING_BOX_DR_YPOS + y] -
+                           st->ram[SMBC_BOUNDING_BOX_UL_YPOS]);
+  if (feet < 0x04u && (int8_t)st->ram[SMBC_PLAYER_Y_SPEED] < 0) {
+    st->ram[SMBC_PLAYER_Y_SPEED] = 0x01u;
+  }
+  uint8_t top = (uint8_t)(st->ram[SMBC_BOUNDING_BOX_DR_YPOS] -
+                          st->ram[SMBC_BOUNDING_BOX_UL_YPOS + y]);
+  if (top < 0x06u && (int8_t)st->ram[SMBC_PLAYER_Y_SPEED] >= 0) {
+    /* smb.asm: SetCollisionFlag — the small platforms keep the
+     * bounding box counter, everything else its own offset */
+    uint8_t id = st->ram[SMBC_ENEMY_ID + x];
+    uint8_t flag =
+        (id == 0x2bu || id == 0x2cu) ? scratch00 : x;
+    st->ram[SMBC_PLATFORM_COLLISION_FLAG + obj] = flag;
+    st->ram[SMBC_PLAYER_STATE] = 0x00u;
+    return;
+  }
+  /* smb.asm: PlatformSideCollisions */
+  if ((uint8_t)(st->ram[SMBC_BOUNDING_BOX_DR_XPOS] -
+                st->ram[SMBC_BOUNDING_BOX_UL_XPOS + y]) < 0x08u) {
+    impede_player_move(st, 0x01u);
+  } else if ((uint8_t)(st->ram[SMBC_BOUNDING_BOX_DR_XPOS + y] -
+                       st->ram[SMBC_BOUNDING_BOX_UL_XPOS]) < 0x09u) {
+    impede_player_move(st, 0x02u);
+  }
+}
+
+/* smb.asm: SmallPlatformCollision — two stacked bounding boxes,
+ * the second shifted 128 pixels down; a touch on either processes
+ * and leaves */
+void small_platform_collision(CoreState *st, uint8_t x) {
+  if (st->ram[SMBC_TIMER_CONTROL] != 0x00u) return;
+  st->ram[SMBC_PLATFORM_COLLISION_FLAG + x] = 0x00u;
+  if (!check_player_vertical(st)) return;
+  uint8_t count = 0x02u;
+  for (;;) {
+    uint8_t all_set;
+    uint8_t y = get_enemy_bound_box_ofs(st, x, &all_set);
+    if ((st->ram[SMBC_ENEMY_OFFSCREEN_BITS] & 0x02u) != 0x00u) return;
+    if (st->ram[SMBC_BOUNDING_BOX_UL_YPOS + y] >= 0x20u &&
+        player_collision_core(st, y) != 0x00u) {
+      proc_l_plat_collisions(st, x, y, count, x);
+      return;
+    }
+    /* smb.asm: MoveBoundBox — slide the box down for pass two */
+    st->ram[SMBC_BOUNDING_BOX_UL_YPOS + y] += 0x80u;
+    st->ram[SMBC_BOUNDING_BOX_DR_YPOS + y] += 0x80u;
+    count--;
+    if (count == 0x00u) return;
+  }
+}
+
+/* smb.asm: ChkForPlayerC_LargeP — one pass of the large platform
+ * collision against a slot (the balance platform runs it for the
+ * state-as-offset first, then the runner's own slot) */
+static void chk_for_player_c_large(CoreState *st, uint8_t x, uint8_t obj) {
+  if (!check_player_vertical(st)) return;
+  uint8_t all_set;
+  uint8_t y = get_enemy_bound_box_ofs(st, x, &all_set);
+  uint8_t scratch00 = st->ram[SMBC_ENEMY_Y_POSITION + x];
+  if (player_collision_core(st, y) != 0x00u) {
+    proc_l_plat_collisions(st, x, y, scratch00, obj);
+  }
+}
+
+/* smb.asm: LargePlatformCollision — flag primed to $ff; the
+ * balance platform checks both its rope-side slots */
+void large_platform_collision(CoreState *st, uint8_t x) {
+  st->ram[SMBC_PLATFORM_COLLISION_FLAG + x] = 0xffu;
+  if (st->ram[SMBC_TIMER_CONTROL] != 0x00u) return;
+  if ((st->ram[SMBC_ENEMY_STATE + x] & 0x80u) != 0x00u) return;
+  if (st->ram[SMBC_ENEMY_ID + x] == 0x24u) {
+    chk_for_player_c_large(st, st->ram[SMBC_ENEMY_STATE + x], x);
+  }
+  chk_for_player_c_large(st, x, x);
+}
+
+/* smb.asm: PlayerPosSPlatData — the small platform carries the
+ * player 128 pixels down on the second box */
+static const uint8_t SMBC_PLAYER_POS_S_PLAT_DATA[2] = {0x80u, 0x00u};
+
+/* smb.asm: PositionPlayerOnVPlat — plant the player 32 pixels
+ * above the platform's vertical coordinate and zero the vertical
+ * momentum */
+void position_player_on_v_plat(CoreState *st, uint8_t x, uint8_t y_pos) {
+  if (st->ram[SMBC_GAME_ENGINE_SUBROUTINE] == 0x0bu) return;
+  uint8_t high = st->ram[SMBC_ENEMY_Y_HIGH_POS + x];
+  if (high != 0x01u) return;
+  uint8_t borrow = y_pos < 0x20u ? 0x01u : 0x00u;
+  st->ram[SMBC_PLAYER_Y_POSITION] = (uint8_t)(y_pos - 0x20u);
+  st->ram[SMBC_PLAYER_Y_HIGH_POS] = (uint8_t)(high - borrow);
+  st->ram[SMBC_PLAYER_Y_SPEED] = 0x00u;
+  st->ram[SMBC_PLAYER_Y_MOVE_FORCE] = 0x00u;
+}
+
+/* smb.asm: PositionPlayerOnS_Plat — the saved bounding box
+ * counter picks the carry offset */
+void position_player_on_s_plat(CoreState *st, uint8_t x, uint8_t flag) {
+  uint8_t y_pos = (uint8_t)(st->ram[SMBC_ENEMY_Y_POSITION + x] +
+                            SMBC_PLAYER_POS_S_PLAT_DATA[flag - 1u]);
+  position_player_on_v_plat(st, x, y_pos);
+}

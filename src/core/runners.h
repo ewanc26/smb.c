@@ -167,4 +167,12 @@ void power_up_obj_handler(CoreState *state);
  * fireball from the lookup rows, then the offscreen bounds */
 void run_firebar_obj(CoreState *state, uint8_t x);
 
+/* smb.asm: LargePlatformSubroutines — the per-object movement
+ * dispatch for platforms $24-$2a */
+void large_platform_subroutines(CoreState *state, uint8_t x);
+
+/* smb.asm: RunSmallPlatform / RunLargePlatform */
+void run_small_platform(CoreState *state, uint8_t x);
+void run_large_platform(CoreState *state, uint8_t x);
+
 #endif /* SMBC_CORE_RUNNERS_H */

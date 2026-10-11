@@ -6,6 +6,7 @@
 #include "../../src/core/frame.h"
 #include "../../src/core/enemies.h"
 #include "../../src/core/runners.h"
+#include "../../src/core/collide.h"
 
 /* screen spanning $0020-$0110 */
 static void set_screen(Smbc *smbc) {
@@ -1729,6 +1730,164 @@ static void firebar_family(void) {
   assert(smbc.state.ram[SMBC_SPRITE_X_POSITION] == 0x00u);
 }
 
+
+/* smb.asm: RunSmallPlatform — the girder tiles stack in two rows
+ * of three and the lower row wraps 128 pixels below */
+static void small_platform_draws(void) {
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 1] = 0x2bu;
+  smbc.state.ram[SMBC_ENEMY_SPR_DATA_OFFSET + 1] = 0x60u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 1] = 0x60u;
+  smbc.state.ram[SMBC_ENEMY_Y_HIGH_POS + 1] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 1] = 0x40u;
+  smbc.state.ram[SMBC_SCREEN_LEFT_PAGE_LOC] = 0x00u;
+  smbc.state.ram[SMBC_SCREEN_LEFT_X_POS] = 0x30u;
+  smbc.state.ram[SMBC_SCREEN_RIGHT_PAGE_LOC] = 0x01u;
+  smbc.state.ram[SMBC_SCREEN_RIGHT_X_POS] = 0x10u;
+  run_small_platform(&smbc.state, 0x01u);
+  assert(smbc.state.ram[SMBC_SPRITE_TILENUMBER + 0x60u] == 0x5bu);
+  assert(smbc.state.ram[SMBC_SPRITE_TILENUMBER + 0x74u] == 0x5bu);
+  assert(smbc.state.ram[SMBC_SPRITE_Y_POSITION + 0x60u] == 0x60u);
+  assert(smbc.state.ram[SMBC_SPRITE_Y_POSITION + 0x6cu] == 0xe0u);
+}
+
+
+/* smb.asm: SmallPlatformCollision — a falling player whose feet
+ * land within six pixels of the platform top sets the flag to
+ * the bounding box counter and grounds them */
+static void small_platform_landing(void) {
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 1] = 0x2bu;
+  smbc.state.ram[SMBC_ENEMY_Y_HIGH_POS + 1] = 0x01u;
+  smbc.state.ram[SMBC_PLAYER_Y_POSITION] = 0x60u;
+  smbc.state.ram[SMBC_PLAYER_Y_HIGH_POS] = 0x01u;
+  smbc.state.ram[SMBC_PLAYER_Y_SPEED] = 0x02u; /* falling */
+  /* player box 0-3, slot 1 box at offset 8, overlapping feet */
+  smbc.state.ram[SMBC_BOUNDING_BOX_UL_CORNER + 0] = 0x50u;
+  smbc.state.ram[SMBC_BOUNDING_BOX_UL_CORNER + 1] = 0x60u;
+  smbc.state.ram[SMBC_BOUNDING_BOX_UL_CORNER + 2] = 0x60u;
+  smbc.state.ram[SMBC_BOUNDING_BOX_UL_CORNER + 3] = 0x70u;
+  smbc.state.ram[SMBC_BOUNDING_BOX_UL_CORNER + 8] = 0x50u;
+  smbc.state.ram[SMBC_BOUNDING_BOX_UL_CORNER + 9] = 0x6cu;
+  smbc.state.ram[SMBC_BOUNDING_BOX_UL_CORNER + 10] = 0x60u;
+  smbc.state.ram[SMBC_BOUNDING_BOX_UL_CORNER + 11] = 0x7cu;
+  small_platform_collision(&smbc.state, 0x01u);
+  assert(smbc.state.ram[SMBC_PLATFORM_COLLISION_FLAG + 1] == 0x02u);
+  assert(smbc.state.ram[SMBC_PLAYER_STATE] == 0x00u);
+}
+
+/* smb.asm: PositionPlayerOnS_Plat — the first box carries at 128
+ * pixels below, the second at the platform's own level */
+static void s_plat_carry(void) {
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 1] = 0x60u;
+  smbc.state.ram[SMBC_ENEMY_Y_HIGH_POS + 1] = 0x01u;
+  position_player_on_s_plat(&smbc.state, 0x01u, 0x01u);
+  assert(smbc.state.ram[SMBC_PLAYER_Y_POSITION] ==
+         (uint8_t)(0xe0u - 0x20u));
+  position_player_on_s_plat(&smbc.state, 0x01u, 0x02u);
+  assert(smbc.state.ram[SMBC_PLAYER_Y_POSITION] ==
+         (uint8_t)(0x60u - 0x20u));
+  assert(smbc.state.ram[SMBC_PLAYER_Y_SPEED] == 0x00u);
+}
+
+/* smb.asm: DrawLargePlatform — the castle parks the last two
+ * sprites of the six-sprite row */
+static void large_platform_castle(void) {
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_AREA_TYPE] = 0x03u;
+  smbc.state.ram[SMBC_ENEMY_ID + 1] = 0x25u;
+  smbc.state.ram[SMBC_ENEMY_SPR_DATA_OFFSET + 1] = 0x60u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 1] = 0x70u;
+  smbc.state.ram[SMBC_ENEMY_Y_HIGH_POS + 1] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 1] = 0x40u;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 2] = 0x40u;
+  smbc.state.ram[SMBC_SCREEN_LEFT_PAGE_LOC] = 0x00u;
+  smbc.state.ram[SMBC_SCREEN_LEFT_X_POS] = 0x30u;
+  smbc.state.ram[SMBC_SCREEN_RIGHT_PAGE_LOC] = 0x01u;
+  smbc.state.ram[SMBC_SCREEN_RIGHT_X_POS] = 0x10u;
+  run_large_platform(&smbc.state, 0x01u);
+  assert(smbc.state.ram[SMBC_SPRITE_Y_POSITION + 0x70u] == 0xf8u);
+  assert(smbc.state.ram[SMBC_SPRITE_Y_POSITION + 0x74u] == 0xf8u);
+  assert(smbc.state.ram[SMBC_SPRITE_Y_POSITION + 0x60u] == 0x70u);
+}
+
+/* smb.asm: YMovingPlatform — a still platform below the top
+ * bound sinks one pixel every eighth frame */
+static void y_platform_sinks(void) {
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 1] = 0x25u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 1] = 0x20u;
+  smbc.state.ram[SMBC_Y_PLATFORM_TOP_Y_POS + 1] = 0x60u;
+  smbc.state.ram[SMBC_FRAME_COUNTER] = 0x08u;
+  large_platform_subroutines(&smbc.state, 0x01u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_POSITION + 1] == 0x21u);
+  /* off the eighth frame, no sink */
+  Smbc t;
+  smbc_init(&t);
+  t.state.ram[SMBC_ENEMY_ID + 1] = 0x25u;
+  t.state.ram[SMBC_ENEMY_Y_POSITION + 1] = 0x20u;
+  t.state.ram[SMBC_Y_PLATFORM_TOP_Y_POS + 1] = 0x60u;
+  t.state.ram[SMBC_FRAME_COUNTER] = 0x09u;
+  large_platform_subroutines(&t.state, 0x01u);
+  assert(t.state.ram[SMBC_ENEMY_Y_POSITION + 1] == 0x20u);
+}
+
+/* smb.asm: BalancePlatform — a stand on one side beyond the
+ * limit lets both platforms fall */
+static void balance_platform_falls(void) {
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 1] = 0x24u;
+  smbc.state.ram[SMBC_ENEMY_STATE + 1] = 0x02u; /* other in slot 2 */
+  smbc.state.ram[SMBC_ENEMY_Y_HIGH_POS + 1] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 1] = 0x20u; /* above limit */
+  smbc.state.ram[SMBC_PLATFORM_COLLISION_FLAG + 1] = 0x02u;
+  large_platform_subroutines(&smbc.state, 0x01u);
+  assert(smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 2] == 0x01u);
+}
+
+/* smb.asm: DrawEraseRope — a moving platform writes ten bytes of
+ * rope tiles into the vram buffer */
+static void rope_vram_writes(void) {
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 1] = 0x24u;
+  smbc.state.ram[SMBC_ENEMY_STATE + 1] = 0x02u;
+  smbc.state.ram[SMBC_ENEMY_Y_HIGH_POS + 1] = 0x01u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 1] = 0x60u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 2] = 0x60u;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 1] = 0x50u;
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 2] = 0x50u;
+  smbc.state.ram[SMBC_ENEMY_PAGE_LOC + 1] = 0x00u;
+  smbc.state.ram[SMBC_ENEMY_PAGE_LOC + 2] = 0x00u;
+  smbc.state.ram[SMBC_ENEMY_Y_SPEED + 1] = 0x02u; /* descending */
+  smbc.state.ram[SMBC_PLATFORM_COLLISION_FLAG + 1] = 0xffu;
+  large_platform_subroutines(&smbc.state, 0x01u);
+  assert(smbc.state.ram[SMBC_VRAM_BUFFER1_OFFSET] == 0x0au);
+  /* descending platform draws rope, the ascending mirror erases */
+  assert(smbc.state.ram[SMBC_VRAM_BUFFER1 + 3u] == 0xa2u);
+  assert(smbc.state.ram[SMBC_VRAM_BUFFER1 + 8u] == 0x24u);
+  assert(smbc.state.ram[SMBC_VRAM_BUFFER1 + 10u] == 0x00u);
+}
+
+/* smb.asm: RightPlatform — motionless until stood on, then a
+ * steady $10 */
+static void right_platform_starts(void) {
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 1] = 0x2au;
+  smbc.state.ram[SMBC_ENEMY_Y_HIGH_POS + 1] = 0x01u;
+  smbc.state.ram[SMBC_PLATFORM_COLLISION_FLAG + 1] = 0x01u;
+  large_platform_subroutines(&smbc.state, 0x01u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 1] == 0x10u);
+}
+
 int main(void) {
   onscreen_survives();
   too_far_left_erased();
@@ -1777,6 +1936,14 @@ int main(void) {
   bowser_family();
   power_up_family();
   firebar_family();
+  small_platform_draws();
+  small_platform_landing();
+  s_plat_carry();
+  large_platform_castle();
+  y_platform_sinks();
+  balance_platform_falls();
+  rope_vram_writes();
+  right_platform_starts();
   puts("tests/core/runners: ok");
   return 0;
 }

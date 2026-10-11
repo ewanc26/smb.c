@@ -85,6 +85,26 @@ void enemies_collision(CoreState *state, uint8_t x);
  * vertically onscreen above the $d0 pixel row */
 uint8_t check_player_vertical(CoreState *state);
 
+/* smb.asm: SmallPlatformBoundBox / LargePlatformBoundBox — the
+ * platform bounding boxes, parked offscreen when the masks or
+ * horizontal bits say so */
+void small_platform_bound_box(CoreState *state, uint8_t x);
+void large_platform_bound_box(CoreState *state, uint8_t x);
+
+/* smb.asm: SmallPlatformCollision / LargePlatformCollision — the
+ * platform landing checks: two stacked boxes for the small, the
+ * state-offset pair for the balance platform */
+void small_platform_collision(CoreState *state, uint8_t x);
+void large_platform_collision(CoreState *state, uint8_t x);
+
+/* smb.asm: PositionPlayerOnVPlat — plant the player 32 pixels
+ * above the platform's vertical coordinate */
+void position_player_on_v_plat(CoreState *state, uint8_t x, uint8_t y_pos);
+
+/* smb.asm: PositionPlayerOnS_Plat — carry the player on the
+ * small platform per the saved bounding box counter */
+void position_player_on_s_plat(CoreState *state, uint8_t x, uint8_t flag);
+
 /* smb.asm: InitVStf — zero the enemy's vertical speed and move
  * force, returning zero */
 uint8_t init_vstf(CoreState *state, uint8_t x);

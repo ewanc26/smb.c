@@ -27,7 +27,7 @@ static uint8_t divide_p_diff(uint8_t diff, uint8_t preset, uint8_t adder,
 
 /* smb.asm: GetXOffscreenBits — the right edge is checked first, then
  * the left; a nonzero mask ends the loop */
-static uint8_t get_x_offscreen_bits(CoreState *st, uint8_t x) {
+uint8_t get_x_offscreen_bits(CoreState *st, uint8_t x) {
   uint8_t bits = 0x00u;
   for (int y = 1; y >= 0; y--) {
     uint16_t edge = ((uint16_t)st->ram[SMBC_SCREEN_LEFT_PAGE_LOC + y] << 8) |

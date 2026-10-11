@@ -1459,3 +1459,427 @@ void run_firebar_obj(CoreState *st, uint8_t x) {
   smbc_proc_firebar(st, x);
   offscreen_bounds_check(st, x);
 }
+
+/* smb.asm: DrawSmallPlatform — six sprites in two stacked rows of
+ * three girder tiles; either row parks at $f8 while it sits in
+ * the status bar, and each column parks on its offscreen bit */
+static void smbc_draw_small_platform(CoreState *st, uint8_t x) {
+  uint8_t y = st->ram[SMBC_ENEMY_SPR_DATA_OFFSET + x];
+  for (uint8_t i = 0x00u; i < 0x06u; i++) {
+    st->ram[SMBC_SPRITE_TILENUMBER + (uint8_t)(i * 4u) + y] = 0x5bu;
+    st->ram[SMBC_SPRITE_ATTRIBUTES + (uint8_t)(i * 4u) + y] = 0x02u;
+  }
+  uint8_t rel_x = st->ram[SMBC_ENEMY_REL_XPOS];
+  st->ram[SMBC_SPRITE_X_POSITION + y] = rel_x;
+  st->ram[SMBC_SPRITE_X_POSITION + 12u + y] = rel_x;
+  st->ram[SMBC_SPRITE_X_POSITION + 4u + y] = (uint8_t)(rel_x + 0x08u);
+  st->ram[SMBC_SPRITE_X_POSITION + 16u + y] = (uint8_t)(rel_x + 0x08u);
+  st->ram[SMBC_SPRITE_X_POSITION + 8u + y] = (uint8_t)(rel_x + 0x10u);
+  st->ram[SMBC_SPRITE_X_POSITION + 20u + y] = (uint8_t)(rel_x + 0x10u);
+  uint8_t top = st->ram[SMBC_ENEMY_Y_POSITION + x];
+  if (top < 0x20u) top = 0xf8u;
+  st->ram[SMBC_SPRITE_Y_POSITION + y] = top;
+  st->ram[SMBC_SPRITE_Y_POSITION + 4u + y] = top;
+  st->ram[SMBC_SPRITE_Y_POSITION + 8u + y] = top;
+  uint8_t bot =
+      (uint8_t)(st->ram[SMBC_ENEMY_Y_POSITION + x] + 0x80u);
+  if (bot < 0x20u) bot = 0xf8u;
+  st->ram[SMBC_SPRITE_Y_POSITION + 12u + y] = bot;
+  st->ram[SMBC_SPRITE_Y_POSITION + 16u + y] = bot;
+  st->ram[SMBC_SPRITE_Y_POSITION + 20u + y] = bot;
+  uint8_t bits = st->ram[SMBC_ENEMY_OFFSCREEN_BITS];
+  if ((bits & 0x08u) != 0x00u) {
+    st->ram[SMBC_SPRITE_Y_POSITION + y] = 0xf8u;
+    st->ram[SMBC_SPRITE_Y_POSITION + 12u + y] = 0xf8u;
+  }
+  if ((bits & 0x04u) != 0x00u) {
+    st->ram[SMBC_SPRITE_Y_POSITION + 4u + y] = 0xf8u;
+    st->ram[SMBC_SPRITE_Y_POSITION + 16u + y] = 0xf8u;
+  }
+  if ((bits & 0x02u) != 0x00u) {
+    st->ram[SMBC_SPRITE_Y_POSITION + 8u + y] = 0xf8u;
+    st->ram[SMBC_SPRITE_Y_POSITION + 20u + y] = 0xf8u;
+  }
+}
+
+/* smb.asm: DrawLargePlatform — six girder tiles in one row, the
+ * last two parked in castles and secondary hard mode; the cloud
+ * override swaps the tile for the puff */
+static void smbc_draw_large_platform(CoreState *st, uint8_t x) {
+  uint8_t y = st->ram[SMBC_ENEMY_SPR_DATA_OFFSET + x];
+  smbc_six_sprite_stacker(st, (uint8_t)(y + 0x03u),
+                          st->ram[SMBC_ENEMY_REL_XPOS]);
+  uint8_t y_pos = st->ram[SMBC_ENEMY_Y_POSITION + x];
+  st->ram[SMBC_SPRITE_Y_POSITION + y] = y_pos;
+  st->ram[SMBC_SPRITE_Y_POSITION + 4u + y] = y_pos;
+  st->ram[SMBC_SPRITE_Y_POSITION + 8u + y] = y_pos;
+  st->ram[SMBC_SPRITE_Y_POSITION + 12u + y] = y_pos;
+  uint8_t last = y_pos;
+  if (st->ram[SMBC_AREA_TYPE] == 0x03u ||
+      st->ram[SMBC_SECONDARY_HARD_MODE] != 0x00u) {
+    last = 0xf8u;
+  }
+  st->ram[SMBC_SPRITE_Y_POSITION + 16u + y] = last;
+  st->ram[SMBC_SPRITE_Y_POSITION + 20u + y] = last;
+  uint8_t tile =
+      st->ram[SMBC_CLOUD_TYPE_OVERRIDE] != 0x00u ? 0x75u : 0x5bu;
+  for (uint8_t i = 0x00u; i < 0x06u; i++) {
+    st->ram[SMBC_SPRITE_TILENUMBER + (uint8_t)(i * 4u) + y] = tile;
+    st->ram[SMBC_SPRITE_ATTRIBUTES + (uint8_t)(i * 4u) + y] = 0x02u;
+  }
+  /* smb.asm: SChk2-SChk6 — each sprite parks on its horizontal
+   * offscreen bit, d7 down to d2 */
+  uint8_t xbits = get_x_offscreen_bits(st, (uint8_t)(x + 1u));
+  for (uint8_t i = 0x00u; i < 0x06u; i++) {
+    if ((xbits & (0x80u >> i)) != 0x00u) {
+      st->ram[SMBC_SPRITE_Y_POSITION + (uint8_t)(i * 4u) + y] = 0xf8u;
+    }
+  }
+  if ((st->ram[SMBC_ENEMY_OFFSCREEN_BITS] & 0x80u) != 0x00u) {
+    /* smb.asm: MoveSixSpritesOffscreen */
+    for (uint8_t i = 0x00u; i < 0x06u; i++) {
+      st->ram[SMBC_SPRITE_Y_POSITION + (uint8_t)(i * 4u) + y] = 0xf8u;
+    }
+  }
+}
+
+/* smb.asm: MoveLiftPlatforms — the shared lift drift: movement
+ * force accumulates into the dummy, the speed rides the carry */
+static void smbc_move_lift_platforms(CoreState *st, uint8_t x) {
+  if (st->ram[SMBC_TIMER_CONTROL] != 0x00u) return;
+  uint16_t sum = (uint16_t)st->ram[SMBC_ENEMY_YMF_DUMMY + x] +
+                 st->ram[SMBC_ENEMY_Y_MOVE_FORCE + x];
+  st->ram[SMBC_ENEMY_YMF_DUMMY + x] = (uint8_t)sum;
+  st->ram[SMBC_ENEMY_Y_POSITION + x] =
+      (uint8_t)(st->ram[SMBC_ENEMY_Y_POSITION + x] +
+                st->ram[SMBC_ENEMY_Y_SPEED + x] + ((sum >> 8u) & 0x01u));
+}
+
+/* smb.asm: MoveSmallPlatform + ChkSmallPlatCollision — drift,
+ * then carry the player if the collision flag holds a counter */
+static void smbc_move_small_platform(CoreState *st, uint8_t x) {
+  smbc_move_lift_platforms(st, x);
+  uint8_t flag = st->ram[SMBC_PLATFORM_COLLISION_FLAG + x];
+  if (flag != 0x00u) {
+    position_player_on_s_plat(st, x, flag);
+  }
+}
+
+/* smb.asm: RunSmallPlatform */
+void run_small_platform(CoreState *st, uint8_t x) {
+  get_enemy_offscreen_bits(st, x);
+  relative_enemy_position(st, x);
+  small_platform_bound_box(st, x);
+  small_platform_collision(st, x);
+  relative_enemy_position(st, x);
+  smbc_draw_small_platform(st, x);
+  smbc_move_small_platform(st, x);
+  offscreen_bounds_check(st, x);
+}
+
+/* smb.asm: RunLargePlatform — the movement subroutines dispatch
+ * per object $24-$2a unless the master timer is set */
+void run_large_platform(CoreState *st, uint8_t x) {
+  get_enemy_offscreen_bits(st, x);
+  relative_enemy_position(st, x);
+  large_platform_bound_box(st, x);
+  large_platform_collision(st, x);
+  if (st->ram[SMBC_TIMER_CONTROL] == 0x00u) {
+    large_platform_subroutines(st, x);
+  }
+  relative_enemy_position(st, x);
+  smbc_draw_large_platform(st, x);
+  offscreen_bounds_check(st, x);
+}
+
+/* smb.asm: StopPlatforms — zero both platforms' vertical
+ * momentum */
+static void smbc_stop_platforms(CoreState *st, uint8_t x, uint8_t y) {
+  uint8_t zero = init_vstf(st, x);
+  st->ram[SMBC_ENEMY_Y_SPEED + y] = zero;
+  st->ram[SMBC_ENEMY_Y_MOVE_FORCE + y] = zero;
+}
+
+/* smb.asm: SetupPlatformRope — the name table address for the
+ * rope half a tile right of the platform (a full tile in
+ * secondary hard mode), one row lower while the platform rises */
+static void smbc_setup_platform_rope(CoreState *st, uint8_t y, uint8_t speed,
+                                     uint8_t *low, uint8_t *high) {
+  uint16_t xp = (uint16_t)st->ram[SMBC_ENEMY_X_POSITION + y] + 0x08u;
+  if (st->ram[SMBC_SECONDARY_HARD_MODE] == 0x00u) xp += 0x10u;
+  uint8_t page =
+      (uint8_t)(st->ram[SMBC_ENEMY_PAGE_LOC + y] + (uint8_t)(xp >> 8u));
+  uint8_t hpart = (uint8_t)(((uint8_t)xp & 0xf0u) >> 3u);
+  uint8_t ycoord = st->ram[SMBC_ENEMY_Y_POSITION + y];
+  if ((int8_t)speed < 0) ycoord = (uint8_t)(ycoord + 0x08u);
+  uint8_t rot = (uint8_t)(ycoord << 2u);
+  uint8_t carry_hi = ycoord >> 6u; /* the two bits rotated out */
+  uint8_t hi = (uint8_t)(carry_hi | 0x20u);
+  hi = (uint8_t)(hi | ((page & 0x01u) << 2u));
+  uint8_t lo = (uint8_t)((rot & 0xe0u) + hpart);
+  if (st->ram[SMBC_ENEMY_Y_POSITION + y] >= 0xe8u) lo &= 0xbfu;
+  *low = lo;
+  *high = hi;
+}
+
+/* smb.asm: InitPlatformFall — both platforms let go, a 1000-point
+ * floatey number where the player stands, the moving direction as
+ * the falling flag */
+static void smbc_init_platform_fall(CoreState *st, uint8_t y) {
+  get_enemy_offscreen_bits(st, y);
+  setup_floatey_number(st, y, 0x06u);
+  st->ram[SMBC_FLOATEY_NUM_X_POS + y] = st->ram[SMBC_PLAYER_REL_XPOS];
+  st->ram[SMBC_FLOATEY_NUM_Y_POS + y] = st->ram[SMBC_PLAYER_Y_POSITION];
+  st->ram[SMBC_ENEMY_MOVING_DIR + y] = 0x01u;
+}
+
+/* smb.asm: PlatformFall — both platforms drop together, carrying
+ * the player */
+static void smbc_platform_fall(CoreState *st, uint8_t x, uint8_t y) {
+  move_falling_platform(st, x);
+  move_falling_platform(st, y);
+  uint8_t flag = st->ram[SMBC_PLATFORM_COLLISION_FLAG + x];
+  if ((int8_t)flag >= 0) {
+    position_player_on_v_plat(st, flag, st->ram[SMBC_ENEMY_Y_POSITION + flag]);
+  }
+}
+
+/* smb.asm: DrawEraseRope — the rope tiles follow the platforms:
+ * drawn above the descending one, erased above the ascending */
+static void smbc_draw_erase_rope(CoreState *st, uint8_t x) {
+  if ((st->ram[SMBC_ENEMY_Y_SPEED + x] |
+       st->ram[SMBC_ENEMY_Y_MOVE_FORCE + x]) == 0x00u) {
+    return;
+  }
+  uint8_t ofs = st->ram[SMBC_VRAM_BUFFER1_OFFSET];
+  if (ofs >= 0x20u) return;
+  uint8_t speed = st->ram[SMBC_ENEMY_Y_SPEED + x];
+  uint8_t low, high;
+  smbc_setup_platform_rope(st, x, speed, &low, &high);
+  st->ram[SMBC_VRAM_BUFFER1 + ofs] = high;
+  st->ram[SMBC_VRAM_BUFFER1 + 1u + ofs] = low;
+  st->ram[SMBC_VRAM_BUFFER1 + 2u + ofs] = 0x02u;
+  if ((int8_t)speed < 0) {
+    st->ram[SMBC_VRAM_BUFFER1 + 3u + ofs] = 0x24u;
+    st->ram[SMBC_VRAM_BUFFER1 + 4u + ofs] = 0x24u;
+  } else {
+    st->ram[SMBC_VRAM_BUFFER1 + 3u + ofs] = 0xa2u;
+    st->ram[SMBC_VRAM_BUFFER1 + 4u + ofs] = 0xa3u;
+  }
+  uint8_t other = st->ram[SMBC_ENEMY_STATE + x];
+  smbc_setup_platform_rope(st, other, (uint8_t)~speed, &low, &high);
+  st->ram[SMBC_VRAM_BUFFER1 + 5u + ofs] = high;
+  st->ram[SMBC_VRAM_BUFFER1 + 6u + ofs] = low;
+  st->ram[SMBC_VRAM_BUFFER1 + 7u + ofs] = 0x02u;
+  if ((int8_t)speed >= 0) {
+    st->ram[SMBC_VRAM_BUFFER1 + 8u + ofs] = 0x24u;
+    st->ram[SMBC_VRAM_BUFFER1 + 9u + ofs] = 0x24u;
+  } else {
+    st->ram[SMBC_VRAM_BUFFER1 + 8u + ofs] = 0xa2u;
+    st->ram[SMBC_VRAM_BUFFER1 + 9u + ofs] = 0xa3u;
+  }
+  st->ram[SMBC_VRAM_BUFFER1 + 10u + ofs] = 0x00u;
+  st->ram[SMBC_VRAM_BUFFER1_OFFSET] = (uint8_t)(ofs + 10u);
+}
+
+/* smb.asm: BalancePlatform — the rope pair: whichever platform
+ * the player stands on sinks, the other rises, both stop short of
+ * $2d; a stand at the limit lets both fall */
+static void smbc_balance_platform(CoreState *st, uint8_t x) {
+  if (st->ram[SMBC_ENEMY_Y_HIGH_POS + x] == 0x03u) {
+    erase_enemy_object(st, x);
+    return;
+  }
+  int8_t state = (int8_t)st->ram[SMBC_ENEMY_STATE + x];
+  if (state < 0) return;
+  uint8_t y = (uint8_t)state;
+  uint8_t flag = st->ram[SMBC_PLATFORM_COLLISION_FLAG + x];
+  if (st->ram[SMBC_ENEMY_MOVING_DIR + x] != 0x00u) {
+    smbc_platform_fall(st, x, y);
+    return;
+  }
+  /* smb.asm: ChkForFall — above the limit, check for a stand */
+  if (st->ram[SMBC_ENEMY_Y_POSITION + x] <= 0x2du) {
+    if (flag == y) {
+      smbc_init_platform_fall(st, y);
+      return;
+    }
+    st->ram[SMBC_ENEMY_Y_POSITION + x] = 0x2fu;
+    smbc_stop_platforms(st, x, y);
+    return;
+  }
+  if (st->ram[SMBC_ENEMY_Y_POSITION + y] <= 0x2du) {
+    if (flag == x) {
+      smbc_init_platform_fall(st, y);
+      return;
+    }
+    st->ram[SMBC_ENEMY_Y_POSITION + y] = 0x2fu;
+    smbc_stop_platforms(st, x, y);
+    return;
+  }
+  /* smb.asm: ChkToMoveBalPlat — the seesaw */
+  uint8_t old_pos = st->ram[SMBC_ENEMY_Y_POSITION + x];
+  if ((int8_t)flag >= 0) {
+    if (flag == x) {
+      move_platform_vert(st, x, 0x00u);
+    } else {
+      move_platform_vert(st, x, 0x01u);
+    }
+  } else {
+    uint16_t force = (uint16_t)st->ram[SMBC_ENEMY_Y_MOVE_FORCE + x] + 0x05u;
+    uint8_t speed =
+        (uint8_t)(st->ram[SMBC_ENEMY_Y_SPEED + x] + (uint8_t)(force >> 8u));
+    if ((int8_t)speed < 0) {
+      move_platform_vert(st, x, 0x00u);
+    } else if (speed != 0x00u || (uint8_t)force >= 0x0bu) {
+      move_platform_vert(st, x, 0x01u);
+    } else {
+      smbc_stop_platforms(st, x, y);
+    }
+  }
+  /* smb.asm: DoOtherPlatform — the other side mirrors the move */
+  uint8_t diff =
+      (uint8_t)(old_pos - st->ram[SMBC_ENEMY_Y_POSITION + x]);
+  st->ram[SMBC_ENEMY_Y_POSITION + y] =
+      (uint8_t)(st->ram[SMBC_ENEMY_Y_POSITION + y] + diff);
+  if ((int8_t)flag >= 0) {
+    position_player_on_v_plat(st, flag,
+                              st->ram[SMBC_ENEMY_Y_POSITION + flag]);
+  }
+  smbc_draw_erase_rope(st, x);
+}
+
+/* smb.asm: YMovingPlatform — sink to the top bound an eighth of
+ * the frames, then gravity between the bounds, carrying the
+ * player */
+static void smbc_y_moving_platform(CoreState *st, uint8_t x) {
+  if ((st->ram[SMBC_ENEMY_Y_SPEED + x] |
+       st->ram[SMBC_ENEMY_Y_MOVE_FORCE + x]) == 0x00u) {
+    st->ram[SMBC_ENEMY_YMF_DUMMY + x] = 0x00u;
+    if (st->ram[SMBC_ENEMY_Y_POSITION + x] <
+        st->ram[SMBC_Y_PLATFORM_TOP_Y_POS + x]) {
+      if ((st->ram[SMBC_FRAME_COUNTER] & 0x07u) == 0x00u) {
+        st->ram[SMBC_ENEMY_Y_POSITION + x]++;
+      }
+      goto collision;
+    }
+  }
+  if (st->ram[SMBC_ENEMY_Y_POSITION + x] <
+      st->ram[SMBC_Y_PLATFORM_CENTER_Y_POS + x]) {
+    move_platform_vert(st, x, 0x00u);
+  } else {
+    move_platform_vert(st, x, 0x01u);
+  }
+collision:;
+  uint8_t flag = st->ram[SMBC_PLATFORM_COLLISION_FLAG + x];
+  if ((int8_t)flag >= 0) {
+    position_player_on_v_plat(st, x, st->ram[SMBC_ENEMY_Y_POSITION + x]);
+  }
+}
+
+/* smb.asm: XMoveCntr_Platform — every fourth frame the secondary
+ * counter walks toward the preset maximum while the primary is
+ * even, back to zero while odd, flipping the primary at each
+ * end */
+static void smbc_x_move_cntr_platform(CoreState *st, uint8_t x, uint8_t max) {
+  if ((st->ram[SMBC_FRAME_COUNTER] & 0x03u) != 0x00u) return;
+  uint8_t sec = st->ram[SMBC_X_MOVE_SECONDARY_COUNTER + x];
+  if ((st->ram[SMBC_X_MOVE_PRIMARY_COUNTER + x] & 0x01u) == 0x00u) {
+    if (sec == max) {
+      st->ram[SMBC_X_MOVE_PRIMARY_COUNTER + x]++;
+    } else {
+      st->ram[SMBC_X_MOVE_SECONDARY_COUNTER + x]++;
+    }
+  } else {
+    if (sec == 0x00u) {
+      st->ram[SMBC_X_MOVE_PRIMARY_COUNTER + x]++;
+    } else {
+      st->ram[SMBC_X_MOVE_SECONDARY_COUNTER + x]--;
+    }
+  }
+}
+
+/* smb.asm: MoveWithXMCntrs — d1 of the primary picks the
+ * direction; the secondary counter negates for leftward motion
+ * and is restored after the move, the residual delta returned */
+static uint8_t smbc_move_with_xm_cntrs(CoreState *st, uint8_t x) {
+  uint8_t saved = st->ram[SMBC_X_MOVE_SECONDARY_COUNTER + x];
+  uint8_t dir = 0x01u;
+  if ((st->ram[SMBC_X_MOVE_PRIMARY_COUNTER + x] & 0x02u) == 0x00u) {
+    st->ram[SMBC_X_MOVE_SECONDARY_COUNTER + x] =
+        (uint8_t)(0x01u + (saved ^ 0xffu));
+    dir = 0x02u;
+  }
+  st->ram[SMBC_ENEMY_MOVING_DIR + x] = dir;
+  uint8_t adder = move_enemy_horizontally(st, x);
+  st->ram[SMBC_X_MOVE_SECONDARY_COUNTER + x] = saved;
+  return adder;
+}
+
+/* smb.asm: PositionPlayerOnHPlat — the horizontal carry: the
+ * move delta slides the player and their page, remembered in the
+ * scroll register */
+static void smbc_position_player_on_h_plat(CoreState *st, uint8_t x,
+                                           uint8_t adder) {
+  uint16_t sum = (uint16_t)st->ram[SMBC_PLAYER_X_POSITION] + adder;
+  st->ram[SMBC_PLAYER_X_POSITION] = (uint8_t)sum;
+  if ((int8_t)adder < 0) {
+    st->ram[SMBC_PLAYER_PAGE_LOC] =
+        (uint8_t)(st->ram[SMBC_PLAYER_PAGE_LOC] -
+                  (((sum >> 8u) & 0x01u) == 0x00u ? 0x01u : 0x00u));
+  } else {
+    st->ram[SMBC_PLAYER_PAGE_LOC] =
+        (uint8_t)(st->ram[SMBC_PLAYER_PAGE_LOC] + ((sum >> 8u) & 0x01u));
+  }
+  st->ram[SMBC_PLATFORM_X_SCROLL] = adder;
+  position_player_on_v_plat(st, x, st->ram[SMBC_ENEMY_Y_POSITION + x]);
+}
+
+/* smb.asm: XMovingPlatform */
+static void smbc_x_moving_platform(CoreState *st, uint8_t x) {
+  smbc_x_move_cntr_platform(st, x, 0x0eu);
+  uint8_t adder = smbc_move_with_xm_cntrs(st, x);
+  if ((int8_t)st->ram[SMBC_PLATFORM_COLLISION_FLAG + x] < 0) return;
+  smbc_position_player_on_h_plat(st, x, adder);
+}
+
+/* smb.asm: DropPlatform — once touched, straight down */
+static void smbc_drop_platform(CoreState *st, uint8_t x) {
+  if ((int8_t)st->ram[SMBC_PLATFORM_COLLISION_FLAG + x] < 0) return;
+  move_drop_platform(st, x);
+  position_player_on_v_plat(st, x, st->ram[SMBC_ENEMY_Y_POSITION + x]);
+}
+
+/* smb.asm: RightPlatform — motionless until stood on, then
+ * steady rightward */
+static void smbc_right_platform(CoreState *st, uint8_t x) {
+  uint8_t adder = move_enemy_horizontally(st, x);
+  if ((int8_t)st->ram[SMBC_PLATFORM_COLLISION_FLAG + x] < 0) return;
+  st->ram[SMBC_ENEMY_X_SPEED + x] = 0x10u;
+  smbc_position_player_on_h_plat(st, x, adder);
+}
+
+/* smb.asm: MoveLargeLiftPlat — the shared lift drift, then the
+ * carry check */
+static void smbc_move_large_lift_plat(CoreState *st, uint8_t x) {
+  smbc_move_lift_platforms(st, x);
+  uint8_t flag = st->ram[SMBC_PLATFORM_COLLISION_FLAG + x];
+  if ((int8_t)flag >= 0) {
+    position_player_on_v_plat(st, x, st->ram[SMBC_ENEMY_Y_POSITION + x]);
+  }
+}
+
+/* smb.asm: LargePlatformSubroutines — the jump table for objects
+ * $24-$2a */
+void large_platform_subroutines(CoreState *st, uint8_t x) {
+  switch ((uint8_t)(st->ram[SMBC_ENEMY_ID + x] - 0x24u)) {
+  case 0x00u: smbc_balance_platform(st, x); break;
+  case 0x01u: smbc_y_moving_platform(st, x); break;
+  case 0x02u:
+  case 0x03u: smbc_move_large_lift_plat(st, x); break;
+  case 0x04u: smbc_x_moving_platform(st, x); break;
+  case 0x05u: smbc_drop_platform(st, x); break;
+  case 0x06u: smbc_right_platform(st, x); break;
+  default: break;
+  }
+}

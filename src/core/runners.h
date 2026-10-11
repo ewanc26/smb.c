@@ -171,6 +171,10 @@ void run_firebar_obj(CoreState *state, uint8_t x);
  * dispatch for platforms $24-$2a */
 void large_platform_subroutines(CoreState *state, uint8_t x);
 
+/* smb.asm: WarpZoneObject — release the scroll lock and raise
+ * the warp control once the player reaches the top */
+void warp_zone_object(CoreState *state, uint8_t x);
+
 /* smb.asm: RunSmallPlatform / RunLargePlatform */
 void run_small_platform(CoreState *state, uint8_t x);
 void run_large_platform(CoreState *state, uint8_t x);

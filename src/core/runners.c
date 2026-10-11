@@ -1883,3 +1883,18 @@ void large_platform_subroutines(CoreState *st, uint8_t x) {
   default: break;
   }
 }
+
+/* smb.asm: WarpZoneObject — the invisible anchor at the top of a
+ * warp zone: once the scroll locks and the player is at the very
+ * top (vertical coordinate and high byte sharing no set bits),
+ * it releases the lock, raises the warp control, and erases
+ * itself */
+void warp_zone_object(CoreState *st, uint8_t x) {
+  if (st->ram[SMBC_SCROLL_LOCK] == 0x00u) return;
+  uint8_t a = (uint8_t)(st->ram[SMBC_PLAYER_Y_POSITION] &
+                        st->ram[SMBC_PLAYER_Y_HIGH_POS]);
+  if (a != 0x00u) return;
+  st->ram[SMBC_SCROLL_LOCK] = a;
+  st->ram[SMBC_WARP_ZONE_CONTROL]++;
+  erase_enemy_object(st, x);
+}

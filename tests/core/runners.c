@@ -1888,6 +1888,47 @@ static void right_platform_starts(void) {
   assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 1] == 0x10u);
 }
 
+
+/* smb.asm: WarpZoneObject — no scroll lock, no-op */
+static void warp_zone_no_lock(void) {
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_FLAG + 1] = 0x01u;
+  smbc.state.ram[SMBC_SCROLL_LOCK] = 0x00u;
+  warp_zone_object(&smbc.state, 0x01u);
+  assert(smbc.state.ram[SMBC_ENEMY_FLAG + 1] == 0x01u);
+  assert(smbc.state.ram[SMBC_WARP_ZONE_CONTROL] == 0x00u);
+}
+
+/* smb.asm: WarpZoneObject — the player below the very top shares
+ * a set bit with the high byte, so the lock holds */
+static void warp_zone_player_low(void) {
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_FLAG + 1] = 0x01u;
+  smbc.state.ram[SMBC_SCROLL_LOCK] = 0x01u;
+  smbc.state.ram[SMBC_PLAYER_Y_POSITION] = 0x01u;
+  smbc.state.ram[SMBC_PLAYER_Y_HIGH_POS] = 0x01u;
+  warp_zone_object(&smbc.state, 0x01u);
+  assert(smbc.state.ram[SMBC_SCROLL_LOCK] == 0x01u);
+  assert(smbc.state.ram[SMBC_ENEMY_FLAG + 1] == 0x01u);
+}
+
+/* smb.asm: WarpZoneObject — at the top the lock releases, the
+ * warp control rises, and the object erases itself */
+static void warp_zone_activates(void) {
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_FLAG + 1] = 0x01u;
+  smbc.state.ram[SMBC_SCROLL_LOCK] = 0x01u;
+  smbc.state.ram[SMBC_PLAYER_Y_POSITION] = 0x00u;
+  smbc.state.ram[SMBC_PLAYER_Y_HIGH_POS] = 0x01u;
+  warp_zone_object(&smbc.state, 0x01u);
+  assert(smbc.state.ram[SMBC_SCROLL_LOCK] == 0x00u);
+  assert(smbc.state.ram[SMBC_WARP_ZONE_CONTROL] == 0x01u);
+  assert(smbc.state.ram[SMBC_ENEMY_FLAG + 1] == 0x00u);
+}
+
 int main(void) {
   onscreen_survives();
   too_far_left_erased();
@@ -1944,6 +1985,9 @@ int main(void) {
   balance_platform_falls();
   rope_vram_writes();
   right_platform_starts();
+  warp_zone_no_lock();
+  warp_zone_player_low();
+  warp_zone_activates();
   puts("tests/core/runners: ok");
   return 0;
 }

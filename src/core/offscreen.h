@@ -19,6 +19,10 @@
  * relative to the screen into Enemy_Rel_YPos / Enemy_Rel_XPos */
 void relative_enemy_position(CoreState *state, uint8_t x);
 
+/* smb.asm: RelativePlayerPosition — vertical verbatim, horizontal
+ * minus the screen's left edge */
+void relative_player_position(CoreState *state);
+
 /* smb.asm: GetEnemyOffscreenBits — write the combined offscreen bits
  * (vertical in the high nybble, horizontal in the low) into
  * Enemy_OffscreenBits */

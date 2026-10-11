@@ -12,6 +12,15 @@ void relative_enemy_position(CoreState *st, uint8_t x) {
                 st->ram[SMBC_SCREEN_LEFT_X_POS]);
 }
 
+/* smb.asm: RelativePlayerPosition — the player's coordinates relative
+ * to the screen: vertical verbatim, horizontal minus the left edge */
+void relative_player_position(CoreState *st) {
+  st->ram[SMBC_PLAYER_REL_YPOS] = st->ram[SMBC_PLAYER_Y_POSITION];
+  st->ram[SMBC_PLAYER_REL_XPOS] =
+      (uint8_t)(st->ram[SMBC_PLAYER_X_POSITION] -
+                st->ram[SMBC_SCREEN_LEFT_X_POS]);
+}
+
 /* smb.asm: DividePDiff — while the object is within the preset
  * distance of an edge, the table offset is the pixel difference
  * divided by eight; the left and bottom checks add the adder to reach

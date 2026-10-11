@@ -141,12 +141,31 @@ static void player_bits(void) {
   assert(smbc.state.ram[SMBC_ENEMY_OFFSCREEN_BITS] == 0x00u);
 }
 
+
+static void relative_player(void) {
+  /* smb.asm: RelativePlayerPosition — Y verbatim, X minus the left
+   * edge, wrapping on a borrow */
+  Smbc smbc;
+  smbc_init(&smbc);
+  set_screen(&smbc);
+  smbc.state.ram[SMBC_PLAYER_Y_POSITION] = 0x40u;
+  smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0x80u;
+  relative_player_position(&smbc.state);
+  assert(smbc.state.ram[SMBC_PLAYER_REL_YPOS] == 0x40u);
+  assert(smbc.state.ram[SMBC_PLAYER_REL_XPOS] == 0x60u);
+
+  smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0x10u; /* left of the edge */
+  relative_player_position(&smbc.state);
+  assert(smbc.state.ram[SMBC_PLAYER_REL_XPOS] == 0xf0u);
+}
+
 int main(void) {
   relative_position();
   x_bits_mid_and_right();
   x_bits_left();
   y_bits();
   player_bits();
+  relative_player();
   puts("tests/core/offscreen: ok");
   return 0;
 }

@@ -316,6 +316,7 @@ void state_init(CoreState *state);
 #define SMBC_PLAYER_Y_MOVE_FORCE 0x0433u   /* smb.asm: Player_Y_MoveForce */
 #define SMBC_PLATFORM_X_SCROLL 0x03a1u     /* smb.asm: Platform_X_Scroll */
 #define SMBC_PLAYER_REL_XPOS 0x03adu       /* smb.asm: Player_Rel_XPos */
+#define SMBC_PLAYER_REL_YPOS 0x03b8u       /* smb.asm: Player_Rel_YPos */
 #define SMBC_HAMMER_THROWING_TIMER 0x03a2u /* smb.asm: HammerThrowingTimer */
 #define SMBC_SPROBJ_REL_XPOS 0x03adu       /* smb.asm: SprObject_Rel_XPos */
 #define SMBC_SPROBJ_REL_YPOS 0x03b8u       /* smb.asm: SprObject_Rel_YPos */

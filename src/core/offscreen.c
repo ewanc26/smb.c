@@ -26,14 +26,15 @@ static uint8_t divide_p_diff(uint8_t diff, uint8_t preset, uint8_t adder,
 }
 
 /* smb.asm: GetXOffscreenBits — the right edge is checked first, then
- * the left; a nonzero mask ends the loop */
-uint8_t get_x_offscreen_bits(CoreState *st, uint8_t x) {
+ * the left; a nonzero mask ends the loop; i is the spr-object buffer
+ * index (player $00, enemies $01+) */
+uint8_t get_x_offscreen_bits(CoreState *st, uint8_t i) {
   uint8_t bits = 0x00u;
   for (int y = 1; y >= 0; y--) {
     uint16_t edge = ((uint16_t)st->ram[SMBC_SCREEN_LEFT_PAGE_LOC + y] << 8) |
                     st->ram[SMBC_SCREEN_LEFT_X_POS + y];
-    uint16_t obj = ((uint16_t)st->ram[SMBC_ENEMY_PAGE_LOC + x] << 8) |
-                   st->ram[SMBC_ENEMY_X_POSITION + x];
+    uint16_t obj = ((uint16_t)st->ram[SMBC_PLAYER_PAGE_LOC + i] << 8) |
+                   st->ram[SMBC_PLAYER_X_POSITION + i];
     int16_t d = (int16_t)(edge - obj);
     int8_t high = (int8_t)(d >> 8);
     uint8_t ofs;
@@ -53,12 +54,12 @@ uint8_t get_x_offscreen_bits(CoreState *st, uint8_t x) {
 
 /* smb.asm: GetYOffscreenBits — the top of the screen first (edge one
  * vertical unit up plus HighPosUnitData), then the bottom */
-static uint8_t get_y_offscreen_bits(CoreState *st, uint8_t x) {
+static uint8_t get_y_offscreen_bits(CoreState *st, uint8_t i) {
   uint8_t bits = 0x00u;
   for (int y = 1; y >= 0; y--) {
     uint16_t edge = (uint16_t)(0x0100u | SMBC_HIGH_POS_UNIT_DATA[y]);
-    uint16_t obj = ((uint16_t)st->ram[SMBC_ENEMY_Y_HIGH_POS + x] << 8) |
-                   st->ram[SMBC_ENEMY_Y_POSITION + x];
+    uint16_t obj = ((uint16_t)st->ram[SMBC_PLAYER_Y_HIGH_POS + i] << 8) |
+                   st->ram[SMBC_PLAYER_Y_POSITION + i];
     int16_t d = (int16_t)(edge - obj);
     int8_t high = (int8_t)(d >> 8);
     uint8_t ofs;
@@ -79,9 +80,18 @@ static uint8_t get_y_offscreen_bits(CoreState *st, uint8_t x) {
 /* smb.asm: GetOffScreenBitsSet — the horizontal mask in the low
  * nybble, the vertical mask in the high nybble */
 void get_enemy_offscreen_bits(CoreState *st, uint8_t x) {
-  uint8_t xbits = get_x_offscreen_bits(st, x);
-  uint8_t ybits = get_y_offscreen_bits(st, x);
+  uint8_t xbits = get_x_offscreen_bits(st, (uint8_t)(x + 1u));
+  uint8_t ybits = get_y_offscreen_bits(st, (uint8_t)(x + 1u));
   st->ram[SMBC_ENEMY_OFFSCREEN_BITS] =
+      (uint8_t)((ybits << 4) | (xbits >> 4));
+}
+
+/* smb.asm: GetPlayerOffscreenBits — the same pair with the player's
+ * buffer index, stored in the player's offscreen bits */
+void get_player_offscreen_bits(CoreState *st) {
+  uint8_t xbits = get_x_offscreen_bits(st, 0x00u);
+  uint8_t ybits = get_y_offscreen_bits(st, 0x00u);
+  st->ram[SMBC_PLAYER_OFFSCREEN_BITS] =
       (uint8_t)((ybits << 4) | (xbits >> 4));
 }
 

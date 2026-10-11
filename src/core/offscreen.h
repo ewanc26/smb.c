@@ -24,8 +24,14 @@ void relative_enemy_position(CoreState *state, uint8_t x);
  * Enemy_OffscreenBits */
 void get_enemy_offscreen_bits(CoreState *state, uint8_t x);
 
+/* smb.asm: GetPlayerOffscreenBits — horizontal mask in the low nybble,
+ * vertical mask in the high nybble */
+void get_player_offscreen_bits(CoreState *state);
+
 /* smb.asm: GetXOffscreenBits — the horizontal offscreen bits for
  * one object, exposed for the platform bound boxes */
+/* smb.asm: GetXOffscreenBits — the raw horizontal offscreen mask for
+ * a spr-object buffer index (player $00, enemies $01+) */
 uint8_t get_x_offscreen_bits(CoreState *state, uint8_t x);
 
 /* smb.asm: PlayerEnemyDiff — the sixteen-bit horizontal distance

@@ -117,11 +117,36 @@ static void y_bits(void) {
   assert(smbc.state.ram[SMBC_ENEMY_OFFSCREEN_BITS] == 0xf0u);
 }
 
+
+static void player_bits(void) {
+  /* smb.asm: GetPlayerOffscreenBits — the same pair on the player's
+   * buffer index, stored in the player's offscreen bits; an onscreen
+   * player reads zero, one past the right edge the full horizontal
+   * mask */
+  Smbc smbc;
+  smbc_init(&smbc);
+  set_screen(&smbc);
+  smbc.state.ram[SMBC_PLAYER_PAGE_LOC] = 0x00u;
+  smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0x80u;
+  smbc.state.ram[SMBC_PLAYER_Y_HIGH_POS] = 0x01u;
+  smbc.state.ram[SMBC_PLAYER_Y_POSITION] = 0x40u;
+  get_player_offscreen_bits(&smbc.state);
+  assert(smbc.state.ram[SMBC_PLAYER_OFFSCREEN_BITS] == 0x00u);
+
+  smbc.state.ram[SMBC_PLAYER_PAGE_LOC] = 0x01u;
+  smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0xf0u; /* beyond the edge */
+  get_player_offscreen_bits(&smbc.state);
+  assert((smbc.state.ram[SMBC_PLAYER_OFFSCREEN_BITS] & 0x0fu) == 0x0fu);
+  /* the enemy offscreen bits are untouched */
+  assert(smbc.state.ram[SMBC_ENEMY_OFFSCREEN_BITS] == 0x00u);
+}
+
 int main(void) {
   relative_position();
   x_bits_mid_and_right();
   x_bits_left();
   y_bits();
+  player_bits();
   puts("tests/core/offscreen: ok");
   return 0;
 }

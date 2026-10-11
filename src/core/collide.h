@@ -31,6 +31,12 @@ uint8_t get_enemy_bound_box_ofs(CoreState *state, uint8_t slot,
  * adjusted Y coordinate, which always fails the demote tests */
 void chk_to_stun_enemies(CoreState *state, uint8_t x, uint8_t a);
 
+/* smb.asm: SetStun — the stun body without the demote compares:
+ * d1 under the preserved high nybble, two pixels up, the
+ * water-dependent vertical speed, and the horizontal speed and
+ * direction facing the player */
+void set_stun(CoreState *state, uint8_t x);
+
 /* smb.asm: SetupFloateyNumber — the score value from A with the
  * $30 timer and the enemy's position */
 void setup_floatey_number(CoreState *state, uint8_t x, uint8_t score);
@@ -74,5 +80,37 @@ void proc_enemy_collisions(CoreState *state, uint8_t x, uint8_t y);
  * slot enemy track which pairs already reacted, so only fresh
  * contacts (or anything with d7 set) run ProcEnemyCollisions */
 void enemies_collision(CoreState *state, uint8_t x);
+
+/* smb.asm: CheckPlayerVertical — nonzero when the player is
+ * vertically onscreen above the $d0 pixel row */
+uint8_t check_player_vertical(CoreState *state);
+
+/* smb.asm: InitVStf — zero the enemy's vertical speed and move
+ * force, returning zero */
+uint8_t init_vstf(CoreState *state, uint8_t x);
+
+/* smb.asm: EnemyFacePlayer — face the enemy towards the player,
+ * returning the data offset (0 right, 1 left) */
+uint8_t enemy_face_player(CoreState *state, uint8_t x);
+
+/* smb.asm: EnemyStomped — the stomp kill for non-shell enemies:
+ * the stomp sound, the per-id score (cheep-cheep, either bullet
+ * bill and the unreachable podoboo case take 200; hammer bro 600;
+ * lakitu 500; bloober 600; anything else goes through the koopa
+ * demote), the stun with the direction preserved, d5 set, both
+ * speeds zeroed and the player's $fd bounce */
+void enemy_stomped(CoreState *state, uint8_t x);
+
+/* smb.asm: ChkForDemoteKoopa — stomping a paratroopa (id >= $09)
+ * demotes it to a plain troopa by the LSB, restores the normal
+ * state, awards 400 points, faces it at the player and sends it
+ * off at the demoted speed; anything lower is a stomped shell */
+void chk_for_demote_koopa(CoreState *state, uint8_t x);
+
+/* smb.asm: HandleStompedShellE — a stomped shell takes state $04,
+ * the stomp chain counter increments into the score with the
+ * stomp timer, the timer increments, the revival rate comes from
+ * the hard mode flag, and the player bounces at $fc */
+void handle_stomped_shell_e(CoreState *state, uint8_t x);
 
 #endif

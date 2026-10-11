@@ -33,6 +33,9 @@
 #define SMBC_PIRANHA_PLANT 0x0du /* smb.asm: PiranhaPlant */
 #define SMBC_GREEN_PARATROOPA_JUMP 0x0eu /* smb.asm: GreenParatroopaJump */
 #define SMBC_BULLET_BILL_CANNON 0x33u  /* smb.asm: BulletBill_CannonVar */
+#define SMBC_PODOBOO 0x0cu       /* smb.asm: Podoboo */
+#define SMBC_FLYING_CHEEP_CHEEP 0x14u /* smb.asm: FlyingCheepCheep */
+#define SMBC_POWER_UP_OBJECT 0x2eu  /* smb.asm: PowerUpObject */
 
 /* smb.asm: EnemiesAndLoopsCore — one enemy slot's per-frame entry. An
  * active slot jumps to the (pending) enemy runners; an idle slot checks

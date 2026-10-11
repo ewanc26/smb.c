@@ -114,7 +114,13 @@ void chk_to_stun_enemies(CoreState *st, uint8_t x, uint8_t a) {
       st->ram[SMBC_ENEMY_ID + x] = a;
     }
   }
-  /* smb.asm: SetStun */
+  set_stun(st, x);
+}
+
+/* smb.asm: SetStun — the stun body shared by ChkToStunEnemies and
+ * EnemyStomped, which jumps in here with the demote compares
+ * skipped */
+void set_stun(CoreState *st, uint8_t x) {
   st->ram[SMBC_ENEMY_STATE + x] =
       (uint8_t)((st->ram[SMBC_ENEMY_STATE + x] & 0xf0u) | 0x02u);
   st->ram[SMBC_ENEMY_Y_POSITION + x]--;
@@ -287,4 +293,92 @@ void enemies_collision(CoreState *st, uint8_t x) {
     }
     if (slot == 0x00u) break;
   }
+}
+
+/* smb.asm: StompedEnemyPtsData — 200, 600, 500, 600 */
+static const uint8_t SMBC_STOMPED_ENEMY_PTS_DATA[4] = {
+    0x02u, 0x06u, 0x05u, 0x06u};
+/* smb.asm: DemotedKoopaXSpdData */
+static const uint8_t SMBC_DEMOTED_KOOPA_X_SPD_DATA[2] = {0x08u, 0xf8u};
+/* smb.asm: RevivalRateData */
+static const uint8_t SMBC_REVIVAL_RATE_DATA[2] = {0x10u, 0x0bu};
+
+uint8_t check_player_vertical(CoreState *st) {
+  if (st->ram[SMBC_PLAYER_OFFSCREEN_BITS] >= 0xf0u) return 0x00u;
+  if (st->ram[SMBC_PLAYER_Y_HIGH_POS] != 0x01u) return 0x00u;
+  return st->ram[SMBC_PLAYER_Y_POSITION] < 0xd0u;
+}
+
+uint8_t init_vstf(CoreState *st, uint8_t x) {
+  st->ram[SMBC_ENEMY_Y_SPEED + x] = 0x00u;
+  st->ram[SMBC_ENEMY_Y_MOVE_FORCE + x] = 0x00u;
+  return 0x00u;
+}
+
+uint8_t enemy_face_player(CoreState *st, uint8_t x) {
+  uint8_t dir = 0x01u; /* enemy right of player: move right */
+  if (player_enemy_diff(st, x) < 0) dir = 0x02u;
+  st->ram[SMBC_ENEMY_MOVING_DIR + x] = dir;
+  return (uint8_t)(dir - 1u);
+}
+
+void enemy_stomped(CoreState *st, uint8_t x) {
+  uint8_t id = st->ram[SMBC_ENEMY_ID + x];
+  if (id == SMBC_SPINY) {
+    /* smb.asm: spiny stomps bounce back to InjurePlayer — handled
+     * by the caller, never reached here */
+    return;
+  }
+  st->ram[SMBC_SQUARE1_SOUND_QUEUE] = SMBC_SFX_ENEMY_STOMP;
+  uint8_t ofs;
+  if (id == SMBC_FLYING_CHEEP_CHEEP || id == SMBC_BULLET_BILL_FRENZY ||
+      id == SMBC_BULLET_BILL_CANNON || id == SMBC_PODOBOO) {
+    ofs = 0x00u;
+  } else if (id == SMBC_HAMMER_BRO) {
+    ofs = 0x01u;
+  } else if (id == SMBC_LAKITU) {
+    ofs = 0x02u;
+  } else if (id == SMBC_BLOOBER) {
+    ofs = 0x03u;
+  } else {
+    /* smb.asm: anything else — goombas and koopas included — falls
+     * through to the demote check */
+    chk_for_demote_koopa(st, x);
+    return;
+  }
+  setup_floatey_number(st, x, SMBC_STOMPED_ENEMY_PTS_DATA[ofs]);
+  uint8_t dir = st->ram[SMBC_ENEMY_MOVING_DIR + x];
+  set_stun(st, x);
+  st->ram[SMBC_ENEMY_MOVING_DIR + x] = dir;
+  st->ram[SMBC_ENEMY_STATE + x] = 0x20u;
+  st->ram[SMBC_ENEMY_X_SPEED + x] = init_vstf(st, x);
+  st->ram[SMBC_PLAYER_Y_SPEED] = 0xfdu;
+}
+
+void chk_for_demote_koopa(CoreState *st, uint8_t x) {
+  uint8_t id = st->ram[SMBC_ENEMY_ID + x];
+  if (id < 0x09u) {
+    handle_stomped_shell_e(st, x);
+    return;
+  }
+  id = (uint8_t)(id & 0x01u);
+  st->ram[SMBC_ENEMY_ID + x] = id;
+  st->ram[SMBC_ENEMY_STATE + x] = 0x00u;
+  setup_floatey_number(st, x, 0x03u); /* 400 points */
+  init_vstf(st, x);
+  uint8_t ofs = enemy_face_player(st, x);
+  st->ram[SMBC_ENEMY_X_SPEED + x] = SMBC_DEMOTED_KOOPA_X_SPD_DATA[ofs];
+  st->ram[SMBC_PLAYER_Y_SPEED] = 0xfcu;
+}
+
+void handle_stomped_shell_e(CoreState *st, uint8_t x) {
+  st->ram[SMBC_ENEMY_STATE + x] = 0x04u;
+  st->ram[SMBC_STOMP_CHAIN_COUNTER]++;
+  uint8_t score = (uint8_t)(st->ram[SMBC_STOMP_CHAIN_COUNTER] +
+                            st->ram[SMBC_STOMP_TIMER]);
+  setup_floatey_number(st, x, score);
+  st->ram[SMBC_STOMP_TIMER]++;
+  st->ram[SMBC_ENEMY_INTERVAL_TIMER + x] =
+      SMBC_REVIVAL_RATE_DATA[st->ram[SMBC_PRIMARY_HARD_MODE] & 0x01u];
+  st->ram[SMBC_PLAYER_Y_SPEED] = 0xfcu;
 }

@@ -42,6 +42,11 @@ void state_init(CoreState *state);
 #define SMBC_PLAYER_X_POSITION   0x0086u /* smb.asm: Player_X_Position */
 #define SMBC_PLAYER_MOVING_DIR   0x0045u /* smb.asm: Player_MovingDir */
 #define SMBC_PLAYER_Y_HIGH_POS   0x00b5u /* smb.asm: Player_Y_HighPos */
+#define SMBC_PLAYER_Y_SPEED      0x009fu /* smb.asm: Player_Y_Speed */
+#define SMBC_PLAYER_OFFSCREEN_BITS 0x03d0u /* smb.asm: Player_OffscreenBits */
+#define SMBC_STOMP_TIMER         0x0791u /* smb.asm: StompTimer */
+#define SMBC_INJURY_TIMER        0x079eu /* smb.asm: InjuryTimer */
+#define SMBC_STOMP_CHAIN_COUNTER 0x0484u /* smb.asm: StompChainCounter */
 
 /* $0700 page */
 #define SMBC_SAVED_JOYPAD1_BITS 0x06fcu /* smb.asm: SavedJoypad1Bits */

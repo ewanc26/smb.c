@@ -479,6 +479,81 @@ static void enemies_collision_pairs(void) {
   assert(smbc.state.ram[SMBC_ENEMY_COLLISION_BITS + 0] == 0x00u);
 }
 
+
+static void stomp_family(void) {
+  /* check_player_vertical gates on offscreen bits, the high
+   * byte, and the $d0 row */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_PLAYER_Y_HIGH_POS] = 0x01u;
+  smbc.state.ram[SMBC_PLAYER_Y_POSITION] = 0x40u;
+  assert(check_player_vertical(&smbc.state) == 0x01u);
+  smbc.state.ram[SMBC_PLAYER_OFFSCREEN_BITS] = 0xf0u;
+  assert(check_player_vertical(&smbc.state) == 0x00u);
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_PLAYER_Y_HIGH_POS] = 0x02u;
+  assert(check_player_vertical(&smbc.state) == 0x00u);
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_PLAYER_Y_HIGH_POS] = 0x01u;
+  smbc.state.ram[SMBC_PLAYER_Y_POSITION] = 0xd0u;
+  assert(check_player_vertical(&smbc.state) == 0x00u);
+
+  /* init_vstf zeroes both and returns zero */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_Y_SPEED + 0] = 0x22u;
+  smbc.state.ram[SMBC_ENEMY_Y_MOVE_FORCE + 0] = 0x33u;
+  assert(init_vstf(&smbc.state, 0x00u) == 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_SPEED + 0] == 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_MOVE_FORCE + 0] == 0x00u);
+
+  /* enemy_face_player: left of player faces left, offset 1 */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_PLAYER_PAGE_LOC] = 0x01u;
+  assert(enemy_face_player(&smbc.state, 0x00u) == 0x01u);
+  assert(smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] == 0x02u);
+
+  /* stomping a bloober: 600 points, direction preserved, d5
+   * set, speeds zeroed, player bounces */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_BLOOBER;
+  smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] = 0x02u;
+  smbc.state.ram[SMBC_AREA_TYPE] = 0x00u;
+  enemy_stomped(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_FLOATEY_NUM_CONTROL + 0] == 0x06u);
+  assert(smbc.state.ram[SMBC_SQUARE1_SOUND_QUEUE] == 0x04u);
+  assert(smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] == 0x02u);
+  assert(smbc.state.ram[SMBC_ENEMY_STATE + 0] == 0x20u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] == 0x00u);
+  assert(smbc.state.ram[SMBC_PLAYER_Y_SPEED] == 0xfdu);
+
+  /* stomping a goomba is a shell stomp: state $04, chain score,
+   * revival timer, $fc bounce */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_GOOMBA;
+  smbc.state.ram[SMBC_STOMP_CHAIN_COUNTER] = 0x01u;
+  smbc.state.ram[SMBC_STOMP_TIMER] = 0x02u;
+  smbc.state.ram[SMBC_PRIMARY_HARD_MODE] = 0x01u;
+  enemy_stomped(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_STATE + 0] == 0x04u);
+  assert(smbc.state.ram[SMBC_STOMP_CHAIN_COUNTER] == 0x02u);
+  assert(smbc.state.ram[SMBC_FLOATEY_NUM_CONTROL + 0] == 0x04u);
+  assert(smbc.state.ram[SMBC_STOMP_TIMER] == 0x03u);
+  assert(smbc.state.ram[SMBC_ENEMY_INTERVAL_TIMER + 0] == 0x0bu);
+  assert(smbc.state.ram[SMBC_PLAYER_Y_SPEED] == 0xfcu);
+
+  /* stomping a jumping paratroopa demotes it: id LSB, normal
+   * state, 400 points, demoted speed facing the player */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_GREEN_PARATROOPA_JUMP;
+  smbc.state.ram[SMBC_AREA_TYPE] = 0x01u;
+  enemy_stomped(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_ID + 0] == 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_STATE + 0] == 0x00u);
+  assert(smbc.state.ram[SMBC_FLOATEY_NUM_CONTROL + 0] == 0x03u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] == 0x08u);
+  assert(smbc.state.ram[SMBC_PLAYER_Y_SPEED] == 0xfcu);
+}
+
 int main(void) {
   masked_bits_park_the_box();
   corners_from_ctrl_data();
@@ -494,6 +569,7 @@ int main(void) {
   enemy_collision_reactions();
   enemies_collision_gates();
   enemies_collision_pairs();
+  stomp_family();
   puts("collide: ok");
   return 0;
 }

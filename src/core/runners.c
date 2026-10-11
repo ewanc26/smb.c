@@ -1898,3 +1898,41 @@ void warp_zone_object(CoreState *st, uint8_t x) {
   st->ram[SMBC_WARP_ZONE_CONTROL]++;
   erase_enemy_object(st, x);
 }
+
+/* smb.asm: RunEnemyObjectsCore — the enemy object dispatcher:
+ * objects below $15 share RunNormalEnemies, everything from $15
+ * up indexes the jump table by id minus $14 */
+void run_enemy_objects_core(CoreState *st, uint8_t x) {
+  uint8_t id = st->ram[SMBC_ENEMY_ID + x];
+  uint8_t idx = id < 0x15u ? 0x00u : (uint8_t)(id - 0x14u);
+  switch (idx) {
+  case 0x00u: run_normal_enemies(st, x); break;
+  case 0x01u: run_bowser_flame(st, x); break;
+  case 0x02u: run_fireworks(st, x); break;
+  case 0x07u:
+  case 0x08u:
+  case 0x09u:
+  case 0x0au:
+  case 0x0bu:
+  case 0x0cu:
+  case 0x0du:
+  case 0x0eu: run_firebar_obj(st, x); break;
+  case 0x10u:
+  case 0x11u:
+  case 0x12u:
+  case 0x13u:
+  case 0x14u:
+  case 0x15u:
+  case 0x16u: run_large_platform(st, x); break;
+  case 0x17u:
+  case 0x18u: run_small_platform(st, x); break;
+  case 0x19u: run_bowser(st, x); break;
+  case 0x1au: power_up_obj_handler(st); break;
+  case 0x1bu: vine_object_handler(st, x); break;
+  case 0x1du: run_star_flag_obj(st, x); break;
+  case 0x1eu: jumpspring_handler(st, x); break;
+  case 0x20u: warp_zone_object(st, x); break;
+  case 0x21u: run_retainer_obj(st, x); break;
+  default: break; /* smb.asm: NoRunCode */
+  }
+}

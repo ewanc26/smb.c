@@ -1929,6 +1929,46 @@ static void warp_zone_activates(void) {
   assert(smbc.state.ram[SMBC_ENEMY_FLAG + 1] == 0x00u);
 }
 
+
+/* smb.asm: RunEnemyObjectsCore — objects below $15 route to
+ * RunNormalEnemies; a goomba with a defeated state falls, which
+ * only the normal-family path does */
+static void dispatch_normal_family(void) {
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = 0x06u; /* green koopa troopa */
+  smbc.state.ram[SMBC_ENEMY_STATE + 0] = 0x20u; /* defeated */
+  smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] = 0x08u;
+  run_enemy_objects_core(&smbc.state, 0x00u);
+  /* defeated enemies take the fall path: vertical force grows */
+  assert(smbc.state.ram[SMBC_ENEMY_Y_MOVE_FORCE + 0] != 0x00u);
+}
+
+/* smb.asm: RunEnemyObjectsCore — id $34 minus $14 indexes the
+ * warp zone entry; the scroll lock releases at the top */
+static void dispatch_warp_zone(void) {
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 1] = 0x34u;
+  smbc.state.ram[SMBC_ENEMY_FLAG + 1] = 0x01u;
+  smbc.state.ram[SMBC_SCROLL_LOCK] = 0x01u;
+  smbc.state.ram[SMBC_PLAYER_Y_HIGH_POS] = 0x01u;
+  run_enemy_objects_core(&smbc.state, 0x01u);
+  assert(smbc.state.ram[SMBC_WARP_ZONE_CONTROL] == 0x01u);
+  assert(smbc.state.ram[SMBC_ENEMY_FLAG + 1] == 0x00u);
+}
+
+/* smb.asm: RunEnemyObjectsCore — the NoRunCode gaps ($17-$1a,
+ * $23, $30, $33) touch nothing */
+static void dispatch_no_run_code(void) {
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = 0x17u;
+  smbc.state.ram[SMBC_ENEMY_FLAG + 0] = 0x01u;
+  run_enemy_objects_core(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_FLAG + 0] == 0x01u);
+}
+
 int main(void) {
   onscreen_survives();
   too_far_left_erased();
@@ -1988,6 +2028,9 @@ int main(void) {
   warp_zone_no_lock();
   warp_zone_player_low();
   warp_zone_activates();
+  dispatch_normal_family();
+  dispatch_warp_zone();
+  dispatch_no_run_code();
   puts("tests/core/runners: ok");
   return 0;
 }

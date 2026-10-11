@@ -2,6 +2,7 @@
 #include "gamemode.h"
 
 #include "blocks.h"
+#include "cannon.h"
 #include "colour.h"
 #include "frame.h"
 #include "offscreen.h"
@@ -38,15 +39,15 @@ static void game_routines(Smbc *smbc) {
 }
 
 /* smb.asm: GameEngine — the per-frame object and music processing. The
- * translation, offscreen, block and colour calls run, as do the music
- * check, palette-cycle control computation and the SaveAB tail; the
- * fireball/bubble, enemy, player-graphics, misc-object, cannon,
- * whirlpool, flagpole and timer calls still wait on their atoms. */
+ * translation, offscreen, block, cannon and colour calls run, as do the
+ * music check, palette-cycle control computation and the SaveAB tail;
+ * the fireball/bubble, enemy, player-graphics, misc-object, whirlpool,
+ * flagpole and timer calls still wait on their atoms. */
 static void game_engine(Smbc *smbc) {
   CoreState *st = &smbc->state;
   /* TODO(port): smb.asm: ProcFireball_Bubble, the ProcELoop enemy and
    * floatey-number passes, PlayerGfxHandler, MiscObjectsCore,
-   * ProcessCannons, ProcessWhirlpools, FlagpoleRoutine, RunGameTimer */
+   * ProcessWhirlpools, FlagpoleRoutine, RunGameTimer */
   /* smb.asm: GetPlayerOffscreenBits, then RelativePlayerPosition — the
    * player's offscreen bits and screen-relative coordinates, ahead of
    * PlayerGfxHandler */
@@ -59,6 +60,8 @@ static void game_engine(Smbc *smbc) {
   block_objects_core(st, 0x01u);
   st->ram[SMBC_OBJECT_OFFSET] = 0x00u;
   block_objects_core(st, 0x00u);
+  /* smb.asm: ProcessCannons */
+  process_cannons(st);
   /* smb.asm: ColorRotation */
   color_rotation(st);
   bool cycle_palette = true;

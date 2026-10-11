@@ -228,6 +228,7 @@ void state_init(CoreState *state);
 #define SMBC_CANNON_PAGE_LOC 0x046bu     /* smb.asm: Cannon_PageLoc */
 #define SMBC_CANNON_X_POSITION 0x0471u   /* smb.asm: Cannon_X_Position */
 #define SMBC_CANNON_Y_POSITION 0x0477u   /* smb.asm: Cannon_Y_Position */
+#define SMBC_CANNON_TIMER 0x047du        /* smb.asm: Cannon_Timer */
 #define SMBC_WHIRLPOOL_OFFSET 0x046au    /* smb.asm: Whirlpool_Offset */
 #define SMBC_WHIRLPOOL_PAGE_LOC 0x046bu  /* smb.asm: Whirlpool_PageLoc */
 #define SMBC_WHIRLPOOL_LEFT_EXTENT 0x0471u /* smb.asm: Whirlpool_LeftExtent */

@@ -12,6 +12,7 @@
 #include "initialize.h"
 #include "offscreen.h"
 #include "parser.h"
+#include "playergfx.h"
 #include "screen.h"
 #include "setup.h"
 #include "state.h"
@@ -49,11 +50,9 @@ static void game_routines(Smbc *smbc) {
 /* smb.asm: GameEngine — the per-frame object and music processing. The
  * fireball/bubble, enemy, translation, offscreen, block, cannon,
  * whirlpool, flagpole and timer calls run, as do the music check,
- * palette-cycle control computation and the SaveAB tail; the
- * player-graphics call still waits on its atom. */
+ * palette cycling and the SaveAB tail. */
 static void game_engine(Smbc *smbc) {
   CoreState *st = &smbc->state;
-  /* TODO(port): smb.asm: PlayerGfxHandler */
   /* smb.asm: ProcFireball_Bubble */
   proc_fireball_bubble(st);
   /* smb.asm: ProcELoop — the enemy and floatey-number passes over all
@@ -68,6 +67,8 @@ static void game_engine(Smbc *smbc) {
    * PlayerGfxHandler */
   get_player_offscreen_bits(st);
   relative_player_position(st);
+  /* smb.asm: PlayerGfxHandler */
+  player_gfx_handler(st);
   /* smb.asm: BlockObjMT_Updater, then BlockObjectsCore for the second
    * block object and the first */
   block_obj_mt_updater(st);
@@ -93,7 +94,7 @@ static void game_engine(Smbc *smbc) {
   if ((st->ram[SMBC_PLAYER_Y_HIGH_POS] - 0x02u & 0x80u) != 0) {
     uint8_t star = st->ram[SMBC_STAR_INVINCIBLE_TIMER];
     if (star == 0x00) {
-      /* ClrPlrPal — TODO(port): smb.asm: ResetPalStar */
+      reset_pal_star(st); /* ClrPlrPal */
       cycle_palette = false;
     } else if (star == 0x04u && st->ram[SMBC_INTERVAL_TIMER_CONTROL] == 0x00u) {
       get_area_music(st); /* re-attain appropriate level music */
@@ -105,7 +106,7 @@ static void game_engine(Smbc *smbc) {
     uint8_t a = st->ram[SMBC_FRAME_COUNTER];
     if (st->ram[SMBC_STAR_INVINCIBLE_TIMER] < 0x08u) a >>= 2;
     a >>= 1;
-    (void)a; /* TODO(port): smb.asm: CyclePlayerPalette */
+    cycle_player_palette(st, a);
   }
   /* SaveAB */
   st->ram[SMBC_PREV_A_B_BUTTONS] = st->ram[SMBC_A_B_BUTTONS];

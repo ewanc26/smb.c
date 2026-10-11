@@ -14,9 +14,18 @@ game-setup tasks (`SecondaryGameSetup`, `GetAreaMusic`), the status-bar
 writer and digit arithmetic, and the ROM-backed VRAM update sets (palettes
 and messages) are in, with the CHR pattern tables embedded
 (`src/data/chr.c`). The PPU model decodes the donor cartridge's name-table
-mirroring and models palette-region `$2007` reads. Game logic beyond the
-spine — the mode execution tree, the sound engine, levels and enemies —
-is tracked in the open issues and translated routine by routine.
+mirroring and models palette-region `$2007` reads.
+
+The GameMode tree is in progress. `GameEngine` runs its full object pass
+each frame: fireballs and bubbles, the enemy and floatey-number loop,
+player graphics (pose selection, grow/shrink, swim kick, offscreen
+parking), block objects, misc objects (hammers, jumping coins, floatey
+numbers), cannons, whirlpools, the flagpole, the game timer, colour
+rotation and the palette cycling, ending in the SaveAB tail and
+`UpdScrollVar`. The thirteen `GameRoutines` player routines and
+`InitializeArea` are the remaining pieces of the tree. The sound engine,
+enemy data driving and the title/victory trees are tracked in the open
+issues and translated routine by routine.
 
 The source of truth is `smb.asm` — doppelganger's comprehensive disassembly
 (x816 syntax), kept unmodified in the repository root. Every translated

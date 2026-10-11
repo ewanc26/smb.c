@@ -1,5 +1,6 @@
 /* core/screen.c — see core/screen.h for the contract. */
 #include "screen.h"
+#include "playergfx.h"
 #include "enemies.h"
 
 #include "parser.h"
@@ -436,7 +437,8 @@ void screen_routines(Smbc *smbc) {
           st->ram[SMBC_ALT_ENTRANCE_CONTROL] == 0x00 &&
           (st->ram[SMBC_AREA_TYPE] == 0x03u || /* castle: possibly residual */
            st->ram[SMBC_DISABLE_INTERMEDIATE] == 0x00)) {
-        /* TODO(port): smb.asm: DrawPlayer_Intermediate (core/player) */
+        /* smb.asm: DrawPlayer_Intermediate */
+        draw_player_intermediate(st);
         output_inter(smbc, 0x01u); /* the lives display */
         break;
       }

@@ -78,4 +78,9 @@ extern const uint8_t SMBC_REVIVED_X_SPEED[4];
  * direction change, indexed by the secondary hard mode flag */
 extern const uint8_t SMBC_BLOOBER_BITMASKS[2];
 
+/* smb.asm: SwimCCXMoveData — the horizontal force drain per frame
+ * for the two swimming cheep-cheep identifiers (the table's second
+ * pair is residual and not ported) */
+extern const uint8_t SMBC_SWIM_CC_X_MOVE_DATA[2];
+
 #endif /* SMBC_DATA_OBJECTS_H */

@@ -51,4 +51,17 @@ void move_fly_green_p_troopa(CoreState *state, uint8_t x);
  * BlooperMoveCounter the primary movement counter at $a0) */
 void move_bloober(CoreState *state, uint8_t x);
 
+/* smb.asm: MoveBulletBill — the frenzy bullet bill: defeated ones
+ * drop with jumping gravity; otherwise a fixed $e8 leftward speed
+ * (the cannon-fired bills move elsewhere) */
+void move_bullet_bill(CoreState *state, uint8_t x);
+
+/* smb.asm: MoveSwimmingCheepCheep — the underwater cheep-cheeps:
+ * defeated ones sink slowly; otherwise a per-identifier horizontal
+ * force drain drifts them left, and slots beyond the first two
+ * oscillate vertically around their origin, the movement flag
+ * flipping direction fifteen pixels out (CheepCheepMoveMFlag
+ * aliases the X speed at $58) */
+void move_swimming_cheep_cheep(CoreState *state, uint8_t x);
+
 #endif /* SMBC_CORE_RUNNERS_H */

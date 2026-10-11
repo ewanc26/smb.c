@@ -438,6 +438,90 @@ static void defeated_bloober_sinks(void) {
   assert(smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] == 0x60u);
 }
 
+
+static void bullet_bill_moves(void) {
+  /* undefeated: a fixed $e8 speed; defeated: jumping gravity */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] = 0x10u;
+  move_bullet_bill(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] == 0xe8u);
+  /* $e8: high nybble $e sign-extends, so 2 pixels left per frame */
+  assert(smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] == 0x0eu);
+  assert(smbc.state.ram[SMBC_ENEMY_X_MOVE_FORCE + 0] == 0x80u);
+
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_STATE + 0] = 0x20u;
+  move_bullet_bill(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] == 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_MOVE_FORCE + 0] != 0x00u);
+}
+
+static void cheep_cheep_drifts_left(void) {
+  /* the horizontal force drains by the identifier's preset; each
+   * underflow costs a pixel and eventually a page */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = 0x0au; /* drain $40 */
+  smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] = 0x10u;
+  smbc.state.ram[SMBC_ENEMY_X_MOVE_FORCE + 0] = 0x40u;
+  move_swimming_cheep_cheep(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_MOVE_FORCE + 0] == 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] == 0x10u); /* no borrow */
+  move_swimming_cheep_cheep(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_MOVE_FORCE + 0] == 0xc0u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_POSITION + 0] == 0x0fu); /* borrowed */
+
+  /* slots zero and one never oscillate */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = 0x0bu;
+  move_swimming_cheep_cheep(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_YMF_DUMMY + 0] == 0x00u);
+}
+
+static void cheep_cheep_oscillates(void) {
+  /* slot two: with the flag below $10 the dummy drains and the
+   * position ticks up on each underflow; fifteen pixels from the
+   * origin flips the flag to downwards */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 2] = 0x0bu;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 2] = 0x60u;
+  smbc.state.ram[SMBC_CHEEP_CHEEP_ORIG_Y_POS + 2] = 0x60u;
+  move_swimming_cheep_cheep(&smbc.state, 0x02u);
+  assert(smbc.state.ram[SMBC_ENEMY_YMF_DUMMY + 2] == 0xe0u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_POSITION + 2] == 0x5fu); /* borrowed */
+  assert(smbc.state.ram[SMBC_CHEEP_CHEEP_MOVE_M_FLAG + 2] == 0x00u);
+
+  /* at fifteen pixels below the origin the flag flips downwards */
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 2] = 0x51u;
+  smbc.state.ram[SMBC_ENEMY_YMF_DUMMY + 2] = 0x20u; /* no borrow this time */
+  move_swimming_cheep_cheep(&smbc.state, 0x02u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_POSITION + 2] == 0x51u);
+  assert(smbc.state.ram[SMBC_CHEEP_CHEEP_MOVE_M_FLAG + 2] == 0x10u);
+
+  /* the flip call drained the dummy to zero on its upward leg;
+   * downwards now accumulates from there */
+  assert(smbc.state.ram[SMBC_ENEMY_YMF_DUMMY + 2] == 0x00u);
+  move_swimming_cheep_cheep(&smbc.state, 0x02u);
+  assert(smbc.state.ram[SMBC_ENEMY_YMF_DUMMY + 2] == 0x20u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_POSITION + 2] == 0x51u);
+  smbc.state.ram[SMBC_ENEMY_YMF_DUMMY + 2] = 0xe0u;
+  move_swimming_cheep_cheep(&smbc.state, 0x02u);
+  assert(smbc.state.ram[SMBC_ENEMY_YMF_DUMMY + 2] == 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_POSITION + 2] == 0x52u); /* carried */
+}
+
+static void defeated_cheep_cheep_sinks(void) {
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_STATE + 2] = 0x20u;
+  smbc.state.ram[SMBC_ENEMY_X_MOVE_FORCE + 2] = 0x80u;
+  move_swimming_cheep_cheep(&smbc.state, 0x02u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_MOVE_FORCE + 2] == 0x80u); /* untouched */
+  assert(smbc.state.ram[SMBC_ENEMY_Y_MOVE_FORCE + 2] != 0x00u);
+}
+
 int main(void) {
   onscreen_survives();
   too_far_left_erased();
@@ -461,6 +545,10 @@ int main(void) {
   bloober_swim_cycle();
   bloober_floatdown();
   defeated_bloober_sinks();
+  bullet_bill_moves();
+  cheep_cheep_drifts_left();
+  cheep_cheep_oscillates();
+  defeated_cheep_cheep_sinks();
   puts("tests/core/runners: ok");
   return 0;
 }

@@ -81,3 +81,6 @@ const uint8_t SMBC_REVIVED_X_SPEED[4] = {0x08u, 0xf8u, 0x0cu, 0xf4u};
 
 /* smb.asm: BlooberBitmasks */
 const uint8_t SMBC_BLOOBER_BITMASKS[2] = {0x3fu, 0x03u};
+
+/* smb.asm: SwimCCXMoveData (the residual $04, $04 pair omitted) */
+const uint8_t SMBC_SWIM_CC_X_MOVE_DATA[2] = {0x40u, 0x80u};

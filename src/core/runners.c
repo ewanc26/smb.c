@@ -304,3 +304,59 @@ void move_bloober(CoreState *st, uint8_t x) {
     st->ram[SMBC_ENEMY_PAGE_LOC + x] -= (pos < 0) ? 0x01u : 0x00u;
   }
 }
+
+void move_bullet_bill(CoreState *st, uint8_t x) {
+  if ((st->ram[SMBC_ENEMY_STATE + x] & 0x20u) != 0x00u) {
+    move_j_enemy_vertically(st, x);
+    return;
+  }
+  st->ram[SMBC_ENEMY_X_SPEED + x] = 0xe8u;
+  move_enemy_horizontally(st, x);
+}
+
+void move_swimming_cheep_cheep(CoreState *st, uint8_t x) {
+  uint8_t masked = (uint8_t)(st->ram[SMBC_ENEMY_STATE + x] & 0x20u);
+  if (masked != 0x00u) {
+    move_enemy_slow_vert(st, x);
+    return;
+  }
+  /* the asm stores the masked state as the vertical adder, which is
+   * always zero on this path — the vertical drift is the carry or
+   * borrow of the dummy accumulation alone */
+  uint8_t state_adder = masked;
+  uint8_t drain = SMBC_SWIM_CC_X_MOVE_DATA[st->ram[SMBC_ENEMY_ID + x] - 0x0au];
+  int force = (int)st->ram[SMBC_ENEMY_X_MOVE_FORCE + x] - drain;
+  st->ram[SMBC_ENEMY_X_MOVE_FORCE + x] = (uint8_t)force;
+  int pos = (int)st->ram[SMBC_ENEMY_X_POSITION + x] - (force < 0 ? 1 : 0);
+  st->ram[SMBC_ENEMY_X_POSITION + x] = (uint8_t)pos;
+  st->ram[SMBC_ENEMY_PAGE_LOC + x] -= (pos < 0) ? 0x01u : 0x00u;
+  if (x < 0x02u) return;
+  uint8_t flag = st->ram[SMBC_CHEEP_CHEEP_MOVE_M_FLAG + x];
+  if (flag < 0x10u) {
+    /* smb.asm: CCSwimUpwards */
+    int dummy = (int)st->ram[SMBC_ENEMY_YMF_DUMMY + x] - 0x20u;
+    st->ram[SMBC_ENEMY_YMF_DUMMY + x] = (uint8_t)dummy;
+    int y = (int)st->ram[SMBC_ENEMY_Y_POSITION + x] -
+            ((dummy < 0 ? 1 : 0) + state_adder);
+    st->ram[SMBC_ENEMY_Y_POSITION + x] = (uint8_t)y;
+    st->ram[SMBC_ENEMY_Y_HIGH_POS + x] -= (y < 0) ? 0x01u : 0x00u;
+  } else {
+    uint16_t dummy = (uint16_t)st->ram[SMBC_ENEMY_YMF_DUMMY + x] + 0x20u;
+    st->ram[SMBC_ENEMY_YMF_DUMMY + x] = (uint8_t)dummy;
+    uint16_t y = (uint16_t)st->ram[SMBC_ENEMY_Y_POSITION + x] +
+                 (uint8_t)(dummy >> 8) + state_adder;
+    st->ram[SMBC_ENEMY_Y_POSITION + x] = (uint8_t)y;
+    st->ram[SMBC_ENEMY_Y_HIGH_POS + x] += (uint8_t)(y >> 8);
+  }
+  /* smb.asm: ChkSwimYPos — flip the vertical direction fifteen
+   * pixels away from the origin */
+  uint8_t dir = 0x00u; /* upwards */
+  int diff = (int)st->ram[SMBC_ENEMY_Y_POSITION + x] -
+             st->ram[SMBC_CHEEP_CHEEP_ORIG_Y_POS + x];
+  if (diff < 0) {
+    dir = 0x10u; /* downwards */
+    diff = -diff;
+  }
+  if (diff < 0x0f) return;
+  st->ram[SMBC_CHEEP_CHEEP_MOVE_M_FLAG + x] = dir;
+}

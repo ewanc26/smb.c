@@ -202,6 +202,14 @@ uint8_t player_collision_core(CoreState *st, uint8_t y) {
   return spr_object_collision_core(st, 0x00u, y);
 }
 
+/* smb.asm: RXSpd — the speed-reversal tail of EnemyTurnAround,
+ * also jumped to directly by ChkForBump_HammerBroJ */
+void rx_spd(CoreState *st, uint8_t x) {
+  st->ram[SMBC_ENEMY_X_SPEED + x] =
+      (uint8_t)(~st->ram[SMBC_ENEMY_X_SPEED + x] + 1u);
+  st->ram[SMBC_ENEMY_MOVING_DIR + x] ^= 0x03u;
+}
+
 void enemy_turn_around(CoreState *st, uint8_t x) {
   uint8_t id = st->ram[SMBC_ENEMY_ID + x];
   if (id == SMBC_PIRANHA_PLANT || id == SMBC_LAKITU ||
@@ -211,9 +219,7 @@ void enemy_turn_around(CoreState *st, uint8_t x) {
   if (id != SMBC_SPINY && id != SMBC_GREEN_PARATROOPA_JUMP && id >= 0x07u) {
     return;
   }
-  st->ram[SMBC_ENEMY_X_SPEED + x] =
-      (uint8_t)(~st->ram[SMBC_ENEMY_X_SPEED + x] + 1u);
-  st->ram[SMBC_ENEMY_MOVING_DIR + x] ^= 0x03u;
+  rx_spd(st, x);
 }
 
 void proc_enemy_collisions(CoreState *st, uint8_t x, uint8_t y) {
@@ -611,4 +617,178 @@ void enemy_landing(CoreState *st, uint8_t x) {
   init_vstf(st, x);
   st->ram[SMBC_ENEMY_Y_POSITION + x] =
       (uint8_t)((st->ram[SMBC_ENEMY_Y_POSITION + x] & 0xf0u) | 0x08u);
+}
+
+/* smb.asm: EnemyBGCStateData */
+static const uint8_t SMBC_ENEMY_BGC_STATE_DATA[6] = {
+    0x01u, 0x01u, 0x02u, 0x02u, 0x02u, 0x05u};
+/* smb.asm: HammerBroJumpLData */
+static const uint8_t SMBC_HAMMER_BRO_JUMP_L_DATA[2] = {0x20u, 0x37u};
+
+void set_hj(CoreState *st, uint8_t x, uint8_t y_speed, uint8_t bitmask) {
+  st->ram[SMBC_ENEMY_Y_SPEED + x] = y_speed;
+  st->ram[SMBC_ENEMY_STATE + x] |= 0x01u;
+  uint8_t ofs = st->ram[SMBC_SECONDARY_HARD_MODE] != 0x00u
+                    ? (uint8_t)(bitmask & st->ram[SMBC_PSEUDO_RANDOM_BIT_REG + 2u + x])
+                    : 0x00u;
+  st->ram[SMBC_ENEMY_FRAME_TIMER + x] = SMBC_HAMMER_BRO_JUMP_L_DATA[ofs];
+  st->ram[SMBC_HAMMER_BRO_JUMP_TIMER + x] =
+      (uint8_t)(st->ram[SMBC_PSEUDO_RANDOM_BIT_REG + 1u + x] | 0xc0u);
+}
+
+void chk_for_bump_hammer_bro_j(CoreState *st, uint8_t x) {
+  if (x != 0x05u && (st->ram[SMBC_ENEMY_STATE + x] & 0x80u) != 0x00u) {
+    st->ram[SMBC_SQUARE1_SOUND_QUEUE] = SMBC_SFX_BUMP;
+  }
+  if (st->ram[SMBC_ENEMY_ID + x] == SMBC_HAMMER_BRO) {
+    set_hj(st, x, 0xfau, 0x00u);
+    return;
+  }
+  rx_spd(st, x);
+}
+
+void land_enemy_init_state(CoreState *st, uint8_t x) {
+  enemy_landing(st, x);
+  if ((st->ram[SMBC_ENEMY_STATE + x] & 0x80u) != 0x00u) {
+    st->ram[SMBC_ENEMY_STATE + x] &= 0xbfu;
+    return;
+  }
+  st->ram[SMBC_ENEMY_STATE + x] = 0x00u;
+}
+
+void proc_enemy_direction(CoreState *st, uint8_t x) {
+  uint8_t id = st->ram[SMBC_ENEMY_ID + x];
+  if (id == SMBC_GOOMBA) {
+    land_enemy_init_state(st, x);
+    return;
+  }
+  if (id == SMBC_SPINY) {
+    st->ram[SMBC_ENEMY_MOVING_DIR + x] = 0x01u;
+    st->ram[SMBC_ENEMY_X_SPEED + x] = 0x08u;
+    if ((st->ram[SMBC_FRAME_COUNTER] & 0x07u) == 0x00u) {
+      land_enemy_init_state(st, x);
+      return;
+    }
+  }
+  /* smb.asm: InvtD — the inverted facing values */
+  uint8_t dir = 0x01u;
+  if (player_enemy_diff(st, x) < 0) dir = 0x02u;
+  if (dir != st->ram[SMBC_ENEMY_MOVING_DIR + x]) {
+    land_enemy_init_state(st, x);
+    return;
+  }
+  chk_for_bump_hammer_bro_j(st, x);
+}
+
+void chk_landed_enemy_state(CoreState *st, uint8_t x) {
+  uint8_t state = st->ram[SMBC_ENEMY_STATE + x];
+  if (state == 0x00u) {
+    do_enemy_side_check(st, x);
+    return;
+  }
+  if (state == 0x05u) {
+    proc_enemy_direction(st, x);
+    return;
+  }
+  if (state >= 0x03u) return;
+  if (state != 0x02u) {
+    proc_enemy_direction(st, x);
+    return;
+  }
+  uint8_t timer = st->ram[SMBC_ENEMY_ID + x] == SMBC_SPINY ? 0x00u : 0x10u;
+  st->ram[SMBC_ENEMY_INTERVAL_TIMER + x] = timer;
+  st->ram[SMBC_ENEMY_STATE + x] = 0x03u;
+  enemy_landing(st, x);
+}
+
+void land_enemy_properly(CoreState *st, uint8_t x) {
+  uint8_t nyb = (uint8_t)(st->ram[SMBC_BB_LOW_NYBBLE] - 0x08u);
+  if (nyb >= 0x05u) {
+    chk_for_red_koopa(st, x);
+    return;
+  }
+  if ((st->ram[SMBC_ENEMY_STATE + x] & 0x40u) != 0x00u) {
+    land_enemy_init_state(st, x);
+    return;
+  }
+  if ((st->ram[SMBC_ENEMY_STATE + x] & 0x80u) != 0x00u) {
+    do_enemy_side_check(st, x);
+    return;
+  }
+  chk_landed_enemy_state(st, x);
+}
+
+void chk_for_red_koopa(CoreState *st, uint8_t x) {
+  if (st->ram[SMBC_ENEMY_ID + x] == SMBC_RED_KOOPA &&
+      st->ram[SMBC_ENEMY_STATE + x] == 0x00u) {
+    chk_for_bump_hammer_bro_j(st, x);
+    return;
+  }
+  uint8_t state = st->ram[SMBC_ENEMY_STATE + x];
+  if ((state & 0x80u) != 0x00u) {
+    st->ram[SMBC_ENEMY_STATE + x] = (uint8_t)(state | 0x40u);
+    return;
+  }
+  st->ram[SMBC_ENEMY_STATE + x] = SMBC_ENEMY_BGC_STATE_DATA[state];
+}
+
+void do_enemy_side_check(CoreState *st, uint8_t x) {
+  if (st->ram[SMBC_ENEMY_Y_POSITION + x] < 0x20u) return;
+  st->ram[SMBC_SIDE_CHECK_DIR] = 0x02u;
+  for (uint8_t y = 0x16u; y < 0x18u; y++) {
+    if (st->ram[SMBC_SIDE_CHECK_DIR] == st->ram[SMBC_ENEMY_MOVING_DIR + x]) {
+      uint8_t metatile = block_buffer_chk_enemy(st, x, y, 0x01u);
+      if (metatile != 0x00u && chk_for_non_solids(metatile)) {
+        chk_for_bump_hammer_bro_j(st, x);
+        /* the asm's turn-around does not return here; the loop
+         * continues with $eb/y exhausted past it, but a second
+         * identical probe at the other offset cannot match the
+         * now-inverted direction, so falling out is equivalent */
+      }
+    }
+    st->ram[SMBC_SIDE_CHECK_DIR]--;
+  }
+}
+
+void enemy_jump(CoreState *st, uint8_t x) {
+  if (!subt_enemy_y_pos(st, x)) {
+    do_enemy_side_check(st, x);
+    return;
+  }
+  if ((uint8_t)(st->ram[SMBC_ENEMY_Y_SPEED + x] + 0x02u) < 0x03u) {
+    do_enemy_side_check(st, x);
+    return;
+  }
+  uint8_t metatile = chk_under_enemy(st, x);
+  if (metatile == 0x00u || !chk_for_non_solids(metatile)) {
+    do_enemy_side_check(st, x);
+    return;
+  }
+  enemy_landing(st, x);
+  st->ram[SMBC_ENEMY_Y_SPEED + x] = 0xfdu;
+  do_enemy_side_check(st, x);
+}
+
+void kill_enemy_above_block(CoreState *st, uint8_t x) {
+  shell_or_block_defeat(st, x);
+  st->ram[SMBC_ENEMY_Y_SPEED + x] = 0xfcu;
+}
+
+void hammer_bro_bg_coll(CoreState *st, uint8_t x) {
+  uint8_t metatile = chk_under_enemy(st, x);
+  if (metatile == 0x00u) {
+    st->ram[SMBC_ENEMY_STATE + x] |= 0x01u;
+    return;
+  }
+  if (metatile == 0x23u) {
+    kill_enemy_above_block(st, x);
+    return;
+  }
+  if (st->ram[SMBC_ENEMY_FRAME_TIMER + x] != 0x00u) {
+    st->ram[SMBC_ENEMY_STATE + x] |= 0x01u;
+    return;
+  }
+  st->ram[SMBC_ENEMY_STATE + x] &= 0x88u;
+  enemy_landing(st, x);
+  do_enemy_side_check(st, x);
 }

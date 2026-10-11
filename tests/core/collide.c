@@ -824,6 +824,136 @@ static void block_buffer_primitives(void) {
   assert(smbc.state.ram[SMBC_ENEMY_Y_MOVE_FORCE + 0] == 0x00u);
 }
 
+
+static void landing_family(void) {
+  /* a landing inside the window in the walking state goes to
+   * the side check — here nothing blocks, nothing changes */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_BB_LOW_NYBBLE] = 0x0au;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x40u;
+  smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] = 0x02u;
+  land_enemy_properly(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] == 0x00u);
+
+  /* outside the window, a walking red koopa turns around */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_BB_LOW_NYBBLE] = 0x0du;
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_RED_KOOPA;
+  smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] = 0x10u;
+  smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] = 0x02u;
+  land_enemy_properly(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] == 0xf0u);
+  assert(smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] == 0x01u);
+
+  /* a stunned koopa landing becomes state 3 with the $10 timer */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_BB_LOW_NYBBLE] = 0x0au;
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_GREEN_KOOPA;
+  smbc.state.ram[SMBC_ENEMY_STATE + 0] = 0x02u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x47u;
+  land_enemy_properly(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_STATE + 0] == 0x03u);
+  assert(smbc.state.ram[SMBC_ENEMY_INTERVAL_TIMER + 0] == 0x10u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] == 0x48u);
+
+  /* a d6 state landing reinitialises */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_BB_LOW_NYBBLE] = 0x0au;
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_GOOMBA;
+  smbc.state.ram[SMBC_ENEMY_STATE + 0] = 0x40u;
+  land_enemy_properly(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_STATE + 0] == 0x00u);
+
+  /* chk_for_red_koopa's state mapping */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_GREEN_KOOPA;
+  smbc.state.ram[SMBC_ENEMY_STATE + 0] = 0x04u;
+  chk_for_red_koopa(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_STATE + 0] == 0x02u);
+  smbc.state.ram[SMBC_ENEMY_STATE + 0] = 0x80u;
+  chk_for_red_koopa(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_STATE + 0] == 0xc0u);
+
+  /* the side check turns an enemy walking into a solid block:
+   * moving dir 2 probes adder $16 — x $84+0x00, col 8; y
+   * $50+0x14=$64&f0=$60-0x20=$40 */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_SPROBJ_X_POSITION + 1] = 0x84u;
+  smbc.state.ram[SMBC_SPROBJ_Y_POSITION + 1] = 0x50u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x50u;
+  smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] = 0x02u;
+  smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] = 0x08u;
+  smbc.state.ram[0x0508u + 0x40u] = 0x24u;
+  do_enemy_side_check(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_X_SPEED + 0] == 0xf8u);
+  assert(smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] == 0x01u);
+
+  /* a hammer bro in the same spot jumps instead */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_SPROBJ_X_POSITION + 1] = 0x84u;
+  smbc.state.ram[SMBC_SPROBJ_Y_POSITION + 1] = 0x50u;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x50u;
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_HAMMER_BRO;
+  smbc.state.ram[SMBC_ENEMY_MOVING_DIR + 0] = 0x02u;
+  smbc.state.ram[0x0508u + 0x40u] = 0x24u;
+  do_enemy_side_check(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_SPEED + 0] == 0xfau);
+  assert((smbc.state.ram[SMBC_ENEMY_STATE + 0] & 0x01u) != 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_FRAME_TIMER + 0] == 0x20u);
+  assert((smbc.state.ram[SMBC_HAMMER_BRO_JUMP_TIMER + 0] & 0xc0u) == 0xc0u);
+}
+
+static void jump_and_hammer_bro_bg(void) {
+  /* a falling paratroopa over solid ground bounces at $fd */
+  Smbc smbc;
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_GREEN_PARATROOPA_JUMP;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x40u;
+  smbc.state.ram[SMBC_ENEMY_Y_SPEED + 0] = 0x02u;
+  smbc.state.ram[SMBC_SPROBJ_X_POSITION + 1] = 0x84u;
+  smbc.state.ram[SMBC_SPROBJ_Y_POSITION + 1] = 0x40u;
+  smbc.state.ram[0x0508u + 0x30u] = 0x24u;
+  enemy_jump(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_SPEED + 0] == 0xfdu);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] == 0x48u);
+
+  /* still rising: only the side check runs */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x40u;
+  smbc.state.ram[SMBC_ENEMY_Y_SPEED + 0] = 0xfeu;
+  enemy_jump(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_SPEED + 0] == 0xfeu);
+
+  /* a hammer bro over the $23 blank dies above the block */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_ID + 0] = SMBC_HAMMER_BRO;
+  smbc.state.ram[SMBC_ENEMY_STATE + 0] = 0x01u;
+  smbc.state.ram[SMBC_SPROBJ_X_POSITION + 1] = 0x84u;
+  smbc.state.ram[SMBC_SPROBJ_Y_POSITION + 1] = 0x50u;
+  smbc.state.ram[0x0508u + 0x40u] = 0x23u;
+  hammer_bro_bg_coll(&smbc.state, 0x00u);
+  assert((smbc.state.ram[SMBC_ENEMY_STATE + 0] & 0x20u) != 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_SPEED + 0] == 0xfcu);
+
+  /* over nothing: d0 sets */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_STATE + 0] = 0x00u;
+  hammer_bro_bg_coll(&smbc.state, 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_STATE + 0] == 0x01u);
+
+  /* on solid ground with the timer expired: d7/d3 saved, landed */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_ENEMY_STATE + 0] = 0x8fu;
+  smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] = 0x47u;
+  smbc.state.ram[SMBC_SPROBJ_X_POSITION + 1] = 0x84u;
+  smbc.state.ram[SMBC_SPROBJ_Y_POSITION + 1] = 0x47u;
+  smbc.state.ram[0x0508u + 0x30u] = 0x24u;
+  hammer_bro_bg_coll(&smbc.state, 0x00u);
+  assert((smbc.state.ram[SMBC_ENEMY_STATE + 0] & 0x77u) == 0x00u);
+  assert(smbc.state.ram[SMBC_ENEMY_Y_POSITION + 0] == 0x48u);
+}
+
 int main(void) {
   masked_bits_park_the_box();
   corners_from_ctrl_data();
@@ -845,6 +975,8 @@ int main(void) {
   pe_collisions_dispatch();
   player_enemy_collision_gates();
   block_buffer_primitives();
+  landing_family();
+  jump_and_hammer_bro_bg();
   puts("collide: ok");
   return 0;
 }

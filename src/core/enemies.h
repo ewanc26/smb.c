@@ -21,6 +21,7 @@
 #include "state.h"
 
 /* smb.asm's enemy object constants, the ids this atom reads */
+#define SMBC_RED_KOOPA 0x03u
 #define SMBC_GREEN_KOOPA 0x00u   /* smb.asm: GreenKoopa */
 #define SMBC_BUZZY_BEETLE 0x02u  /* smb.asm: BuzzyBeetle */
 #define SMBC_GOOMBA 0x06u        /* smb.asm: Goomba */

@@ -186,4 +186,66 @@ uint8_t subt_enemy_y_pos(CoreState *state, uint8_t x);
  * snap the vertical coordinate to the block, d3 set */
 void enemy_landing(CoreState *state, uint8_t x);
 
+/* smb.asm: RXSpd — negate the horizontal speed and invert the
+ * moving direction, without EnemyTurnAround's id checks */
+void rx_spd(CoreState *state, uint8_t x);
+
+/* smb.asm: HammerBroJumpLData + SetHJ — a hammer bro jump: the
+ * vertical speed, d0 of the state, a hard-mode-gated jump
+ * length from the LSFR, and the jump timer */
+void set_hj(CoreState *state, uint8_t x, uint8_t y_speed, uint8_t bitmask);
+
+/* smb.asm: ChkForBump_HammerBroJ — the turn-or-jump reaction to
+ * a wall or a red koopa edge: the bump sound for a d7 shell on
+ * any slot but the special-use one, a hammer bro jumps ($fa,
+ * zero bitmask), anything else turns around */
+void chk_for_bump_hammer_bro_j(CoreState *state, uint8_t x);
+
+/* smb.asm: LandEnemyInitState — land, then either clear d6 for
+ * a d7 state or reinitialise to the walking state */
+void land_enemy_init_state(CoreState *state, uint8_t x);
+
+/* smb.asm: ProcEnemyDirection — pick the walking direction on
+ * landing: goombas just land, spinys walk right unless an
+ * eighth-frame lands them first, others face the player and
+ * turn if the current direction already matches */
+void proc_enemy_direction(CoreState *state, uint8_t x);
+
+/* smb.asm: ChkLandedEnemyState — a landing state's reaction:
+ * walking goes to the side check, the spiny's egg and stunned
+ * states go to direction processing, state 2 becomes state 3
+ * with the interval timer, states 3+ leave */
+void chk_landed_enemy_state(CoreState *state, uint8_t x);
+
+/* smb.asm: LandEnemyProperly — the landing branch: outside the
+ * $08-$0c landing window it defers to ChkForRedKoopa, d6 lands,
+ * d7 side-checks, and everything else goes through the landed
+ * state dispatch */
+void land_enemy_properly(CoreState *state, uint8_t x);
+
+/* smb.asm: ChkForRedKoopa — a walking red koopa turns at the
+ * edge; otherwise the state becomes d6 for a d7 shell or the
+ * EnemyBGCStateData mapping otherwise */
+void chk_for_red_koopa(CoreState *state, uint8_t x);
+
+/* smb.asm: DoEnemySideCheck — probe the block at the side the
+ * enemy moves towards ($00,$14) or ($10,$14); a solid one
+ * triggers the bump reaction */
+void do_enemy_side_check(CoreState *state, uint8_t x);
+
+/* smb.asm: EnemyJump — the green paratroopa's bounce: past the
+ * screen range check, falling at speed 1+, on solid ground,
+ * land and spring back up at $fd, then the side check */
+void enemy_jump(CoreState *state, uint8_t x);
+
+/* smb.asm: KillEnemyAboveBlock — defeat the enemy like a shell
+ * hit and send it upward at $fc */
+void kill_enemy_above_block(CoreState *state, uint8_t x);
+
+/* smb.asm: HammerBroBGColl — standing on solid ground with the
+ * frame timer expired saves only d7/d3 of the state, lands and
+ * side-checks; over the $23 blank the block defeat kills; with
+ * nothing underneath d0 sets for jumping or falling */
+void hammer_bro_bg_coll(CoreState *state, uint8_t x);
+
 #endif

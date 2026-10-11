@@ -344,6 +344,7 @@ void state_init(CoreState *state);
 #define SMBC_BB_X_COORD 0x0005u   /* x coordinate plus adder */
 #define SMBC_BB_PTR_LO 0x0006u    /* block buffer pointer, low */
 #define SMBC_BB_PTR_HI 0x0007u    /* block buffer pointer, high */
+#define SMBC_SIDE_CHECK_DIR 0x00ebu /* smb.asm: $eb, DoEnemySideCheck's counter */
 
 /* boot entry offsets, low bytes into the RAM page (smb.asm: constants) */
 #define SMBC_WARM_BOOT_OFFSET 0xd6u /* smb.asm: WarmBootOffset = <$07d6 */

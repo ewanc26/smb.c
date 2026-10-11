@@ -263,6 +263,7 @@ void state_init(CoreState *state);
 #define SMBC_ENEMY_FRENZY_BUFFER 0x06cbu  /* smb.asm: EnemyFrenzyBuffer */
 #define SMBC_SECONDARY_HARD_MODE 0x06ccu  /* smb.asm: SecondaryHardMode */
 #define SMBC_NUMBER_OF_GROUP_ENEMIES 0x06d3u /* smb.asm: NumberofGroupEnemies */
+#define SMBC_COLOR_ROTATE_OFFSET 0x06d4u   /* smb.asm: ColorRotateOffset */
 #define SMBC_MULTI_LOOP_CORRECT_CNTR 0x06d9u /* smb.asm: MultiLoopCorrectCntr */
 #define SMBC_MULTI_LOOP_PASS_CNTR 0x06dau /* smb.asm: MultiLoopPassCntr */
 #define SMBC_SCREEN_LEFT_X_POS 0x071cu    /* smb.asm: ScreenLeft_X_Pos */

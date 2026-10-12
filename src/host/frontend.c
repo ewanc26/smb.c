@@ -106,7 +106,7 @@ static int run_game(unsigned scale, const char *record_path) {
   }
 
   SmbcAudio audio = {0};
-  if (!audio_open(&audio, &smbc)) {
+  if (!audio_open(&audio)) {
     /* non-fatal: play silent */
     fprintf(stderr, "smbc: audio: %s (continuing silent)\n", SDL_GetError());
   }
@@ -138,6 +138,7 @@ static int run_game(unsigned scale, const char *record_path) {
       uint8_t buttons = input_poll(controller);
       joypad_set_buttons(&smbc.joypad1, buttons);
       smbc_frame(&smbc);
+      audio_push_frame(&audio, &smbc);
       if (recording != NULL &&
           !replay_append(recording, buttons, 0x00u,
                          smbc_state_hash(&smbc))) {

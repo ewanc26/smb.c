@@ -38,7 +38,10 @@ int main(void) {
    * InitializeNameTables) */
   assert(smbc.state.ram[SMBC_MIRROR_PPU_CTRL1] == 0x90u);
   assert(smbc.state.ram[SMBC_OPER_MODE] == SMBC_MODE_TITLE);
-  assert(apu_read(&smbc.apu, 0x4015u) == 0x0fu);
+  /* the register image keeps the written enable mask; apu_read on
+   * $4015 reports synth-maintained length status instead (hardware
+   * read semantics, #35) */
+  assert(smbc.apu.regs[0x15u] == 0x0fu);
   assert(smbc.state.ram[SMBC_SPRITE_Y_POSITION] == 0xf8u);
 
   printf("tests/core/boot: ok\n");

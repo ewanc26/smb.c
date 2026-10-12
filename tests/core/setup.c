@@ -57,6 +57,25 @@ int main(void) {
   assert(smbc.state.ram[SMBC_SPRITE0_HIT_FLAG] == 0x01u);
   assert(smbc.state.ram[SMBC_OPER_MODE_TASK] == 0x01u);
 
+  /* PrimaryGameSetup: new-game defaults, then the fall-through into
+   * SecondaryGameSetup */
+  smbc_init(&smbc);
+  smbc.state.ram[SMBC_FETCH_NEW_GAME_TIMER_FLAG] = 0x00u;
+  smbc.state.ram[SMBC_PLAYER_SIZE] = 0x00u;
+  smbc.state.ram[SMBC_NUMBEROF_LIVES] = 0x09u;
+  smbc.state.ram[SMBC_OFFSCR_NUMBEROF_LIVES] = 0x09u;
+  smbc.state.ram[SMBC_AREA_TYPE] = 0x01u;
+  smbc.state.ram[SMBC_OPER_MODE] = SMBC_MODE_GAME;
+  primary_game_setup(&smbc);
+
+  assert(smbc.state.ram[SMBC_FETCH_NEW_GAME_TIMER_FLAG] == 0x01u);
+  assert(smbc.state.ram[SMBC_PLAYER_SIZE] == 0x01u); /* starts small */
+  assert(smbc.state.ram[SMBC_NUMBEROF_LIVES] == 0x02u);
+  assert(smbc.state.ram[SMBC_OFFSCR_NUMBEROF_LIVES] == 0x02u);
+  /* fall-through: the secondary setup ran and bumped the task */
+  assert(smbc.state.ram[SMBC_OPER_MODE_TASK] == 0x01u);
+  assert(smbc.state.ram[SMBC_AREA_MUSIC_QUEUE] == SMBC_MUSIC_GROUND);
+
   /* GetAreaMusic: title screen leaves the queue alone */
   CoreState state;
   state_init(&state);

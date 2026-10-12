@@ -21,4 +21,8 @@ void get_area_music(CoreState *state);
 /* smb.asm: SecondaryGameSetup */
 void secondary_game_setup(struct Smbc *smbc);
 
+/* PrimaryGameSetup — new game defaults (timer fetch, small player,
+ * three lives each) then the fall-through into SecondaryGameSetup */
+void primary_game_setup(struct Smbc *smbc);
+
 #endif /* SMBC_CORE_SETUP_H */

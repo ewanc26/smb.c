@@ -24,6 +24,17 @@ void get_area_music(CoreState *state) {
   state->ram[SMBC_AREA_MUSIC_QUEUE] = SMBC_MUSIC_SELECT_DATA[y];
 }
 
+void primary_game_setup(Smbc *smbc) {
+  /* smb.asm: PrimaryGameSetup — new game defaults, then falls through
+   * into SecondaryGameSetup */
+  CoreState *state = &smbc->state;
+  state->ram[SMBC_FETCH_NEW_GAME_TIMER_FLAG] = 0x01u;
+  state->ram[SMBC_PLAYER_SIZE] = 0x01u; /* player starts small */
+  state->ram[SMBC_NUMBEROF_LIVES] = 0x02u;
+  state->ram[SMBC_OFFSCR_NUMBEROF_LIVES] = 0x02u;
+  secondary_game_setup(smbc);
+}
+
 void secondary_game_setup(Smbc *smbc) {
   /* smb.asm: SecondaryGameSetup */
   CoreState *state = &smbc->state;

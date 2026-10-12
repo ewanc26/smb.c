@@ -212,7 +212,8 @@ static bool compare_scenario(const Scenario *sc, unsigned *fail_pixels) {
   }
   if (diffs != 0) {
     char out[160];
-    system("mkdir -p build/reference");
+    int rc = system("mkdir -p build/reference");
+    (void)rc; /* best-effort; the ppm_writes report their own failure */
     snprintf(out, sizeof(out), "build/reference/%s-actual.ppm", sc->name);
     ppm_write(out, actual);
     snprintf(out, sizeof(out), "build/reference/%s-diff.ppm", sc->name);

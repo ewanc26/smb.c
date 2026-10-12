@@ -105,15 +105,21 @@ static uint16_t ppu_data_increment(const Ppu *ppu) {
  *   - the bus mirrors $3000-$3EFF back onto $2000-$2EFF (only PA13
  *     distinguishes them), then the name-table rule applies;
  *   - palette RAM ($3F00-$3FFF) occupies 32 bytes: address bits 5+ are
- *     ignored, so $3F20-$3FFF alias $3F00-$3F1F. (The additional backdrop
- *     mirroring of $3F00/04/08/0C into $3F10/14/18/1C is not modelled; the
- *     game writes the same value to both.)
+ *     ignored, so $3F20-$3FFF alias $3F00-$3F1F, and the sprite-palette
+ *     colour-0 slots $3F10/14/18/1C alias the backdrop slots
+ *     $3F00/04/08/0C. The game relies on the $3F10 alias: GetPlayerColors
+ *     targets $3F10 with the background colour first (smb.asm SetBGColor),
+ *     which the hardware lands in $3F00 — the sky's light blue.
  * The rest of the space ($0000-$1FFF) is stored flat; the port keeps its
  * CHR tables separately in src/data/chr. */
 static uint16_t ppu_vram_addr(uint16_t addr) {
   addr &= 0x3fffu;
   if (addr >= 0x3f00u) {
-    return (uint16_t)(0x3f00u | (addr & 0x1fu));
+    addr = (uint16_t)(0x3f00u | (addr & 0x1fu));
+    if ((addr & 0x13u) == 0x10u) { /* $3F10/14/18/1C alias $3F00/04/08/0C */
+      addr = (uint16_t)(addr - 0x10u);
+    }
+    return addr;
   }
   if (addr >= 0x3000u) {
     addr = (uint16_t)(addr & 0x2fffu); /* $3000-$3EFF <-> $2000-$2EFF */

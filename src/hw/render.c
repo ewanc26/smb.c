@@ -11,7 +11,13 @@
 static uint8_t render_vram(const Ppu *ppu, uint16_t addr) {
   addr &= 0x3fffu;
   if (addr < 0x2000u && ppu->chr != NULL) return ppu->chr[addr];
-  if (addr >= 0x3f00u) return ppu->vram[0x3f00u | (addr & 0x1fu)];
+  if (addr >= 0x3f00u) {
+    addr = (uint16_t)(0x3f00u | (addr & 0x1fu));
+    if ((addr & 0x13u) == 0x10u) { /* $3F10/14/18/1C alias $3F00/04/08/0C */
+      addr = (uint16_t)(addr - 0x10u);
+    }
+    return ppu->vram[addr];
+  }
   if (addr >= 0x3000u) addr = (uint16_t)(addr & 0x2fffu);
   if (addr >= 0x2000u) addr = (uint16_t)(0x2000u | (addr & 0x07ffu));
   return ppu->vram[addr];

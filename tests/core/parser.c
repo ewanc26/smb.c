@@ -100,7 +100,8 @@ static void area_graphics(void) {
   assert(smbc.state.ram[SMBC_ATTRIBUTE_BUFFER] == 0x00u);
 
   /* palette 3 bits, odd column: upper right at d3-d2, lower right at
-   * d7-d6 of the next attribute row */
+   * d7-d6 — both halves of the same attribute cell; the asm's SetAttrib
+   * indexes the row loaded before NextMTRow's increment */
   smbc_init(&smbc);
   smbc.state.ram[SMBC_CURRENT_NT_ADDR_LOW] = 0x5fu;
   smbc.state.ram[SMBC_CURRENT_NT_ADDR_HIGH] = 0x23u;
@@ -109,8 +110,8 @@ static void area_graphics(void) {
   smbc.state.ram[SMBC_METATILE_BUFFER + 1] = 0xc0u;
   smbc.state.ram[SMBC_AREA_PARSER_TASK_NUM] = 0x06u; /* a graphics task */
   area_parser_task_handler(&smbc.state);
-  assert(smbc.state.ram[SMBC_ATTRIBUTE_BUFFER + 0] == 0x0cu); /* d3-d2 */
-  assert(smbc.state.ram[SMBC_ATTRIBUTE_BUFFER + 1] == 0xc0u); /* d7-d6 */
+  assert(smbc.state.ram[SMBC_ATTRIBUTE_BUFFER + 0] == 0xccu); /* d3-d2 | d7-d6 */
+  assert(smbc.state.ram[SMBC_ATTRIBUTE_BUFFER + 1] == 0x00u);
   /* low $5f + 1 wraps: back under the status bar, other name table */
   assert(smbc.state.ram[SMBC_CURRENT_NT_ADDR_LOW] == 0x80u);
   assert(smbc.state.ram[SMBC_CURRENT_NT_ADDR_HIGH] == 0x27u);

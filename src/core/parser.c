@@ -924,20 +924,24 @@ static void render_area_graphics(CoreState *st) {
     uint8_t tile_off = (uint8_t)(half + (uint8_t)(mt << 2)); /* asl asl */
     st->ram[SMBC_VRAM_BUFFER2 + buf_off + 3] = table[tile_off];
     st->ram[SMBC_VRAM_BUFFER2 + buf_off + 4] = table[(uint8_t)(tile_off + 1u)];
+    uint8_t next = 0x00u; /* NextMTRow: the row bump takes effect after
+                           * SetAttrib — the asm's y is loaded from $04
+                           * before the inc, so the OR always lands in the
+                           * pre-increment cell */
     if (col_lsb == 0x00u) { /* left attribute square */
       if ((row & 0x01u) == 0x00u) {
         attr >>= 6; /* upper left: three rol through carry, d1-d0 */
       } else {
         attr >>= 2; /* LLeft: lower left square, d5-d4 */
-        attr_row++; /* falls through into NextMTRow */
+        next = 0x01u;
       }
     } else if ((row & 0x01u) == 0x00u) {
       attr >>= 4; /* RightCheck: upper right square, d3-d2 */
     } else {
-      attr_row++; /* NextMTRow: lower right keeps d7-d6, next row */
+      next = 0x01u; /* NextMTRow: lower right keeps d7-d6 */
     }
-    uint8_t slot = attr_row;
-    st->ram[SMBC_ATTRIBUTE_BUFFER + slot] |= attr; /* SetAttrib */
+    st->ram[SMBC_ATTRIBUTE_BUFFER + attr_row] |= attr; /* SetAttrib */
+    attr_row = (uint8_t)(attr_row + next);
     buf_off = (uint8_t)(buf_off + 2u);
   }
   buf_off = (uint8_t)(buf_off + 3u); /* past the address and length */

@@ -5,3 +5,9 @@ build/
 compile_commands.json
 .DS_Store
 .letta/
+*.dSYM/
+*.swp
+*.swo
+*~
+.cache/
+.clangd/

@@ -1,1 +1,7 @@
+build/
 *.asm
+*.o
+*.elf
+*.map
+*.dSYM/
+.DS_Store

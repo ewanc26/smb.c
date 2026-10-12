@@ -39,3 +39,9 @@ extern const uint8_t *const SMBC_METATILE_GRAPHICS[SMBC_METATILE_GRAPHICS_COUNT]
 extern const uint8_t SMBC_METATILE_COUNTS[SMBC_METATILE_GRAPHICS_COUNT];
 
 #endif /* SMBC_DATA_METATILES_H */
+
+/* smb.asm: BlockGfxData — the four tiles of each replacement style:
+ * brick with line, brick without, empty block, blank, and brick with
+ * coins (the two brick-with-coins entries share the first style).
+ * Read by PutBlockMetatile in core/blocks and RemBridge in core/victory */
+extern const uint8_t SMBC_BLOCK_GFX_DATA[20];

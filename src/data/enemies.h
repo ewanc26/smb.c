@@ -78,3 +78,8 @@ extern const uint8_t SMBC_FIREWORKS_Y_POS_DATA[6];
  * Bitmasks table itself lives in data/scenery */
 extern const uint8_t SMBC_ENEMY17_Y_POS_DATA[8];
 extern const uint8_t SMBC_SWIMCC_ID_DATA[2];
+
+/* smb.asm: BridgeCollapseData — the name table low bytes BridgeCollapse
+ * blanks out, in order: the axe, the chain, then the thirteen bridge
+ * metatiles (the high byte is always $22) */
+extern const uint8_t SMBC_BRIDGE_COLLAPSE_DATA[15];

@@ -83,3 +83,11 @@ const uint8_t SMBC_ENEMY17_Y_POS_DATA[8] = {0x40u, 0x30u, 0x90u, 0x50u,
 
 /* smb.asm: SwimCC_IDData */
 const uint8_t SMBC_SWIMCC_ID_DATA[2] = {0x0au, 0x0bu};
+
+const uint8_t SMBC_BRIDGE_COLLAPSE_DATA[15] = {
+    /* smb.asm: BridgeCollapseData */
+    0x1au,                                           /* axe */
+    0x58u,                                           /* chain */
+    0x98u, 0x96u, 0x94u, 0x92u, 0x90u, 0x8eu, 0x8cu, /* bridge */
+    0x8au, 0x88u, 0x86u, 0x84u, 0x82u, 0x80u,
+};

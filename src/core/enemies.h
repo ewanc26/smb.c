@@ -48,6 +48,10 @@
  * the data stream. */
 void enemies_and_loops_core(CoreState *state, uint8_t x);
 
+/* smb.asm: KillAllEnemies — erase all five enemy slots and empty the
+ * frenzy buffer; also the tail of BridgeCollapse's SetM2 */
+void kill_all_enemies(CoreState *state);
+
 /* smb.asm: CheckpointEnemyID — identifiers below $15 get eight pixels
  * added to their vertical coordinate and the offscreen masked bit set,
  * then the init jump engine runs. Exported for the frenzy generators

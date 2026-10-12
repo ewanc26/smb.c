@@ -1,10 +1,17 @@
 /* core/victory.c — see core/victory.h for the contract. */
 #include "victory.h"
 
+#include "../data/enemies.h"
+#include "../data/metatiles.h"
 #include "../data/music.h"
 #include "area.h"
+#include "enemies.h"
 #include "frame.h"
 #include "gameover.h"
+#include "move.h"
+#include "offscreen.h"
+#include "playergfx.h"
+#include "runners.h"
 #include "state.h"
 
 /* smb.asm: SetupVictoryMode */
@@ -102,9 +109,75 @@ static void player_end_world(Smbc *smbc) {
 /* smb.asm: VictoryModeSubroutines — jump table order:
  *   0 BridgeCollapse, 1 SetupVictoryMode, 2 PlayerVictoryWalk,
  *   3 PrintVictoryMessages, 4 PlayerEndWorld */
+/* smb.asm: RemBridge — write one blank metatile (the BlockGfxData quad
+ * at offset $0c) into vram buffer 1 at the offset plus one; the name
+ * table address is the $04/$05 pair the caller set (always $22xx here,
+ * the low byte from BridgeCollapseData) */
+static void rem_bridge(CoreState *st, uint8_t lo, uint8_t y) {
+  st->ram[SMBC_VRAM_BUFFER1 + 2u + y] = SMBC_BLOCK_GFX_DATA[12u];
+  st->ram[SMBC_VRAM_BUFFER1 + 3u + y] = SMBC_BLOCK_GFX_DATA[13u];
+  st->ram[SMBC_VRAM_BUFFER1 + 7u + y] = SMBC_BLOCK_GFX_DATA[14u];
+  st->ram[SMBC_VRAM_BUFFER1 + 8u + y] = SMBC_BLOCK_GFX_DATA[15u];
+  st->ram[SMBC_VRAM_BUFFER1 + y] = lo;
+  st->ram[SMBC_VRAM_BUFFER1 + 5u + y] = (uint8_t)(lo + 0x20u);
+  st->ram[SMBC_VRAM_BUFFER1 - 1u + y] = 0x22u;
+  st->ram[SMBC_VRAM_BUFFER1 + 4u + y] = 0x22u;
+  st->ram[SMBC_VRAM_BUFFER1 + 1u + y] = 0x02u;
+  st->ram[SMBC_VRAM_BUFFER1 + 6u + y] = 0x02u;
+  st->ram[SMBC_VRAM_BUFFER1 + 9u + y] = 0x00u;
+}
+
+/* smb.asm: BridgeCollapse — bowser hangs on the bridge while the axe,
+ * chain and bridge metatiles blank out behind him, then he falls
+ * through the gap; once he is low enough the mode moves on */
+static void bridge_collapse(Smbc *smbc) {
+  CoreState *st = &smbc->state;
+  uint8_t x = st->ram[SMBC_BOWSER_FRONT_OFFSET];
+  if (st->ram[SMBC_ENEMY_ID + x] != SMBC_BOWSER) goto set_m2;
+  st->ram[SMBC_OBJECT_OFFSET] = x;
+  uint8_t state = st->ram[SMBC_ENEMY_STATE + x];
+  if (state == 0x00u) {
+    /* RemoveBridge — the feet counter paces the collapse, the body
+     * controls bit flips bowser's feet each step */
+    st->ram[SMBC_BOWSER_FEET_COUNTER] -= 1u;
+    if (st->ram[SMBC_BOWSER_FEET_COUNTER] != 0x00u) goto draw_bowser;
+    st->ram[SMBC_BOWSER_FEET_COUNTER] = 0x04u;
+    st->ram[SMBC_BOWSER_BODY_CONTROLS] ^= 0x01u;
+    uint8_t ofs = st->ram[SMBC_BRIDGE_COLLAPSE_OFFSET];
+    rem_bridge(st, SMBC_BRIDGE_COLLAPSE_DATA[ofs],
+               (uint8_t)(st->ram[SMBC_VRAM_BUFFER1_OFFSET] + 1u));
+    /* MoveVOffset — the write used offset plus one; put the real offset
+     * back and advance it past the ten bytes just queued */
+    st->ram[SMBC_VRAM_BUFFER1_OFFSET] += 10u;
+    st->ram[SMBC_SQUARE2_SOUND_QUEUE] = SMBC_SFX_BLAST;
+    st->ram[SMBC_NOISE_SOUND_QUEUE] = SMBC_SFX_BRICK_SHATTER;
+    st->ram[SMBC_BRIDGE_COLLAPSE_OFFSET] = (uint8_t)(ofs + 1u);
+    if (ofs + 1u != 0x0fu) goto draw_bowser;
+    /* the whole bridge is gone: bowser drops, defeated */
+    st->ram[SMBC_ENEMY_Y_SPEED + x] = 0x00u;     /* InitVStf */
+    st->ram[SMBC_ENEMY_Y_MOVE_FORCE + x] = 0x00u;
+    st->ram[SMBC_ENEMY_STATE + x] = 0x40u;
+    st->ram[SMBC_SQUARE2_SOUND_QUEUE] = SMBC_SFX_BOWSER_FALL;
+    goto draw_bowser;
+  }
+  if ((state & 0x40u) != 0x00u &&
+      st->ram[SMBC_ENEMY_Y_POSITION + x] < 0xe0u) {
+    /* MoveD_Bowser — slide the defeated bowser down through the gap */
+    set_x_move_amt(st, x, 0x0fu, 0x02u); /* MoveEnemySlowVert */
+    goto draw_bowser;
+  }
+set_m2:
+  st->ram[SMBC_EVENT_MUSIC_QUEUE] = SMBC_MUSIC_SILENCE; /* SetM2 */
+  st->ram[SMBC_OPER_MODE_TASK] += 1u;
+  kill_all_enemies(st);
+  return;
+draw_bowser:
+  bowser_gfx_handler(st, x);
+}
+
 static void victory_mode_subroutines(Smbc *smbc) {
   switch (smbc->state.ram[SMBC_OPER_MODE_TASK]) {
-    case 0: /* TODO(port): smb.asm: BridgeCollapse (player/bridge atoms) */ break;
+    case 0: bridge_collapse(smbc); break;
     case 1: setup_victory_mode(smbc); break;
     case 2: /* TODO(port): smb.asm: PlayerVictoryWalk (player/scroll atoms) */ break;
     case 3: print_victory_messages(smbc); break;
@@ -118,8 +191,9 @@ void victory_mode(Smbc *smbc) {
   victory_mode_subroutines(smbc);
   if (st->ram[SMBC_OPER_MODE_TASK] != 0x00) {
     st->ram[SMBC_OBJECT_OFFSET] = 0x00; /* reset enemy object offset */
-    /* TODO(port): smb.asm: EnemiesAndLoopsCore (core/enemies) */
+    enemies_and_loops_core(st, 0x00); /* not on bridge collapse */
   }
-  /* AutoPlayer — TODO(port): smb.asm: RelativePlayerPosition and
-   * PlayerGfxHandler (core/player) */
+  /* AutoPlayer */
+  relative_player_position(st);
+  player_gfx_handler(st);
 }

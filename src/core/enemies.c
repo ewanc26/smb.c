@@ -43,7 +43,7 @@ void erase_enemy_object(CoreState *st, uint8_t x) {
 /* smb.asm: KillAllEnemies — erase the first five slots and the frenzy
  * buffer (A holds zero after the loop; the asm also reloads X from
  * ObjectOffset, a no-op for the port's value parameter) */
-static void kill_all_enemies(CoreState *st) {
+void kill_all_enemies(CoreState *st) {
   for (int x = 0x04; x >= 0; x--) {
     erase_enemy_object(st, (uint8_t)x);
   }

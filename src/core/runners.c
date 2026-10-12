@@ -1082,13 +1082,6 @@ static uint8_t set_flame_timer(CoreState *st) {
   return v;
 }
 
-/* smb.asm: KillAllEnemies — the defeated bowser past $e0 empties
- * every enemy slot and the frenzy buffer */
-static void kill_all_enemies(CoreState *st) {
-  for (int i = 4; i >= 0; i--) erase_enemy_object(st, (uint8_t)i);
-  st->ram[SMBC_ENEMY_FRENZY_BUFFER] = 0x00u;
-}
-
 /* smb.asm: ProcessBowserHalf — one half of bowser: retainer draw,
  * then the bounding box and player collision while in the normal
  * state */
@@ -1103,7 +1096,7 @@ static void process_bowser_half(CoreState *st, uint8_t x) {
 
 /* smb.asm: BowserGfxHandler — draw the front, mirror the state
  * into the rear object offset by the facing, and draw that too */
-static void bowser_gfx_handler(CoreState *st, uint8_t x) {
+void bowser_gfx_handler(CoreState *st, uint8_t x) {
   process_bowser_half(st, x);
   uint8_t ofs = (st->ram[SMBC_ENEMY_MOVING_DIR + x] & 0x01u) != 0x00u
                     ? 0xf0u

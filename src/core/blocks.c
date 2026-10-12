@@ -1,16 +1,9 @@
 /* core/blocks.c — see core/blocks.h for the contract. */
 #include "blocks.h"
 
+#include "../data/metatiles.h"
 #include "move.h"
 #include "offscreen.h"
-
-/* smb.asm: BlockGfxData — the four tiles of each replacement style:
- * brick with line, brick without, empty block, blank, and brick with
- * coins (the two brick-with-coins entries share the first style) */
-static const uint8_t SMBC_BLOCK_GFX_DATA[20] = {
-    0x45u, 0x45u, 0x47u, 0x47u, 0x47u, 0x47u, 0x47u, 0x47u,
-    0x57u, 0x58u, 0x59u, 0x5au, 0x24u, 0x24u, 0x24u, 0x24u,
-    0x26u, 0x26u, 0x26u, 0x26u};
 
 /* smb.asm: PutBlockMetatile — style selects the BlockGfxData quad, y
  * the vram buffer offset plus one; bbuf_low and orig_y are the $06/$02

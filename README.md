@@ -47,8 +47,12 @@ handling, and the title screen's task tree runs end to end:
 `InitializeGame`, `ScreenRoutines`, `PrimaryGameSetup` and the menu
 routine — the menu's demo tail now runs `GameCoreRoutine` for the
 frame, and the demo-over and lose-life paths reset the title screen
-the way the original does. The sound engine, enemy data driving and
-the title/victory trees are tracked in the open issues and translated
+the way the original does. The victory mode tree runs too:
+`BridgeCollapse` (the axe, chain and bridge metatiles blanking out as
+bowser drops), `SetupVictoryMode`, `PrintVictoryMessages`,
+`PlayerEndWorld`, the wrapper's `EnemiesAndLoopsCore` call and the
+`AutoPlayer` tail. The sound engine, enemy data driving and
+`PlayerVictoryWalk` are tracked in the open issues and translated
 routine by routine.
 
 The source of truth is `smb.asm` — doppelganger's comprehensive disassembly

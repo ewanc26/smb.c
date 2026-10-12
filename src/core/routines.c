@@ -223,7 +223,7 @@ void player_ctrl_routine(Smbc *smbc) {
 
 /* smb.asm: AutoControlPlayer — override the controller bits and run
  * the player control routine with them */
-static void auto_control_player(Smbc *smbc, uint8_t a) {
+void auto_control_player(Smbc *smbc, uint8_t a) {
   smbc->state.ram[SMBC_SAVED_JOYPAD1_BITS] = a;
   player_ctrl_routine(smbc);
 }
@@ -434,42 +434,10 @@ void player_end_level(Smbc *smbc) {
   next_area(smbc);
 }
 
-void scroll_handler(Smbc *smbc) {
+/* smb.asm: ChkPOffscr — clamp the player at the screen edges; the
+ * asm's ScreenEdge_X_Pos/ScreenEdge_PageLoc alias ScreenLeft_* */
+static void chk_p_offscr(Smbc *smbc) {
   CoreState *st = &smbc->state;
-  st->ram[SMBC_PLAYER_X_SCROLL] += st->ram[SMBC_PLATFORM_X_SCROLL];
-  uint8_t y = 0x00u; /* the scroll amount this frame */
-  if (st->ram[SMBC_SCROLL_LOCK] == 0x00u &&
-      st->ram[SMBC_PLAYER_POS_FORSCROLL] >= 0x50u &&
-      st->ram[SMBC_SIDE_COLLISION_TIMER] == 0x00u) {
-    int8_t scroll = (int8_t)st->ram[SMBC_PLAYER_X_SCROLL];
-    if (scroll >= 0x01) {
-      /* moving right: scroll with the player's speed, one less unless
-       * it is one; past 112 pixels the full speed */
-      y = (uint8_t)scroll;
-      if (scroll > 0x01) y--;
-      if (st->ram[SMBC_PLAYER_POS_FORSCROLL] >= 0x70u) y = (uint8_t)scroll;
-    }
-  }
-  if (y != 0x00u) { /* ScrollScreen */
-    st->ram[SMBC_SCROLL_AMOUNT] = y;
-    st->ram[SMBC_SCROLL_THIRTY_TWO] += y;
-    uint16_t x = (uint16_t)st->ram[SMBC_SCREEN_LEFT_X_POS] + y;
-    st->ram[SMBC_SCREEN_LEFT_X_POS] = (uint8_t)x;
-    st->ram[SMBC_HORIZONTAL_SCROLL] = (uint8_t)x;
-    uint8_t page = (uint8_t)(st->ram[SMBC_SCREEN_LEFT_PAGE_LOC] +
-                             (uint8_t)(x >> 8));
-    st->ram[SMBC_SCREEN_LEFT_PAGE_LOC] = page;
-    /* the page's LSB mirrors into the PPU control register's name
-     * table bit */
-    st->ram[SMBC_MIRROR_PPU_CTRL1] =
-        (st->ram[SMBC_MIRROR_PPU_CTRL1] & 0xfeu) | (page & 0x01u);
-    (void)get_screen_position(st);
-    st->ram[SMBC_SCROLL_INTERVAL_TIMER] = 0x08u;
-  } else {
-    st->ram[SMBC_SCROLL_AMOUNT] = 0x00u; /* InitScrlAmt */
-  }
-  /* ChkPOffscr — clamp the player at the screen edges; the asm's
-   * ScreenEdge_X_Pos/ScreenEdge_PageLoc alias ScreenLeft_* */
   uint8_t bits = get_x_offscreen_bits(st, 0x00u);
   uint8_t side = 0x00u;
   if ((bits & 0x80u) == 0x00u) {
@@ -492,4 +460,47 @@ void scroll_handler(Smbc *smbc) {
     st->ram[SMBC_PLAYER_X_SPEED] = 0x00u;
   }
   st->ram[SMBC_PLATFORM_X_SCROLL] = 0x00u;
+}
+
+void scroll_screen(Smbc *smbc, uint8_t y) {
+  CoreState *st = &smbc->state;
+  st->ram[SMBC_SCROLL_AMOUNT] = y;
+  st->ram[SMBC_SCROLL_THIRTY_TWO] += y;
+  uint16_t x = (uint16_t)st->ram[SMBC_SCREEN_LEFT_X_POS] + y;
+  st->ram[SMBC_SCREEN_LEFT_X_POS] = (uint8_t)x;
+  st->ram[SMBC_HORIZONTAL_SCROLL] = (uint8_t)x;
+  uint8_t page = (uint8_t)(st->ram[SMBC_SCREEN_LEFT_PAGE_LOC] +
+                           (uint8_t)(x >> 8));
+  st->ram[SMBC_SCREEN_LEFT_PAGE_LOC] = page;
+  /* the page's LSB mirrors into the PPU control register's name
+   * table bit */
+  st->ram[SMBC_MIRROR_PPU_CTRL1] =
+      (st->ram[SMBC_MIRROR_PPU_CTRL1] & 0xfeu) | (page & 0x01u);
+  (void)get_screen_position(st);
+  st->ram[SMBC_SCROLL_INTERVAL_TIMER] = 0x08u;
+  chk_p_offscr(smbc);
+}
+
+void scroll_handler(Smbc *smbc) {
+  CoreState *st = &smbc->state;
+  st->ram[SMBC_PLAYER_X_SCROLL] += st->ram[SMBC_PLATFORM_X_SCROLL];
+  uint8_t y = 0x00u; /* the scroll amount this frame */
+  if (st->ram[SMBC_SCROLL_LOCK] == 0x00u &&
+      st->ram[SMBC_PLAYER_POS_FORSCROLL] >= 0x50u &&
+      st->ram[SMBC_SIDE_COLLISION_TIMER] == 0x00u) {
+    int8_t scroll = (int8_t)st->ram[SMBC_PLAYER_X_SCROLL];
+    if (scroll >= 0x01) {
+      /* moving right: scroll with the player's speed, one less unless
+       * it is one; past 112 pixels the full speed */
+      y = (uint8_t)scroll;
+      if (scroll > 0x01) y--;
+      if (st->ram[SMBC_PLAYER_POS_FORSCROLL] >= 0x70u) y = (uint8_t)scroll;
+    }
+  }
+  if (y != 0x00u) {
+    scroll_screen(smbc, y);
+    return;
+  }
+  st->ram[SMBC_SCROLL_AMOUNT] = 0x00u; /* InitScrlAmt */
+  chk_p_offscr(smbc);
 }

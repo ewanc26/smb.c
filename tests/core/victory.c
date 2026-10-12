@@ -99,6 +99,68 @@ static void bridge_remove_step(void) {
   assert(wait.state.ram[SMBC_VRAM_BUFFER1_OFFSET] == 0x00u);
 }
 
+static void walk_scrolls_toward_castle(void) {
+  Smbc smbc;
+  smbc_init(&smbc);
+  load_world_1_1(&smbc);
+  smbc.state.ram[SMBC_OPER_MODE] = SMBC_MODE_VICTORY;
+  smbc.state.ram[SMBC_OPER_MODE_TASK] = 0x02u;
+  smbc.state.ram[SMBC_PLAYER_PAGE_LOC] = 0x05u;
+  smbc.state.ram[SMBC_DESTINATION_PAGE_LOC] = 0x07u;
+  smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0x30u;
+  smbc.state.ram[SMBC_SCREEN_LEFT_PAGE_LOC] = 0x04u;
+  smbc.state.ram[SMBC_SCREEN_LEFT_X_POS] = 0x00u;
+  smbc.state.ram[SMBC_SCROLL_FRACTIONAL] = 0x80u;
+
+  /* off the destination page: walk right, and the fractional scroll
+   * ($80 + $80 carries) makes this a two-pixel frame */
+  oper_mode_execution_tree(&smbc);
+  assert(smbc.state.ram[SMBC_SAVED_JOYPAD1_BITS] == 0x01u);
+  assert(smbc.state.ram[SMBC_VICTORY_WALK_CONTROL] == 0x02u);
+  assert(smbc.state.ram[SMBC_SCROLL_FRACTIONAL] == 0x00u);
+  assert(smbc.state.ram[SMBC_SCROLL_AMOUNT] == 0x02u);
+  assert(smbc.state.ram[SMBC_SCREEN_LEFT_X_POS] == 0x02u);
+  assert(smbc.state.ram[SMBC_HORIZONTAL_SCROLL] == 0x02u);
+  assert(smbc.state.ram[SMBC_SCROLL_INTERVAL_TIMER] == 0x08u);
+  assert(smbc.state.ram[SMBC_OPER_MODE_TASK] == 0x02u);
+}
+
+static void walk_arrived_advances_task(void) {
+  Smbc smbc;
+  smbc_init(&smbc);
+  load_world_1_1(&smbc);
+  smbc.state.ram[SMBC_OPER_MODE] = SMBC_MODE_VICTORY;
+  smbc.state.ram[SMBC_OPER_MODE_TASK] = 0x02u;
+  smbc.state.ram[SMBC_PLAYER_PAGE_LOC] = 0x07u;
+  smbc.state.ram[SMBC_DESTINATION_PAGE_LOC] = 0x07u;
+  smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0x80u; /* past $60 */
+  smbc.state.ram[SMBC_SCREEN_LEFT_PAGE_LOC] = 0x07u;
+
+  /* at the gate with the screen caught up: no walk, no scroll, next
+   * task */
+  oper_mode_execution_tree(&smbc);
+  assert(smbc.state.ram[SMBC_SAVED_JOYPAD1_BITS] == 0x00u);
+  assert(smbc.state.ram[SMBC_VICTORY_WALK_CONTROL] == 0x00u);
+  assert(smbc.state.ram[SMBC_OPER_MODE_TASK] == 0x03u);
+
+  /* arrived but the screen still catching up: the walk control stays
+   * set so the task holds */
+  Smbc lag;
+  smbc_init(&lag);
+  load_world_1_1(&lag);
+  lag.state.ram[SMBC_OPER_MODE] = SMBC_MODE_VICTORY;
+  lag.state.ram[SMBC_OPER_MODE_TASK] = 0x02u;
+  lag.state.ram[SMBC_PLAYER_PAGE_LOC] = 0x07u;
+  lag.state.ram[SMBC_DESTINATION_PAGE_LOC] = 0x07u;
+  lag.state.ram[SMBC_PLAYER_X_POSITION] = 0x80u;
+  lag.state.ram[SMBC_SCREEN_LEFT_PAGE_LOC] = 0x06u;
+  oper_mode_execution_tree(&lag);
+  assert(lag.state.ram[SMBC_VICTORY_WALK_CONTROL] == 0x01u);
+  assert(lag.state.ram[SMBC_OPER_MODE_TASK] == 0x02u);
+  /* no carry this frame ($00 + $80): one pixel */
+  assert(lag.state.ram[SMBC_SCROLL_AMOUNT] == 0x01u);
+}
+
 static void bridge_collapse_complete(void) {
   Smbc smbc;
   smbc_init(&smbc);
@@ -310,6 +372,8 @@ int main(void) {
   setup_task();
   bridge_setm2_without_bowser();
   bridge_remove_step();
+  walk_scrolls_toward_castle();
+  walk_arrived_advances_task();
   bridge_collapse_complete();
   bridge_defeated_bowser_falls();
   first_messages();

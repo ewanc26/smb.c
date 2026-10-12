@@ -62,4 +62,12 @@ void player_fire_flower(struct Smbc *smbc);
  * force, clamp the player at the screen edges */
 void scroll_handler(struct Smbc *smbc);
 
+/* smb.asm: ScrollScreen — scroll the screen y pixels (also called from
+ * PlayerVictoryWalk) */
+void scroll_screen(struct Smbc *smbc, uint8_t y);
+
+/* smb.asm: AutoControlPlayer — override the controller bits and run
+ * the player control routine with them (victory walk, flagpole) */
+void auto_control_player(struct Smbc *smbc, uint8_t a);
+
 #endif /* SMBC_CORE_ROUTINES_H */

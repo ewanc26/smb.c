@@ -7,10 +7,12 @@
 #include "area.h"
 #include "enemies.h"
 #include "frame.h"
+#include "gamemode.h"
 #include "gameover.h"
 #include "move.h"
 #include "offscreen.h"
 #include "playergfx.h"
+#include "routines.h"
 #include "runners.h"
 #include "state.h"
 
@@ -175,11 +177,41 @@ draw_bowser:
   bowser_gfx_handler(st, x);
 }
 
+/* smb.asm: PlayerVictoryWalk — walk the player toward the castle gate
+ * (right of $60 on the destination page), scrolling the screen along
+ * at a fixed one and a half pixels per frame; once the screen reaches
+ * the destination page and the player is past the mark, the mode
+ * moves on */
+static void player_victory_walk(Smbc *smbc) {
+  CoreState *st = &smbc->state;
+  uint8_t y = 0x00u; /* do not walk by default */
+  st->ram[SMBC_VICTORY_WALK_CONTROL] = y;
+  if (st->ram[SMBC_PLAYER_PAGE_LOC] != st->ram[SMBC_DESTINATION_PAGE_LOC] ||
+      st->ram[SMBC_PLAYER_X_POSITION] < 0x60u) {
+    st->ram[SMBC_VICTORY_WALK_CONTROL] += 1u; /* PerformWalk */
+    y = 0x01u; /* controller right */
+  }
+  auto_control_player(smbc, y);
+  if (st->ram[SMBC_SCREEN_LEFT_PAGE_LOC] !=
+      st->ram[SMBC_DESTINATION_PAGE_LOC]) {
+    /* the fractional part paces the extra pixel every other frame */
+    uint8_t frac = st->ram[SMBC_SCROLL_FRACTIONAL];
+    st->ram[SMBC_SCROLL_FRACTIONAL] = (uint8_t)(frac + 0x80u);
+    y = (uint8_t)(0x01u + (frac > 0x7fu ? 0x01u : 0x00u));
+    scroll_screen(smbc, y);
+    upd_scroll_var(smbc);
+    st->ram[SMBC_VICTORY_WALK_CONTROL] += 1u;
+  }
+  if (st->ram[SMBC_VICTORY_WALK_CONTROL] == 0x00u) {
+    st->ram[SMBC_OPER_MODE_TASK] += 1u; /* IncModeTask_A */
+  }
+}
+
 static void victory_mode_subroutines(Smbc *smbc) {
   switch (smbc->state.ram[SMBC_OPER_MODE_TASK]) {
     case 0: bridge_collapse(smbc); break;
     case 1: setup_victory_mode(smbc); break;
-    case 2: /* TODO(port): smb.asm: PlayerVictoryWalk (player/scroll atoms) */ break;
+    case 2: player_victory_walk(smbc); break;
     case 3: print_victory_messages(smbc); break;
     case 4: player_end_world(smbc); break;
     default: break;

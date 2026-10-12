@@ -5,9 +5,19 @@
 #include <stdio.h>
 
 #include "../../src/core/frame.h"
+#include "../../src/core/initialize.h"
 #include "../../src/core/mode.h"
 #include "../../src/core/state.h"
 #include "../../src/core/title.h"
+
+/* the menu's demo and select paths run GameCoreRoutine, which reads the
+ * area object data — on hardware the pointers are loaded by the
+ * InitializeGame → InitializeArea fall-through before the menu ever
+ * runs, so the fixtures do the same with world 1-1 */
+static void load_world_1_1(Smbc *smbc) {
+  smbc->state.ram[SMBC_AREA_POINTER] = 0x25u;
+  initialize_area(smbc);
+}
 
 static void mushroom_icon(void) {
   Smbc smbc;
@@ -102,6 +112,7 @@ static void menu_continue_with_a_start(void) {
 static void menu_select_toggles_players(void) {
   Smbc smbc;
   smbc_init(&smbc);
+  load_world_1_1(&smbc);
   smbc.state.ram[SMBC_OPER_MODE] = SMBC_MODE_TITLE;
   smbc.state.ram[SMBC_OPER_MODE_TASK] = 0x03u;
   smbc.state.ram[SMBC_SAVED_JOYPAD1_BITS] = SMBC_PAD_SELECT;
@@ -126,6 +137,7 @@ static void menu_select_toggles_players(void) {
 static void menu_b_world_select(void) {
   Smbc smbc;
   smbc_init(&smbc);
+  load_world_1_1(&smbc);
   smbc.state.ram[SMBC_OPER_MODE] = SMBC_MODE_TITLE;
   smbc.state.ram[SMBC_OPER_MODE_TASK] = 0x03u;
   smbc.state.ram[SMBC_SAVED_JOYPAD1_BITS] = SMBC_PAD_B;
@@ -137,15 +149,16 @@ static void menu_b_world_select(void) {
   oper_mode_execution_tree(&smbc);
   assert(smbc.state.ram[SMBC_WORLD_SELECT_NUMBER] == 0x00u);
   assert(smbc.state.ram[SMBC_WORLD_NUMBER] == 0x00u);
-  assert(smbc.state.ram[SMBC_VRAM_BUFFER1_OFFSET + 0] == 0x04u);
-  assert(smbc.state.ram[SMBC_VRAM_BUFFER1_OFFSET + 1] == 0x20u);
-  assert(smbc.state.ram[SMBC_VRAM_BUFFER1_OFFSET + 2] == 0x73u);
-  assert(smbc.state.ram[SMBC_VRAM_BUFFER1 + 3] == 0x01u); /* world number + 1 */
   assert(smbc.state.ram[SMBC_SAVED_JOYPAD1_BITS] == 0x00u);
+  /* the template bytes themselves no longer survive the call: the menu's
+   * tail runs GameCoreRoutine, whose status-bar writer appends at the
+   * buffer offset the template left behind */
+  assert(smbc.state.ram[SMBC_VRAM_BUFFER1_OFFSET + 0] != 0x04u);
 
   /* without the enable flag B does nothing but clear the joypad */
   Smbc off;
   smbc_init(&off);
+  load_world_1_1(&off);
   off.state.ram[SMBC_OPER_MODE] = SMBC_MODE_TITLE;
   off.state.ram[SMBC_OPER_MODE_TASK] = 0x03u;
   off.state.ram[SMBC_SAVED_JOYPAD1_BITS] = SMBC_PAD_B;
@@ -153,13 +166,13 @@ static void menu_b_world_select(void) {
   off.state.ram[SMBC_WORLD_SELECT_NUMBER] = 0x03u;
   oper_mode_execution_tree(&off);
   assert(off.state.ram[SMBC_WORLD_SELECT_NUMBER] == 0x03u);
-  assert(off.state.ram[SMBC_VRAM_BUFFER1_OFFSET + 0] == 0x00u);
   assert(off.state.ram[SMBC_SAVED_JOYPAD1_BITS] == 0x00u);
 }
 
 static void menu_demo_paths(void) {
   Smbc smbc;
   smbc_init(&smbc);
+  load_world_1_1(&smbc);
   smbc.state.ram[SMBC_OPER_MODE] = SMBC_MODE_TITLE;
   smbc.state.ram[SMBC_OPER_MODE_TASK] = 0x03u;
   smbc.state.ram[SMBC_DEMO_TIMER] = 0x00u;
@@ -183,13 +196,18 @@ static void menu_demo_paths(void) {
   /* the lose-life routine during a demo resets the title screen too */
   Smbc lose;
   smbc_init(&lose);
+  load_world_1_1(&lose);
   lose.state.ram[SMBC_OPER_MODE] = SMBC_MODE_TITLE;
   lose.state.ram[SMBC_OPER_MODE_TASK] = 0x03u;
   lose.state.ram[SMBC_DEMO_TIMER] = 0x18u;
   lose.state.ram[SMBC_GAME_ENGINE_SUBROUTINE] = 0x06u;
   lose.state.ram[SMBC_DISABLE_SCREEN_FLAG] = 0x00u;
   oper_mode_execution_tree(&lose);
-  assert(lose.state.ram[SMBC_DISABLE_SCREEN_FLAG] == 0x01u);
+  /* player_lose_life drops to game over and increments the flag;
+   * reset_title then pulls the modes back to title, incrementing again */
+  assert(lose.state.ram[SMBC_DISABLE_SCREEN_FLAG] == 0x02u);
+  assert(lose.state.ram[SMBC_OPER_MODE] == SMBC_MODE_TITLE);
+  assert(lose.state.ram[SMBC_OPER_MODE_TASK] == 0x00u);
   assert(lose.state.ram[SMBC_SAVED_JOYPAD1_BITS] == 0x00u);
 }
 

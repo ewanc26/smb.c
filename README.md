@@ -45,9 +45,11 @@ with its speed brackets and friction, the head-bump block routines
 `PlayerBGCollision`'s full head/feet/side tree and the pipe-entry
 handling, and the title screen's task tree runs end to end:
 `InitializeGame`, `ScreenRoutines`, `PrimaryGameSetup` and the menu
-routine. The sound engine, enemy data driving and the title/victory
-trees are tracked in the open issues and translated routine by
-routine.
+routine — the menu's demo tail now runs `GameCoreRoutine` for the
+frame, and the demo-over and lose-life paths reset the title screen
+the way the original does. The sound engine, enemy data driving and
+the title/victory trees are tracked in the open issues and translated
+routine by routine.
 
 The source of truth is `smb.asm` — doppelganger's comprehensive disassembly
 (x816 syntax), kept unmodified in the repository root. Every translated

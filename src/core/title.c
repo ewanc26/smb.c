@@ -4,6 +4,7 @@
 #include "../data/title.h"
 #include "area.h"
 #include "frame.h"
+#include "gamemode.h"
 #include "initialize.h"
 #include "screen.h"
 #include "setup.h"
@@ -30,7 +31,7 @@ static void go_continue(Smbc *smbc, uint8_t a) {
 /* smb.asm: NullJoypad + RunDemo */
 static void run_demo(Smbc *smbc) {
   CoreState *st = &smbc->state;
-  /* TODO(port): smb.asm: GameCoreRoutine (GameMode tree) */
+  game_core_routine(smbc); /* run the game engine for the demo frame */
   if (st->ram[SMBC_GAME_ENGINE_SUBROUTINE] != 0x06) return; /* ExitMenu */
   reset_title(smbc); /* lose life routine during demo: reset modes */
 }

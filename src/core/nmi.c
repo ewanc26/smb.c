@@ -1,6 +1,7 @@
 /* core/nmi.c — see core/nmi.h for the contract. */
 #include "nmi.h"
 
+#include "../hw/render.h"
 #include "frame.h"
 #include "joyread.h"
 #include "mode.h"
@@ -96,8 +97,11 @@ void nmi_run(Smbc *smbc) {
       move_sprites_offscreen(state);
       sprite_shuffler(state);
     }
-    ppu_await_sprite0_set(ppu);   /* smb.asm: Sprite0Hit */
-    /* smb.asm: HBlankDelay — pure hardware timing, no game-visible state */
+    /* smb.asm: Sprite0Hit — the render layer evaluates the overlap, the
+     * timing layer advances the raster clock to it */
+    ppu_await_sprite0_set(ppu, ppu_sprite0_hit_scanline(ppu));
+    /* smb.asm: HBlankDelay — sub-scanline hardware timing, absorbed into
+     * the hit scanline (see the timing contract in hw/ppu.h) */
   }
 
   /* smb.asm: SkipSprite0 — set scroll from the variables, write mirror */

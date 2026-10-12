@@ -168,6 +168,43 @@ int main(void) {
   assert(fb_at(32 + 7, 1) == 0x30u);
   assert(fb_at(32, 1) == 0x0fu);
 
+  /* the split: vblank scroll holds the status bar still, the gameplay
+   * scroll written at the sprite-0 hit applies below its scanline */
+  setup(&ppu);
+  for (unsigned r = 0; r < 30u; r++) { /* tile 1 fills cell column x=1 */
+    ppu.vram[0x2000 + r * 32u + 1] = 0x01u;
+  }
+  solid_tile(1, 1);
+  bg_colour(&ppu, 0, 1, 0x21u);
+  ppu.vram[0x3f00] = 0x0fu;
+  ppu_enter_vblank(&ppu);
+  ppu_write(&ppu, 5, 0x00u); /* InitScroll: the status bar's (0,0) */
+  ppu_write(&ppu, 5, 0x00u);
+  ppu.scanline = 31u;        /* the sprite-0 hit line */
+  ppu_write(&ppu, 5, 0x08u); /* SkipSprite0: gameplay scroll X=8 */
+  ppu_write(&ppu, 5, 0x00u);
+  ppu_end_frame(&ppu);
+  ppu_render_frame(&ppu, fb, NULL);
+  assert(fb_at(8, 16) == 0x21u);  /* above the split: unshifted cell */
+  assert(fb_at(0, 16) == 0x0fu);
+  assert(fb_at(0, 40) == 0x21u);  /* below the split: scrolled into view */
+  assert(fb_at(8, 40) == 0x0fu);
+
+  /* ppu_sprite0_hit_scanline: overlap, no overlap, layers disabled */
+  setup(&ppu);
+  ppu.vram[0x2000 + 32] = 0x01u;
+  solid_tile(1, 1);
+  bg_colour(&ppu, 0, 1, 0x21u);
+  solid_tile(2, 2);
+  ppu.oam[0] = 0x07u;
+  ppu.oam[1] = 0x02u;
+  assert(ppu_sprite0_hit_scanline(&ppu) == 8);
+  ppu.oam[3] = 0x80u; /* moved clear of the background tile */
+  assert(ppu_sprite0_hit_scanline(&ppu) == -1);
+  ppu.oam[3] = 0x00u;
+  ppu.ctrl2 = 0x08u; /* sprites off: no evaluation */
+  assert(ppu_sprite0_hit_scanline(&ppu) == -1);
+
   /* determinism: identical PPU state renders an identical frame */
   setup(&ppu);
   ppu.vram[0x2000] = 0x01u;

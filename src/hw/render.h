@@ -11,12 +11,14 @@
  * those belong to the host frontend, which consumes the index buffer
  * and may map it through its own 2C02 palette approximation.
  *
+ * Scroll resolution: each scanline composes against the newest scroll
+ * write the raster clock had reached when it was made (the PPU's
+ * scroll log), so the status-bar split — scroll (0,0) written during
+ * vblank, gameplay scroll written after the sprite-0 hit — renders
+ * faithfully. Writes tagged at scanline 241+ take effect from the top
+ * of the frame, as the hardware's vertical reload provides.
+ *
  * Deliberate approximations (documented per #32):
- *   - Frame granularity: the picture is composed from end-of-frame
- *     register state, so the mid-frame scroll write behind SMB's
- *     status-bar split is not visible here; per-scanline scroll
- *     arrives with the timing work (#33). The sprite-0 hit position
- *     is still computed and reported for that work.
  *   - 8×8 sprites only: SMB never sets $2000 d5, so 8×16 sprites are
  *     not modelled.
  *   - $2001 d0 (grayscale) and the emphasis bits are not applied;
@@ -40,5 +42,12 @@
  * overlap occurs — the transition the original game's split-screen
  * scroll waits on. */
 void ppu_render_frame(const Ppu *ppu, uint8_t *fb, int *sprite0_scanline);
+
+/* The sprite-0 overlap alone: the first scanline where sprite 0's
+ * opaque pixels meet opaque background, or -1. This is the evaluation
+ * the translated Sprite0Hit wait advances the raster clock to; it runs
+ * against mid-frame PPU state, before the split scroll write exists,
+ * exactly as the hardware evaluates it during the frame. */
+int ppu_sprite0_hit_scanline(const Ppu *ppu);
 
 #endif /* SMBC_HW_RENDER_H */

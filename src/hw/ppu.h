@@ -11,14 +11,47 @@
  * Rendering is not modelled; a host frontend consumes the VRAM image
  * and the OAM copy later.
  *
- * Collaborators: core/frame drives vblank; translated game code touches the
- * registers exactly as the original does.
+ * Collaborators: core/frame drives the raster clock and vblank;
+ * translated game code touches the registers exactly as the original
+ * does; hw/render consumes the scroll history and the OAM copy.
+ *
+ * Timing contract (issue #33): one frame of emulated time is one NTSC
+ * frame, 262 scanlines. The PPU carries a virtual raster clock,
+ * scanline, advanced at explicit phase boundaries by the frame driver
+ * and by the translated wait loops — never by wall-clock time, host
+ * refresh rate or audio latency, so identical frame-indexed inputs
+ * always produce identical transitions. The clock is scanline-granular
+ * by design: CPU work between phase calls consumes no emulated time
+ * (the original's instruction timing is not modelled), and the
+ * sub-scanline HBlankDelay after the sprite-0 hit is absorbed into the
+ * hit scanline itself.
  */
 #ifndef SMBC_HW_PPU_H
 #define SMBC_HW_PPU_H
 
 #include <stdbool.h>
 #include <stdint.h>
+
+/* The raster clock's hardware landmarks (NTSC 2C02). */
+#define SMBC_PPU_LAST_SCANLINE 261u /* pre-render: flags clear here */
+#define SMBC_PPU_VBLANK_SCANLINE 241u /* vblank begins, NMI fires */
+#define SMBC_PPU_LAST_VISIBLE 239u
+
+/* One scroll record: the raster line the state took effect on and the
+ * scroll it selects (the $2005 pair plus t's name-table bits). Writes
+ * on the same scanline coalesce into one record — the hardware's
+ * horizontal reload applies the whole of t at the next scanline
+ * boundary, so sub-scanline ordering is invisible at this model's
+ * granularity. The renderer resolves each scanline against the newest
+ * record whose line already took effect. */
+typedef struct {
+  uint16_t scanline;
+  uint8_t x;
+  uint8_t y;
+  uint8_t nt; /* $2000 d0/d1 */
+} PpuScrollPoint;
+
+#define SMBC_PPU_SCROLL_LOG 8u
 
 typedef struct {
   const uint8_t *chr; /* CHR ROM for the pattern tables ($0000-$1FFF),
@@ -38,7 +71,15 @@ typedef struct {
                        * ordering; written via $2004 and the $4014 DMA */
   bool latch;         /* $2005/$2006 first/second-write toggle */
   bool vblank;        /* status bit 7, set by the frame loop */
-  bool sprite0;       /* status bit 6, driven by the frame loop like vblank */
+  bool sprite0;       /* status bit 6, driven by the raster clock */
+  uint16_t scanline;  /* virtual raster clock, 0-261 */
+  uint8_t t_nt;       /* t's name-table bits: $2000 d0/d1, or address
+                       * bits 10-11 after a completed $2006 pair — kept
+                       * apart from ctrl1 because the VRAM address
+                       * sequence rewrites them between $2000 writes */
+  PpuScrollPoint scroll_log[SMBC_PPU_SCROLL_LOG]; /* this frame's scroll
+                       * writes, in order; reset when vblank begins */
+  uint8_t scroll_log_len;
 } Ppu;
 
 void ppu_init(Ppu *ppu);
@@ -50,6 +91,16 @@ uint8_t ppu_read(Ppu *ppu, uint8_t reg);
 /* Driven by the frame loop: entering vblank sets the flag, and a $2002 read
  * observes then clears it. */
 void ppu_set_vblank(Ppu *ppu, bool active);
+
+/* Raster-clock phase boundaries, driven by the frame loop:
+ *  - ppu_enter_vblank: scanline 241 — vblank sets, the NMI fires, and
+ *    the scroll log starts fresh for the frame the NMI prepares;
+ *  - ppu_end_frame: the frame's remaining lines run out, the clock
+ *    wraps past the pre-render line, and any flag still standing
+ *    clears (a game path that skipped the sprite-0 waits would
+ *    otherwise leave stale state). */
+void ppu_enter_vblank(Ppu *ppu);
+void ppu_end_frame(Ppu *ppu);
 
 /* Nominate the cartridge's CHR ROM for pattern-table reads. */
 void ppu_set_chr(Ppu *ppu, const uint8_t *chr);
@@ -73,12 +124,20 @@ void ppu_set_chr(Ppu *ppu, const uint8_t *chr);
 void ppu_oam_dma(Ppu *ppu, const uint8_t *page);
 
 /* Host synchronisation points. The original spins on $2002 until the
- * hardware reaches vblank / the sprite-0 hit; in this single-threaded port
- * the frame driver owns timing, so the waits are satisfied immediately and
- * exist to keep the translated code's shape. A cycle-faithful frontend may
- * give them real duration; game logic must not depend on it. */
+ * hardware reaches vblank / the sprite-0 hit; in this port the raster
+ * clock advances to the waited-for transition, deterministically:
+ *  - ppu_await_vblank advances to scanline 241 and presents the flag
+ *    as the original's polling read would observe it;
+ *  - ppu_await_sprite0_clear advances to the pre-render line, where
+ *    the hardware clears both status flags;
+ *  - ppu_await_sprite0_set advances to the sprite-0 hit scanline
+ *    supplied by the caller — computed by hw/render from the current
+ *    PPU state, keeping the timing layer free of pixel work. When the
+ *    caller reports no hit (-1) the clock advances past the visible
+ *    frame and the flag stays clear; the original would hang on the
+ *    wait, and the game never arranges that. */
 void ppu_await_vblank(Ppu *ppu);
 void ppu_await_sprite0_clear(Ppu *ppu);
-void ppu_await_sprite0_set(Ppu *ppu);
+void ppu_await_sprite0_set(Ppu *ppu, int hit_scanline);
 
 #endif /* SMBC_HW_PPU_H */

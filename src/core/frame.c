@@ -16,7 +16,11 @@ void smbc_init(Smbc *smbc) {
 }
 
 void smbc_frame(Smbc *smbc) {
-  ppu_set_vblank(&smbc->ppu, true);
+  /* the timing contract (hw/ppu.h): one call is one NTSC frame. The
+   * clock enters vblank, the translated NMI runs — its sprite-0 waits
+   * advance the clock through the pre-render line and the hit — and
+   * whatever remains runs out to the frame's end. */
+  ppu_enter_vblank(&smbc->ppu);
   nmi_run(smbc);
-  ppu_set_vblank(&smbc->ppu, false);
+  ppu_end_frame(&smbc->ppu);
 }

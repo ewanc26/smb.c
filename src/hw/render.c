@@ -39,14 +39,48 @@ static uint8_t render_tile_pixel(const Ppu *ppu, uint16_t pattern_base,
   return (uint8_t)(((lo >> bit) & 0x01u) | (((hi >> bit) & 0x01u) << 1));
 }
 
+/* The scroll in force on a scanline: the newest log record whose write
+ * had taken effect. Vblank and pre-render writes (tagged 241+) apply
+ * from the top of the frame they prepare — the hardware's vertical
+ * reload; a mid-frame write applies from the line BELOW its line — the
+ * hardware copies t into v at the next scanline's horizontal reload,
+ * so a write during line N is invisible on line N itself. An empty log
+ * (boot, before the first NMI) falls back to the live registers. */
+static void render_scroll_for(const Ppu *ppu, uint8_t y, uint8_t *sx,
+                              uint8_t *sy, uint8_t *nt) {
+  const PpuScrollPoint *best = NULL;
+  unsigned best_from = 0;
+  for (uint8_t i = 0; i < ppu->scroll_log_len; i++) {
+    const PpuScrollPoint *point = &ppu->scroll_log[i];
+    unsigned from = point->scanline >= SMBC_PPU_VBLANK_SCANLINE
+                        ? 0u
+                        : (unsigned)point->scanline + 1u;
+    if (from <= y && (best == NULL || from >= best_from)) {
+      best = point;
+      best_from = from;
+    }
+  }
+  if (best != NULL) {
+    *sx = best->x;
+    *sy = best->y;
+    *nt = best->nt;
+  } else {
+    *sx = ppu->scroll_x;
+    *sy = ppu->scroll_y;
+    *nt = (uint8_t)(ppu->ctrl1 & 0x03u);
+  }
+}
+
 /* The background layer for one scanline: palette index per pixel and
- * an opaque mask, honouring the scroll pair, the base name-table bits
- * and the $2001 d3 / left-column (d1) enables. */
+ * an opaque mask, honouring the scanline's scroll, the $2001 d3 /
+ * left-column (d1) enables. */
 static void render_bg_scanline(const Ppu *ppu, uint8_t y, uint8_t *pix,
                                bool *opaque) {
   uint16_t bg_base = (ppu->ctrl1 & 0x10u) ? 0x1000u : 0x0000u;
-  unsigned fx0 = (unsigned)ppu->scroll_x + (ppu->ctrl1 & 0x01u) * 256u;
-  unsigned fy = (unsigned)y + ppu->scroll_y + ((ppu->ctrl1 >> 1) & 0x01u) * 240u;
+  uint8_t scroll_x, scroll_y, nt;
+  render_scroll_for(ppu, y, &scroll_x, &scroll_y, &nt);
+  unsigned fx0 = (unsigned)scroll_x + (nt & 0x01u) * 256u;
+  unsigned fy = (unsigned)y + scroll_y + ((nt >> 1) & 0x01u) * 240u;
   unsigned nt_y = (fy / 240u) & 0x01u;
   uint8_t ty = (uint8_t)(fy % 240u);
   for (unsigned x = 0; x < SMBC_RENDER_WIDTH; x++) {
@@ -128,4 +162,35 @@ void ppu_render_frame(const Ppu *ppu, uint8_t *fb, int *sprite0_scanline) {
     }
   }
   if (sprite0_scanline != NULL) *sprite0_scanline = hit ? hit_y : -1;
+}
+
+int ppu_sprite0_hit_scanline(const Ppu *ppu) {
+  if ((ppu->ctrl2 & 0x18u) != 0x18u) return -1; /* both layers enabled */
+  uint16_t spr_base = (ppu->ctrl1 & 0x08u) ? 0x1000u : 0x0000u;
+  uint8_t sy = ppu->oam[0];
+  uint8_t tile = ppu->oam[1];
+  uint8_t attr = ppu->oam[2];
+  uint8_t sx = ppu->oam[3];
+  uint8_t bg_pix[SMBC_RENDER_WIDTH];
+  bool bg_opaque[SMBC_RENDER_WIDTH];
+  for (unsigned y = 0; y < SMBC_RENDER_HEIGHT; y++) {
+    int row = (int)y - ((int)sy + 1); /* the 2C02's one-scanline delay */
+    if (row < 0 || row >= 8) continue;
+    if ((attr & 0x80u) != 0x00u) row = 7 - row; /* vertical flip */
+    render_bg_scanline(ppu, (uint8_t)y, bg_pix, bg_opaque);
+    for (unsigned cx = 0; cx < 8u; cx++) {
+      unsigned x = (unsigned)sx + cx;
+      if (x >= SMBC_RENDER_WIDTH) break;
+      if (x >= 255u) continue; /* no hit in the hblank column */
+      if (x < 8u && (ppu->ctrl2 & 0x04u) == 0x00u) continue;
+      if (!bg_opaque[x]) continue;
+      uint8_t col = (uint8_t)cx;
+      if ((attr & 0x40u) != 0x00u) col = (uint8_t)(7u - col); /* h-flip */
+      if (render_tile_pixel(ppu, spr_base, tile, col, (uint8_t)row) == 0) {
+        continue;
+      }
+      return (int)y;
+    }
+  }
+  return -1;
 }

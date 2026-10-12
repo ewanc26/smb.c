@@ -1,5 +1,7 @@
-/* tests/hw/ppu.c — exercises src/hw/ppu.c: the $2005/$2006 write-pair latch
- * and the $2002 status read clearing vblank and the latch. */
+/* tests/hw/ppu.c — exercises src/hw/ppu.c: the $2005/$2006 write-pair
+ * latch, the $2002 status read clearing vblank and the latch, the OAM
+ * registers and DMA, the raster clock's vblank/sprite-0 transitions and
+ * the scroll log. */
 #include <assert.h>
 #include <stdio.h>
 
@@ -180,6 +182,70 @@ int main(void) {
   for (unsigned i = 0; i < 0x100u; i++) {
     assert(ppu.oam[(0xf0u + i) & 0xffu] == (uint8_t)i);
   }
+
+  /* the raster clock: vblank begins at scanline 241 with a fresh scroll
+   * log, and the status read observes d7 */
+  ppu_init(&ppu);
+  ppu_enter_vblank(&ppu);
+  assert(ppu.scanline == 241u);
+  assert((ppu_read(&ppu, 2) & 0x80u) != 0);
+  assert(ppu.scroll_log_len == 0);
+
+  /* d6 is the sprite-0 hit: a $2002 read observes but does not clear it
+   * (the pre-render line clears it), while clearing vblank as always */
+  ppu_init(&ppu);
+  ppu_enter_vblank(&ppu);
+  ppu_await_sprite0_clear(&ppu);
+  ppu_await_sprite0_set(&ppu, 31);
+  assert(ppu.scanline == 31u);
+  assert((ppu_read(&ppu, 2) & 0xc0u) == 0x40u); /* vblank already clear */
+  assert((ppu_read(&ppu, 2) & 0x40u) != 0);     /* hit survives the read */
+  ppu_await_sprite0_clear(&ppu);                /* the pre-render line */
+  assert(ppu.scanline == 261u);
+  assert((ppu_read(&ppu, 2) & 0x40u) == 0);
+
+  /* a wait with no overlap runs the visible frame out, flag clear */
+  ppu_init(&ppu);
+  ppu_await_sprite0_set(&ppu, -1);
+  assert(ppu.scanline == 239u);
+  assert((ppu_read(&ppu, 2) & 0x40u) == 0);
+
+  /* the frame's end wraps the clock and clears any standing flags */
+  ppu_init(&ppu);
+  ppu_enter_vblank(&ppu);
+  ppu_end_frame(&ppu);
+  assert(ppu.scanline == 0);
+  assert((ppu_read(&ppu, 2) & 0xc0u) == 0);
+
+  /* the scroll log: vblank writes tag at 241, mid-frame writes at the
+   * clock's position, and vblank starts the frame's log fresh */
+  ppu_init(&ppu);
+  ppu_enter_vblank(&ppu);
+  ppu_write(&ppu, 5, 0x08u); /* X */
+  ppu_write(&ppu, 5, 0x00u); /* Y: the pair completes, logged */
+  assert(ppu.scroll_log_len == 1);
+  assert(ppu.scroll_log[0].scanline == 241u);
+  assert(ppu.scroll_log[0].x == 0x08u);
+  /* writes on the same scanline coalesce: t's name-table bits fold
+   * into the standing record, matching the horizontal reload's timing */
+  ppu_write(&ppu, 0, 0x01u);
+  assert(ppu.scroll_log_len == 1);
+  assert(ppu.scroll_log[0].nt == 0x01u);
+  /* a completed $2006 pair reloads t's name-table bits from the
+   * address — the VRAM sequence's final $0000 is what returns the
+   * status bar to the first name table */
+  ppu_write(&ppu, 6, 0x28u);
+  ppu_write(&ppu, 6, 0x00u);
+  assert(ppu.scroll_log_len == 1);
+  assert(ppu.scroll_log[0].nt == 0x02u);
+  ppu.scanline = 31u; /* the sprite-0 hit line */
+  ppu_write(&ppu, 5, 0x40u);
+  ppu_write(&ppu, 5, 0x00u);
+  assert(ppu.scroll_log_len == 2);
+  assert(ppu.scroll_log[1].scanline == 31u);
+  assert(ppu.scroll_log[1].x == 0x40u);
+  ppu_enter_vblank(&ppu); /* next frame: the log starts fresh */
+  assert(ppu.scroll_log_len == 0);
 
   printf("tests/hw/ppu: ok\n");
   return 0;

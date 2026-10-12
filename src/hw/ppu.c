@@ -16,6 +16,20 @@ void ppu_set_vblank(Ppu *ppu, bool active) {
   ppu->vblank = active;
 }
 
+void ppu_enter_vblank(Ppu *ppu) {
+  ppu->scanline = SMBC_PPU_VBLANK_SCANLINE;
+  ppu->vblank = true;
+  ppu->scroll_log_len = 0; /* the NMI prepares the frame's scroll fresh */
+}
+
+void ppu_end_frame(Ppu *ppu) {
+  /* run out the remaining lines, cross the pre-render line (which clears
+   * both status flags on hardware), and wrap to the next frame's top */
+  ppu->vblank = false;
+  ppu->sprite0 = false;
+  ppu->scanline = 0;
+}
+
 void ppu_set_chr(Ppu *ppu, const uint8_t *chr) {
   ppu->chr = chr;
 }
@@ -27,18 +41,55 @@ void ppu_oam_dma(Ppu *ppu, const uint8_t *page) {
 }
 
 void ppu_await_vblank(Ppu *ppu) {
-  /* satisfied immediately: present, then consumed as a $2002 read would */
+  /* advance to vblank, present the flag, then consume it as the
+   * original's polling $2002 read would */
+  ppu->scanline = SMBC_PPU_VBLANK_SCANLINE;
   ppu->vblank = true;
   ppu->vblank = false;
   ppu->latch = false;
 }
 
 void ppu_await_sprite0_clear(Ppu *ppu) {
+  /* the hardware clears both flags at the pre-render line */
+  ppu->scanline = SMBC_PPU_LAST_SCANLINE;
   ppu->sprite0 = false;
+  ppu->vblank = false;
 }
 
-void ppu_await_sprite0_set(Ppu *ppu) {
+void ppu_await_sprite0_set(Ppu *ppu, int hit_scanline) {
+  if (hit_scanline < 0) {
+    /* no overlap this frame: the original would spin forever, so the
+     * clock just runs out the visible lines with the flag clear */
+    ppu->scanline = SMBC_PPU_LAST_VISIBLE;
+    return;
+  }
+  ppu->scanline = (uint16_t)hit_scanline;
   ppu->sprite0 = true;
+}
+
+/* Record a scroll change against the raster clock. Vblank and
+ * pre-render writes (scanline 241+) take effect from the top of the
+ * frame they prepare; a mid-frame write takes effect below its line.
+ * The name-table bits are the hardware's t bits 10-11: $2000 sets them
+ * from d0/d1, and a completed $2006 pair sets them from the address —
+ * the game's VRAM-buffer sequence ends at $0000 each frame, which is
+ * what returns the status bar to the first name table after a
+ * write_ppu_reg1 with the gameplay table selected. (The $2006 coarse
+ * x/y effect on the reload is not modelled: the game always
+ * re-establishes the scroll through $2005 before the frame renders.) */
+static void ppu_log_scroll(Ppu *ppu) {
+  PpuScrollPoint *point;
+  if (ppu->scroll_log_len > 0 &&
+      ppu->scroll_log[ppu->scroll_log_len - 1].scanline == ppu->scanline) {
+    point = &ppu->scroll_log[ppu->scroll_log_len - 1]; /* coalesce */
+  } else {
+    if (ppu->scroll_log_len >= SMBC_PPU_SCROLL_LOG) return;
+    point = &ppu->scroll_log[ppu->scroll_log_len++];
+    point->scanline = ppu->scanline;
+  }
+  point->x = ppu->scroll_x;
+  point->y = ppu->scroll_y;
+  point->nt = ppu->t_nt;
 }
 
 /* $2007 increment shared by reads and writes: d2 of $2000 selects 32. */
@@ -75,7 +126,11 @@ static uint16_t ppu_vram_addr(uint16_t addr) {
 
 void ppu_write(Ppu *ppu, uint8_t reg, uint8_t value) {
   switch (reg & 0x7u) {
-    case 0: ppu->ctrl1 = value; break;
+    case 0:
+      ppu->ctrl1 = value;
+      ppu->t_nt = (uint8_t)(value & 0x03u);
+      ppu_log_scroll(ppu); /* the base name-table bits are scroll */
+      break;
     case 1: ppu->ctrl2 = value; break;
     case 3: ppu->spr_addr = value; break;
     case 4: /* $2004: write at the OAM address, then increment */
@@ -85,6 +140,7 @@ void ppu_write(Ppu *ppu, uint8_t reg, uint8_t value) {
     case 5: /* $2005: first write X, second Y, toggling */
       if (ppu->latch) {
         ppu->scroll_y = value;
+        ppu_log_scroll(ppu); /* the pair is complete */
       } else {
         ppu->scroll_x = value;
       }
@@ -93,6 +149,9 @@ void ppu_write(Ppu *ppu, uint8_t reg, uint8_t value) {
     case 6: /* $2006: high byte then low byte, toggling */
       if (ppu->latch) {
         ppu->vram_addr = (uint16_t)(ppu->vram_addr | value);
+        /* the completed pair reloads t, name-table bits included */
+        ppu->t_nt = (uint8_t)((ppu->vram_addr >> 10) & 0x03u);
+        ppu_log_scroll(ppu);
       } else {
         ppu->vram_addr = (uint16_t)((value & 0x3fu) << 8); /* 14-bit space */
       }
@@ -109,8 +168,11 @@ void ppu_write(Ppu *ppu, uint8_t reg, uint8_t value) {
 
 uint8_t ppu_read(Ppu *ppu, uint8_t reg) {
   switch (reg & 0x7u) {
-    case 2: { /* $2002: observe status, clear vblank and the write latch */
-      uint8_t status = (uint8_t)(ppu->vblank ? 0x80u : 0x00u);
+    case 2: { /* $2002: observe status, clear vblank and the write latch.
+               * d6 is the sprite-0 hit; the read does not clear it (the
+               * pre-render line does), matching the hardware. */
+      uint8_t status = (uint8_t)((ppu->vblank ? 0x80u : 0x00u) |
+                                 (ppu->sprite0 ? 0x40u : 0x00u));
       ppu->vblank = false;
       ppu->latch = false;
       return status;

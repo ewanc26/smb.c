@@ -217,6 +217,16 @@ uint8_t chk_under_enemy(CoreState *state, uint8_t x);
  * position; the block-buffer coordinate temporaries are updated */
 uint8_t block_buffer_chk_fball(CoreState *state, uint8_t x);
 
+/* smb.asm: BlockBufferColli_Head / BlockBufferColli_Feet /
+ * BlockBufferColli_Side — the player's entries into
+ * BlockBufferCollision. y_ofs is the BlockBuffer_X/Y_Adder offset;
+ * feet adds one first. The row offset goes to $02, the low nybble of
+ * the vertical (head/feet) or horizontal (side) coordinate to $04,
+ * and the buffer pointer to $06/$07 */
+uint8_t block_buffer_colli_head(CoreState *state, uint8_t y_ofs);
+uint8_t block_buffer_colli_feet(CoreState *state, uint8_t y_ofs);
+uint8_t block_buffer_colli_side(CoreState *state, uint8_t y_ofs);
+
 /* smb.asm: ChkForNonSolids — nonzero unless the metatile is a
  * vine blank ($26), either coin ($c2/$c3), or a hidden block
  * ($5f/$60) */

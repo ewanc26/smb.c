@@ -37,7 +37,7 @@ static void init_piranha_plant(CoreState *st, uint8_t x) {
 
 /* smb.asm: KillEnemies — clear the enemy flag on every slot holding
  * the given identifier */
-static void kill_enemies(CoreState *st, uint8_t id) {
+void kill_enemies(CoreState *st, uint8_t id) {
   for (int8_t x = 0x04; x >= 0; x--) {
     if (st->ram[SMBC_ENEMY_ID + x] == id)
       st->ram[SMBC_ENEMY_FLAG + x] = 0x00u;

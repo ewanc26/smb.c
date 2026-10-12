@@ -21,4 +21,8 @@
  * attribute buffer into VRAM buffer 2. */
 void area_parser_task_handler(CoreState *state);
 
+/* smb.asm: KillEnemies — clear the enemy flag on every slot holding
+ * the given identifier */
+void kill_enemies(CoreState *state, uint8_t id);
+
 #endif /* SMBC_CORE_PARSER_H */

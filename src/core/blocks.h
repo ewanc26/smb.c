@@ -31,4 +31,12 @@ void draw_brick_chunks(CoreState *state, uint8_t block);
  * player's, snapped to the 16-pixel grid */
 void init_block_xy_pos(CoreState *state, uint8_t x);
 
+/* smb.asm: DestroyBlockMetatile — queue the blank metatile write for
+ * the spot the block-buffer collision scratch ($06/$02) points at */
+void destroy_block_metatile(CoreState *state);
+
+/* smb.asm: RemoveCoin_Axe — erase the touched coin or axe metatile
+ * from the screen and set the vram address controller to $0341 */
+void remove_coin_axe(CoreState *state);
+
 #endif /* SMBC_CORE_BLOCKS_H */

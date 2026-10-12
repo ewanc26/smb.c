@@ -38,11 +38,14 @@ the pipe and vine entries, the flagpole slide and end-of-level walk,
 the lose-life, death, injury-blink, size-change and fire-flower
 sequences, `PlayerCtrlRoutine`'s controller split, bounding box and
 hole handling, and `ScrollHandler` with its screen-edge clamps.
-`PlayerCtrlRoutine`'s two physics calls (`PlayerMovementSubs`,
-`PlayerBGCollision`) and `InitializeArea` are the remaining pieces of
-the tree. The sound engine, enemy data driving and the title/victory
-trees are tracked in the open issues and translated routine by
-routine.
+The player physics core is in (`src/core/physics.c`): the movement
+subroutines (ground, jumping, falling, climbing), `PlayerPhysicsSub`
+with its speed brackets and friction, the head-bump block routines
+(brick shatter, question blocks, hidden blocks, vines, coins),
+`PlayerBGCollision`'s full head/feet/side tree and the pipe-entry
+handling. `InitializeArea` is the remaining piece of the tree. The
+sound engine, enemy data driving and the title/victory trees are
+tracked in the open issues and translated routine by routine.
 
 The source of truth is `smb.asm` — doppelganger's comprehensive disassembly
 (x816 syntax), kept unmodified in the repository root. Every translated

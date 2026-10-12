@@ -730,6 +730,24 @@ uint8_t block_buffer_chk_enemy(CoreState *st, uint8_t x, uint8_t y_ofs,
   return block_buffer_chk(st, (uint8_t)(x + 1u), y_ofs, return_x);
 }
 
+/* smb.asm: BlockBufferColli_Head — the metatile at the player's head,
+ * the vertical coordinate's low nybble returned in $04 */
+uint8_t block_buffer_colli_head(CoreState *st, uint8_t y_ofs) {
+  return block_buffer_chk(st, 0x00u, y_ofs, 0x00u);
+}
+
+/* smb.asm: BlockBufferColli_Feet — the head entry with the next adder
+ * pair (the asm increments Y and falls in) */
+uint8_t block_buffer_colli_feet(CoreState *st, uint8_t y_ofs) {
+  return block_buffer_chk(st, 0x00u, (uint8_t)(y_ofs + 1u), 0x00u);
+}
+
+/* smb.asm: BlockBufferColli_Side — the metatile at the player's side,
+ * the horizontal coordinate's low nybble returned in $04 */
+uint8_t block_buffer_colli_side(CoreState *st, uint8_t y_ofs) {
+  return block_buffer_chk(st, 0x00u, y_ofs, 0x01u);
+}
+
 /* smb.asm: BlockBufferChk_FBall — the fireball's adder offset, seven
  * bytes into the SprObject arrays, the vertical coordinate returned */
 uint8_t block_buffer_chk_fball(CoreState *st, uint8_t x) {

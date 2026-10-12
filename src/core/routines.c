@@ -12,6 +12,7 @@
 #include "frame.h"
 #include "gameover.h"
 #include "offscreen.h"
+#include "physics.h"
 #include "playergfx.h"
 #include "screen.h"
 #include "state.h"
@@ -164,7 +165,7 @@ void player_ctrl_routine(Smbc *smbc) {
       st->ram[SMBC_UP_DOWN_BUTTONS] = 0x00u;
     }
   }
-  /* TODO(port): smb.asm: PlayerMovementSubs (core/player physics) */
+  player_movement_subs(st);
   uint8_t y;
   if (st->ram[SMBC_PLAYER_SIZE] != 0x00u) {
     y = 0x01u; /* small */
@@ -184,7 +185,7 @@ void player_ctrl_routine(Smbc *smbc) {
   get_player_offscreen_bits(st);
   relative_player_position(st);
   get_player_bound_box(st);
-  /* TODO(port): smb.asm: PlayerBGCollision (core/collide) */
+  player_bg_collision(st);
   uint8_t sub = st->ram[SMBC_GAME_ENGINE_SUBROUTINE];
   if (st->ram[SMBC_PLAYER_Y_POSITION] >= 0x40u && sub != 0x05u &&
       sub != 0x07u && sub >= 0x04u) {

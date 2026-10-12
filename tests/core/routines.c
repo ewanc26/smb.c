@@ -316,6 +316,11 @@ static void side_pipe_walks_out(void) {
   smbc.state.ram[SMBC_SCREEN_RIGHT_PAGE_LOC] = 0x01u;
   smbc.state.ram[SMBC_PLAYER_X_POSITION] = 0x53u;
   smbc.state.ram[SMBC_CHANGE_AREA_TIMER] = 0x01u;
+  /* a frame of rightward motion has happened: facing, direction and
+   * ground contact are live */
+  smbc.state.ram[SMBC_PLAYER_FACING_DIR] = 0x01u;
+  smbc.state.ram[SMBC_PLAYER_MOVING_DIR] = 0x01u;
+  smbc.state.ram[SMBC_PLAYER_COLLISION_BITS] = 0xffu;
 
   side_exit_pipe_entry(&smbc);
 

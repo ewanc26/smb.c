@@ -75,6 +75,24 @@ void replace_block_metatile(CoreState *st, uint8_t x) {
   st->ram[SMBC_BLOCK_REP_FLAG + x]--;
 }
 
+/* smb.asm: DestroyBlockMetatile — the head-bump blank write: the
+ * block buffer position comes straight from the $06/$02 scratch the
+ * collision routine left behind */
+void destroy_block_metatile(CoreState *st) {
+  write_block_metatile(st, 0x00u, st->ram[SMBC_BB_PTR_LO],
+                       st->ram[SMBC_BB_Y_COORD]);
+}
+
+/* smb.asm: RemoveCoin_Axe — write the blank (or water blank)
+ * metatile over the block buffer spot the $06/$02 scratch points at,
+ * then set the vram address controller to the $0341 set */
+void remove_coin_axe(CoreState *st) {
+  uint8_t style = st->ram[SMBC_AREA_TYPE] != 0x00u ? 0x03u : 0x04u;
+  put_block_metatile(st, style, 0x41u, st->ram[SMBC_BB_PTR_LO],
+                     st->ram[SMBC_BB_Y_COORD]);
+  st->ram[SMBC_VRAM_BUFFER_ADDR_CTRL] = 0x06u;
+}
+
 /* smb.asm: BlockObjMT_Updater — both block objects, second first; a
  * busy vram buffer or a clear flag skips the slot */
 void block_obj_mt_updater(CoreState *st) {

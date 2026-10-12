@@ -27,6 +27,14 @@ and messages) are in, with the CHR pattern tables embedded
 (`src/data/chr.c`). The PPU model decodes the donor cartridge's name-table
 mirroring and models palette-region `$2007` reads.
 
+A playable SDL2 frontend is in (`src/host/`): the window presents the
+PPU renderer's 256×240 frame at integer scale with nearest-neighbour
+sampling, keyboard and SDL_GameController input map onto the NES
+joypad, and the loop paces the deterministic core at the NTSC frame
+rate with fixed steps. The audio device is opened with the pull
+contract the APU synthesis (#35) will feed; it runs silent until
+then. `--headless N` runs the core without any device.
+
 The GameMode tree is in progress. `GameEngine` runs its full object pass
 each frame: fireballs and bubbles, the enemy and floatey-number loop,
 player graphics (pose selection, grow/shrink, swim kick, offscreen
@@ -69,8 +77,17 @@ routine cites the assembly label it came from.
 make
 ```
 
-Requires a C23 compiler (`cc`, clang or gcc). The build is
-warnings-as-errors.
+Requires a C23 compiler (`cc`, clang or gcc) and SDL2 (the frontend;
+`brew install sdl2` on macOS). The build is warnings-as-errors.
+
+Run `./build/smbc` to play — the window opens straight into the game.
+Arrows move, X = A, Z = B, Return = Start, Right Shift = Select,
+Escape quits; a connected SDL_GameController mirrors the same buttons.
+Flags: `--scale N` (integer window scale, 1-8, default 3),
+`--headless N` (run N frames with no window, for CI and debugging).
+
+`make test` builds and runs the suite with no SDL dependency — the
+core stays headless; all OS I/O lives in `src/host/`.
 
 ---
 
@@ -88,10 +105,10 @@ Host-side unit tests live in `tests/`, mirroring the `src/` scope layout.
 
 ```text
 src/
-  hw/     NES hardware model — PPU, APU, joypad registers
+  hw/     NES hardware model — PPU, APU, joypad registers, renderer
   core/   RAM map, game state, frame loop
   data/   tables translated verbatim from the disassembly
-  main.c  entry point
+  host/   SDL2 frontend — video, input, audio seam, entry point
 tests/    host unit tests, mirrors src/ scopes
 ```
 

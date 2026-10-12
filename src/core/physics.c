@@ -826,6 +826,7 @@ static void player_head_collision(CoreState *st, uint8_t mt) {
   destroy_block_metatile(st);
   x = st->ram[SMBC_SPDATA_OFFSET_CTRL];
   st->ram[SMBC_BLOCK_ORIG_Y_POS + x] = st->ram[SMBC_BB_Y_COORD];
+  st->ram[SMBC_BLOCK_BBUF_LOW + x] = st->ram[SMBC_BB_PTR_LO];
   uint8_t buf_mt = st->ram[(uint16_t)(
       (st->ram[SMBC_BB_PTR_LO] | (st->ram[SMBC_BB_PTR_HI] << 8u)) +
       st->ram[SMBC_BB_Y_COORD])];

@@ -98,6 +98,24 @@ make test
 ```
 
 Host-side unit tests live in `tests/`, mirroring the `src/` scope layout.
+The suite needs no SDL, display or audio device.
+
+## CI
+
+`.github/workflows/ci.yml` runs on push and pull request: the core
+suite on Ubuntu (gcc-14, clang) and macOS (Apple clang), an
+AddressSanitizer + UndefinedBehaviorSanitizer job (Ubuntu, gcc-14), and
+an SDL2 frontend build with a `--headless 60` smoke run (Ubuntu and
+macOS). All jobs keep the warnings-as-errors policy.
+
+Reproduce the sanitizer job locally:
+
+```bash
+make test CFLAGS="-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer"
+```
+
+Known limitation: the sanitizer job covers the headless suite only —
+the SDL2 frontend is built but not run under sanitizers in CI.
 
 ---
 

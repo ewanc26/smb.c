@@ -1,0 +1,67 @@
+# CI — build, test, and sanitizer checks (#39).
+#
+# Core jobs build and run the headless suite with no SDL and no
+# display; the frontend job installs SDL2, builds the windowed binary
+# and smoke-runs it headless. Everything here is reproducible locally:
+# `make test`, and `make test CFLAGS="-O1 -g -fsanitize=address,undefined"`.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  core:
+    name: core tests (${{ matrix.os }}, ${{ matrix.cc }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            cc: gcc-14
+          - os: ubuntu-24.04
+            cc: clang
+          - os: macos-latest
+            cc: cc
+    steps:
+      - uses: actions/checkout@v4
+      - name: install gcc-14 (ubuntu)
+        if: matrix.cc == 'gcc-14'
+        run: sudo apt-get update && sudo apt-get install -y gcc-14
+      - name: make test
+        run: make test CC=${{ matrix.cc }}
+
+  sanitizers:
+    name: ASan + UBSan (ubuntu, gcc-14)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: install gcc-14
+        run: sudo apt-get update && sudo apt-get install -y gcc-14
+      - name: make test with sanitizers
+        run: make test CC=gcc-14 CFLAGS="-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer"
+        env:
+          ASAN_OPTIONS: detect_leaks=1
+          UBSAN_OPTIONS: halt_on_error=1
+
+  frontend:
+    name: SDL2 frontend build + headless smoke (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - name: install SDL2 (ubuntu)
+        if: matrix.os == 'ubuntu-24.04'
+        run: sudo apt-get update && sudo apt-get install -y libsdl2-dev pkg-config
+      - name: install SDL2 (macOS)
+        if: matrix.os == 'macos-latest'
+        run: brew install sdl2 pkg-config
+      - name: make
+        run: make
+      - name: headless smoke
+        run: ./build/smbc --headless 60

@@ -3,7 +3,6 @@
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>
 
 #include "../../src/core/replay.h"
 #include "../../src/hw/joypad.h"
@@ -68,12 +67,11 @@ int main(void) {
     replay_free(&rec);
   }
 
-  /* save/load round trip, then a clean replay of the loaded file */
-  char path[] = "/tmp/smbc-test-replay-XXXXXX";
+  /* save/load round trip, then a clean replay of the loaded file.
+   * tests run from the repo root with build/ present, so a fixed
+   * path there avoids the POSIX-visibility mess around mkstemp */
+  const char *path = "build/test-replay.bin";
   {
-    int fd = mkstemp(path);
-    assert(fd >= 0);
-    close(fd);
     SmbcReplay rec;
     record_script(&rec, 300);
     assert(replay_save(&rec, path, err, sizeof(err)));
@@ -150,7 +148,7 @@ int main(void) {
     assert(strstr(err, "truncated") != NULL);
 
     assert(!replay_load(&rec, "/nonexistent/replay.bin", err, sizeof(err)));
-    unlink(path);
+    remove(path);
   }
 
   printf("tests/core/replay: ok\n");

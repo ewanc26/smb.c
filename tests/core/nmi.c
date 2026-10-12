@@ -11,6 +11,10 @@ int main(void) {
   Smbc smbc;
   smbc_init(&smbc);
 
+  /* park the mode tree — this test exercises the timer cascade, not the
+   * title screen tasks */
+  smbc.state.ram[SMBC_OPER_MODE] = 0xffu;
+
   /* frame timers decrement when TimerControl is clear; with the interval
    * control at 1, only frame timers ($0780-$0794) are touched */
   smbc.state.ram[SMBC_TIMERS] = 5u;

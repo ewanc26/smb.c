@@ -6,6 +6,26 @@
 #include "frame.h"
 #include "memory.h"
 
+/* smb.asm: InitializeGame */
+void initialize_game(Smbc *smbc) {
+  CoreState *st = &smbc->state;
+
+  /* clear all memory as in the initialization procedure, but this time
+   * only as far as $076f */
+  initialize_memory(st, 0x6f);
+
+  /* ClrSndLoop — clear out the memory used by the sound engines, which
+   * sits above the page-7 clear */
+  for (int y = 0x1f; y >= 0; y--) {
+    st->ram[SMBC_SOUND_MEMORY + y] = 0x00u;
+  }
+
+  st->ram[SMBC_DEMO_TIMER] = 0x18u;
+  load_area_pointer(smbc);
+
+  initialize_area(smbc); /* smb.asm: fall-through */
+}
+
 /* smb.asm: InitializeArea */
 void initialize_area(Smbc *smbc) {
   CoreState *st = &smbc->state;

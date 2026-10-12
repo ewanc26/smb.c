@@ -22,4 +22,9 @@ struct Smbc;
 /* smb.asm: InitializeArea */
 void initialize_area(struct Smbc *smbc);
 
+/* smb.asm: InitializeGame — the new-game task of the title screen tree:
+ * clears working RAM and the sound memory, seeds the demo timer, loads
+ * the area pointer, then falls through into InitializeArea */
+void initialize_game(struct Smbc *smbc);
+
 #endif /* SMBC_CORE_INITIALIZE_H */

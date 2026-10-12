@@ -43,10 +43,11 @@ subroutines (ground, jumping, falling, climbing), `PlayerPhysicsSub`
 with its speed brackets and friction, the head-bump block routines
 (brick shatter, question blocks, hidden blocks, vines, coins),
 `PlayerBGCollision`'s full head/feet/side tree and the pipe-entry
-handling, and `PrimaryGameSetup` is in — `InitializeGame` is the last
-remaining task of the title screen's tree. The sound engine, enemy
-data driving and the title/victory trees are tracked in the open
-issues and translated routine by routine.
+handling, and the title screen's task tree runs end to end:
+`InitializeGame`, `ScreenRoutines`, `PrimaryGameSetup` and the menu
+routine. The sound engine, enemy data driving and the title/victory
+trees are tracked in the open issues and translated routine by
+routine.
 
 The source of truth is `smb.asm` — doppelganger's comprehensive disassembly
 (x816 syntax), kept unmodified in the repository root. Every translated

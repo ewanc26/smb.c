@@ -4,6 +4,7 @@
 #include "../data/title.h"
 #include "area.h"
 #include "frame.h"
+#include "initialize.h"
 #include "screen.h"
 #include "setup.h"
 #include "state.h"
@@ -156,7 +157,7 @@ void title_screen_mode(Smbc *smbc) {
    *   0 InitializeGame, 1 ScreenRoutines, 2 PrimaryGameSetup,
    *   3 GameMenuRoutine */
   switch (smbc->state.ram[SMBC_OPER_MODE_TASK]) {
-    case 0: /* TODO(port): smb.asm: InitializeGame */ break;
+    case 0: initialize_game(smbc); break;
     case 1: screen_routines(smbc); break;
     case 2: primary_game_setup(smbc); break;
     case 3: game_menu_routine(smbc); break;

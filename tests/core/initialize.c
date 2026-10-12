@@ -151,6 +151,29 @@ static void secondary_hard_mode_from_primary(void) {
   assert(smbc.state.ram[SMBC_SECONDARY_HARD_MODE] == 0x01u);
 }
 
+static void game_init_clears_and_seeds(void) {
+  Smbc smbc;
+  entered(&smbc);
+  memset(smbc.state.ram, 0xff, sizeof smbc.state.ram);
+  smbc.state.ram[SMBC_AREA_POINTER] = 0x25u;
+  smbc.state.ram[SMBC_OPER_MODE_TASK] = 0x00u;
+  initialize_game(&smbc);
+  /* memory cleared as far as $076f */
+  assert(smbc.state.ram[0x076f] == 0x00u);
+  /* the stack at $0160-$01ff is skipped */
+  assert(smbc.state.ram[0x0160] == 0xffu);
+  assert(smbc.state.ram[0x01ff] == 0xffu);
+  /* the sound memory $07b0-$07cf is cleared separately */
+  assert(smbc.state.ram[SMBC_SOUND_MEMORY] == 0x00u);
+  assert(smbc.state.ram[SMBC_SOUND_MEMORY + 0x1fu] == 0x00u);
+  /* above the sound memory is untouched */
+  assert(smbc.state.ram[SMBC_SOUND_MEMORY + 0x20u] == 0xffu);
+  /* demo timer seeded for the title screen */
+  assert(smbc.state.ram[SMBC_DEMO_TIMER] == 0x18u);
+  /* fall-through into InitializeArea: the mode task advanced */
+  assert(smbc.state.ram[SMBC_OPER_MODE_TASK] == 0x01u);
+}
+
 int main(void) {
   get_screen_position_carries();
   clears_memory_and_timers();
@@ -163,6 +186,7 @@ int main(void) {
   secondary_hard_mode_from_world();
   secondary_hard_mode_not_before_world_5();
   secondary_hard_mode_from_primary();
+  game_init_clears_and_seeds();
   puts("tests/core/initialize: ok");
   return 0;
 }

@@ -160,6 +160,7 @@ void state_init(CoreState *state);
 #define SMBC_SCREEN_TIMER        0x07a0u /* smb.asm: ScreenTimer */
 #define SMBC_WORLD_END_TIMER     0x07a1u /* smb.asm: WorldEndTimer */
 #define SMBC_DEMO_TIMER          0x07a2u /* smb.asm: DemoTimer */
+#define SMBC_SOUND_MEMORY        0x07b0u /* smb.asm: SoundMemory (32 bytes) */
 #define SMBC_PSEUDO_RANDOM_BIT_REG 0x07a7u /* smb.asm: PseudoRandomBitReg */
 #define SMBC_TOP_SCORE_DISPLAY   0x07d7u /* smb.asm: TopScoreDisplay (6 digits) */
 #define SMBC_PLAYER_SCORE_DISPLAY 0x07ddu /* smb.asm: PlayerScoreDisplay */

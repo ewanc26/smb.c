@@ -19,14 +19,17 @@ int main(void) {
   joypad_set_buttons(&smbc.joypad1, SMBC_BUTTON_B | SMBC_BUTTON_UP);
   joypad_set_buttons(&smbc.joypad2, SMBC_BUTTON_START);
 
+  /* frame one runs the title screen's first task — InitializeGame clears
+   * the working RAM, freshly-stored joypad bits included */
+  smbc_frame(&smbc);
+  /* the frame counter lives in the cleared page too */
+  assert(smbc.state.ram[SMBC_FRAME_COUNTER] == 0u);
+
   smbc_frame(&smbc);
   /* game layout: A=d7 ... Right=d0 (B=0x40, Up=0x08, Start=0x10) */
   assert(smbc.state.ram[SMBC_SAVED_JOYPAD1_BITS] == 0x48u);
   assert(smbc.state.ram[SMBC_SAVED_JOYPAD2_BITS] == 0x10u);
   assert(smbc.state.ram[SMBC_FRAME_COUNTER] == 1u);
-
-  smbc_frame(&smbc);
-  assert(smbc.state.ram[SMBC_FRAME_COUNTER] == 2u);
 
   printf("tests/core/frame: ok\n");
   return 0;

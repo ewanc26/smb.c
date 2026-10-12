@@ -61,7 +61,8 @@ void nmi_run(Smbc *smbc) {
   (void)ppu_read(ppu, 2);       /* ldx PPU_STATUS: reset the flip-flop */
   init_scroll(smbc, 0x00u);
   ppu_write(ppu, 3, 0x00u);     /* sta PPU_SPR_ADDR */
-  ppu_oam_dma(ppu, 0x02u);      /* lda #$02; sta SPR_DMA */
+  /* lda #$02; sta SPR_DMA — copy the $0200 sprite page into OAM */
+  ppu_oam_dma(ppu, &state->ram[SMBC_SPRITE_DATA]);
 
   load_vram_addr_table(state);  /* smb.asm: set the $00/$01 indirect */
   update_screen(smbc);

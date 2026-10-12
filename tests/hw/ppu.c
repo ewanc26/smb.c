@@ -148,6 +148,39 @@ int main(void) {
   (void)ppu_read(&ppu, 7);
   assert(ppu_read(&ppu, 7) == 0x00u);
 
+  /* $2003/$2004: writes land at the OAM address and walk it forward */
+  ppu_init(&ppu);
+  ppu_write(&ppu, 3, 0x08u);
+  ppu_write(&ppu, 4, 0x5au);
+  ppu_write(&ppu, 4, 0xa5u);
+  assert(ppu.oam[0x08] == 0x5au);
+  assert(ppu.oam[0x09] == 0xa5u);
+  assert(ppu.spr_addr == 0x0au);
+
+  /* $2004 reads observe the byte at the address without walking it */
+  ppu_write(&ppu, 3, 0x09u);
+  assert(ppu_read(&ppu, 4) == 0xa5u);
+  assert(ppu_read(&ppu, 4) == 0xa5u);
+  assert(ppu.spr_addr == 0x09u);
+
+  /* $4014 OAM DMA: the full page copies across, in order, starting at
+   * the $2003 address — the game's NMI zeroes $2003 first, so the copy
+   * is linear and sprite ordering is preserved verbatim */
+  static uint8_t page[0x100];
+  for (unsigned i = 0; i < 0x100u; i++) page[i] = (uint8_t)i;
+  ppu_init(&ppu);
+  ppu_write(&ppu, 3, 0x00u);
+  ppu_oam_dma(&ppu, page);
+  for (unsigned i = 0; i < 0x100u; i++) assert(ppu.oam[i] == (uint8_t)i);
+
+  /* a nonzero $2003 wraps the copy around the 256-byte memory */
+  ppu_init(&ppu);
+  ppu_write(&ppu, 3, 0xf0u);
+  ppu_oam_dma(&ppu, page);
+  for (unsigned i = 0; i < 0x100u; i++) {
+    assert(ppu.oam[(0xf0u + i) & 0xffu] == (uint8_t)i);
+  }
+
   printf("tests/hw/ppu: ok\n");
   return 0;
 }

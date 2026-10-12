@@ -20,8 +20,10 @@ void ppu_set_chr(Ppu *ppu, const uint8_t *chr) {
   ppu->chr = chr;
 }
 
-void ppu_oam_dma(Ppu *ppu, uint8_t page) {
-  ppu->oam_page = page;
+void ppu_oam_dma(Ppu *ppu, const uint8_t *page) {
+  for (unsigned i = 0; i < 0x100u; i++) {
+    ppu->oam[(ppu->spr_addr + i) & 0xffu] = page[i];
+  }
 }
 
 void ppu_await_vblank(Ppu *ppu) {
@@ -76,6 +78,10 @@ void ppu_write(Ppu *ppu, uint8_t reg, uint8_t value) {
     case 0: ppu->ctrl1 = value; break;
     case 1: ppu->ctrl2 = value; break;
     case 3: ppu->spr_addr = value; break;
+    case 4: /* $2004: write at the OAM address, then increment */
+      ppu->oam[ppu->spr_addr] = value;
+      ppu->spr_addr = (uint8_t)(ppu->spr_addr + 1u);
+      break;
     case 5: /* $2005: first write X, second Y, toggling */
       if (ppu->latch) {
         ppu->scroll_y = value;
@@ -96,7 +102,7 @@ void ppu_write(Ppu *ppu, uint8_t reg, uint8_t value) {
       ppu->vram[ppu_vram_addr(ppu->vram_addr)] = value;
       ppu->vram_addr = (uint16_t)(ppu->vram_addr + ppu_data_increment(ppu));
       break;
-    default: break; /* $2002 is read-only; $2004 OAM data comes later */
+    default: break; /* $2002 is read-only */
   }
 }
 
@@ -131,6 +137,8 @@ uint8_t ppu_read(Ppu *ppu, uint8_t reg) {
       ppu->vram_addr = (uint16_t)(addr + ppu_data_increment(ppu));
       return buffered;
     }
+    case 4: /* $2004: read the byte at the OAM address, no increment */
+      return ppu->oam[ppu->spr_addr];
     default:
       return 0;
   }

@@ -1,15 +1,18 @@
 /* host/input.c — controller mapping. */
 #include "input.h"
 
-/* hw/joypad.h bitmap bits */
-#define SMBC_BTN_RIGHT 0x01u
-#define SMBC_BTN_LEFT 0x02u
-#define SMBC_BTN_DOWN 0x04u
-#define SMBC_BTN_UP 0x08u
-#define SMBC_BTN_START 0x10u
-#define SMBC_BTN_SELECT 0x20u
-#define SMBC_BTN_B 0x40u
-#define SMBC_BTN_A 0x80u
+#include "../hw/joypad.h"
+
+/* the bitmap is in the hw serial-port layout (hw/joypad.h), which is what
+ * joypad_set_buttons consumes — NOT the in-game SavedJoypadBits order */
+#define SMBC_BTN_A      SMBC_BUTTON_A
+#define SMBC_BTN_B      SMBC_BUTTON_B
+#define SMBC_BTN_SELECT SMBC_BUTTON_SELECT
+#define SMBC_BTN_START  SMBC_BUTTON_START
+#define SMBC_BTN_UP     SMBC_BUTTON_UP
+#define SMBC_BTN_DOWN   SMBC_BUTTON_DOWN
+#define SMBC_BTN_LEFT   SMBC_BUTTON_LEFT
+#define SMBC_BTN_RIGHT  SMBC_BUTTON_RIGHT
 
 SDL_GameController *input_open_controller(void) {
   for (int i = 0; i < SDL_NumJoysticks(); i++) {

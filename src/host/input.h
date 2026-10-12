@@ -1,8 +1,8 @@
 /* host/input.h — controller mapping.
  *
  * Owns: translating SDL keyboard and game-controller state into the
- * NES joypad bitmap (hw/joypad.h: d7 A, d6 B, d5 Select, d4 Start,
- * d3 Up, d2 Down, d1 Left, d0 Right). Keyboard: arrows for the D-pad,
+ * NES joypad bitmap (hw/joypad.h serial-port order: d0 A, d1 B,
+ * d2 Select, d3 Start, d4 Up, d5 Down, d6 Left, d7 Right). Keyboard: arrows for the D-pad,
  * X = A, Z = B, Return = Start, Right Shift = Select. A connected
  * SDL_GameController mirrors the same buttons; keyboard and controller
  * OR together into player 1.

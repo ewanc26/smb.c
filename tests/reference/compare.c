@@ -57,19 +57,21 @@ static uint8_t idle_input(unsigned frame) {
   return 0x00u;
 }
 
+/* the bitmap is in the hw serial-port layout (hw/joypad.h):
+ * A=0x01 B=0x02 Select=0x04 Start=0x08 Right=0x80 */
 static uint8_t start_input(unsigned frame) {
-  return frame == 200 ? 0x10u : 0x00u; /* Start */
+  return frame == 200 ? 0x08u : 0x00u; /* Start */
 }
 
 static uint8_t walk_input(unsigned frame) {
-  if (frame == 200) return 0x10u;
-  if (frame >= 700) return 0x01u; /* hold Right */
+  if (frame == 200) return 0x08u; /* Start */
+  if (frame >= 700) return 0x80u; /* hold Right */
   return 0x00u;
 }
 
 static uint8_t jump_input(unsigned frame) {
-  if (frame == 200) return 0x10u;
-  if (frame >= 700) return (frame % 90) < 12 ? 0x81u : 0x01u; /* A taps */
+  if (frame == 200) return 0x08u; /* Start */
+  if (frame >= 700) return (frame % 90) < 12 ? 0x81u : 0x80u; /* A taps over Right */
   return 0x00u;
 }
 

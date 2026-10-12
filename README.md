@@ -62,8 +62,8 @@ and a half pixel scroll toward the castle gate), `PrintVictoryMessages`,
 `PlayerEndWorld`, the wrapper's `EnemiesAndLoopsCore` call and the
 `AutoPlayer` tail — the whole tree runs end to end, and there are no
 port TODOs left anywhere in `src/`. What remains open is hardware
-fidelity (PPU/APU/renderer, issues #31–#39), the frontend (#5) and
-the modding roadmap (#11 onward).
+fidelity (APU synthesis, issues #31–#39) and the modding roadmap
+(#11 onward).
 
 The source of truth is `smb.asm` — doppelganger's comprehensive disassembly
 (x816 syntax), kept unmodified in the repository root. Every translated

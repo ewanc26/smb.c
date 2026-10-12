@@ -84,7 +84,13 @@ Run `./build/smbc` to play — the window opens straight into the game.
 Arrows move, X = A, Z = B, Return = Start, Right Shift = Select,
 Escape quits; a connected SDL_GameController mirrors the same buttons.
 Flags: `--scale N` (integer window scale, 1-8, default 3),
-`--headless N` (run N frames with no window, for CI and debugging).
+`--headless N` (run N frames with no window, for CI and debugging),
+`--record PATH` (capture frame-indexed inputs and post-frame state
+hashes while playing), `--play PATH [N]` (replay a recording
+headlessly — clean runs print the frame count, a divergence reports
+the first mismatching frame and both hashes). Recordings are
+deterministic: the same inputs from a fresh reset always reproduce
+the same state, hash-checked every frame.
 
 `make test` builds and runs the suite with no SDL dependency — the
 core stays headless; all OS I/O lives in `src/host/`.

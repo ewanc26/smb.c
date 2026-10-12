@@ -10,7 +10,12 @@
  * `--headless N` runs N frames without opening any device, for CI
  * and debugging; the default launch opens the game directly.
  *
- * Usage: smbc [--scale N] [--headless N] */
+ * Recording (#37): `--record PATH` captures frame-indexed inputs plus
+ * post-frame state hashes while playing; `--play PATH [N]` replays a
+ * recording headlessly and reports the first divergent frame, if any.
+ *
+ * Usage: smbc [--scale N] [--headless N] [--record PATH] [--play PATH [N]] */
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,6 +23,7 @@
 #include <SDL.h>
 
 #include "../core/frame.h"
+#include "../core/replay.h"
 #include "../hw/render.h"
 #include "audio.h"
 #include "input.h"
@@ -48,7 +54,34 @@ static int run_headless(unsigned frames) {
   return 0;
 }
 
-static int run_game(unsigned scale) {
+static int run_play(const char *path, unsigned stop) {
+  SmbcReplay replay;
+  char err[128];
+  if (!replay_load(&replay, path, err, sizeof(err))) {
+    fprintf(stderr, "smbc: %s: %s\n", path, err);
+    return 1;
+  }
+  Smbc smbc;
+  smbc_init(&smbc);
+  uint32_t diverge = SMBC_REPLAY_NO_DIVERGENCE;
+  uint64_t got = 0, want = 0;
+  uint32_t ran = replay_run(&smbc, &replay,
+                            stop != 0 ? stop : replay.count, &diverge,
+                            &got, &want);
+  if (diverge == SMBC_REPLAY_NO_DIVERGENCE) {
+    printf("smbc: %s: %u frames, no divergence\n", path, ran);
+    replay_free(&replay);
+    return 0;
+  }
+  fprintf(stderr,
+          "smbc: %s: divergence at frame %u (hash 0x%016" PRIx64
+          ", expected 0x%016" PRIx64 ")\n",
+          path, diverge, got, want);
+  replay_free(&replay);
+  return 1;
+}
+
+static int run_game(unsigned scale, const char *record_path) {
   if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMECONTROLLER) !=
       0) {
     fprintf(stderr, "smbc: SDL_Init: %s\n", SDL_GetError());
@@ -64,6 +97,12 @@ static int run_game(unsigned scale) {
     video_close(&video);
     SDL_Quit();
     return 1;
+  }
+
+  SmbcReplay recording_store, *recording = NULL;
+  if (record_path != NULL) {
+    replay_init(&recording_store);
+    recording = &recording_store;
   }
 
   SmbcAudio audio = {0};
@@ -96,8 +135,16 @@ static int run_game(unsigned scale) {
     }
     unsigned steps = 0;
     while (now >= next && steps < SMBC_MAX_CATCHUP) {
-      joypad_set_buttons(&smbc.joypad1, input_poll(controller));
+      uint8_t buttons = input_poll(controller);
+      joypad_set_buttons(&smbc.joypad1, buttons);
       smbc_frame(&smbc);
+      if (recording != NULL &&
+          !replay_append(recording, buttons, 0x00u,
+                         smbc_state_hash(&smbc))) {
+        fprintf(stderr, "smbc: recording aborted (out of memory)\n");
+        quit = true;
+        break;
+      }
       next += SMBC_FRAME_NS;
       steps++;
     }
@@ -109,6 +156,17 @@ static int run_game(unsigned scale) {
     video_present(&video, fb);
   }
 
+  if (recording != NULL) {
+    char err[128];
+    if (!replay_save(recording, record_path, err, sizeof(err))) {
+      fprintf(stderr, "smbc: %s: %s\n", record_path, err);
+    } else {
+      printf("smbc: recorded %u frames to %s\n", recording->count,
+             record_path);
+    }
+    replay_free(recording);
+  }
+
   input_close_controller(controller);
   audio_close(&audio);
   video_close(&video);
@@ -118,6 +176,7 @@ static int run_game(unsigned scale) {
 
 int main(int argc, char **argv) {
   unsigned scale = SMBC_DEFAULT_SCALE;
+  const char *record_path = NULL;
   for (int i = 1; i < argc; i++) {
     if (strcmp(argv[i], "--scale") == 0 && i + 1 < argc) {
       scale = (unsigned)atoi(argv[++i]);
@@ -127,10 +186,21 @@ int main(int argc, char **argv) {
       }
     } else if (strcmp(argv[i], "--headless") == 0 && i + 1 < argc) {
       return run_headless((unsigned)atoi(argv[++i]));
+    } else if (strcmp(argv[i], "--play") == 0 && i + 1 < argc) {
+      const char *path = argv[++i];
+      unsigned stop = 0;
+      if (i + 1 < argc && argv[i + 1][0] != '-') {
+        stop = (unsigned)atoi(argv[++i]);
+      }
+      return run_play(path, stop);
+    } else if (strcmp(argv[i], "--record") == 0 && i + 1 < argc) {
+      record_path = argv[++i];
     } else {
-      fprintf(stderr, "usage: smbc [--scale N] [--headless N]\n");
+      fprintf(stderr,
+              "usage: smbc [--scale N] [--headless N] [--record PATH] "
+              "[--play PATH [N]]\n");
       return 1;
     }
   }
-  return run_game(scale);
+  return run_game(scale, record_path);
 }

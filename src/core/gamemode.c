@@ -104,7 +104,7 @@ static void game_engine(Smbc *smbc) {
   bool cycle_palette = true;
   /* cmp #$02 / bpl — the sign of (Player_Y_HighPos - 2) decides whether
    * the player is far enough below the screen to skip the music check */
-  if ((st->ram[SMBC_PLAYER_Y_HIGH_POS] - 0x02u & 0x80u) != 0) {
+  if (((st->ram[SMBC_PLAYER_Y_HIGH_POS] - 0x02u) & 0x80u) != 0) {
     uint8_t star = st->ram[SMBC_STAR_INVINCIBLE_TIMER];
     if (star == 0x00) {
       reset_pal_star(st); /* ClrPlrPal */

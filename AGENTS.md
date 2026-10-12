@@ -53,7 +53,9 @@ must never grow a dependency on the machine it happens to be running on.
 
 ## Layout
 
-- `src/hw/` — NES hardware model: PPU, APU and joypad register behaviour.
+- `src/hw/` — NES hardware model: PPU, APU and joypad register behaviour,
+  plus the renderer that composes PPU state into a 256×240 frame of 2C02
+  palette indices.
 - `src/core/` — the RAM map, game state and the frame loop. Translated game
   code lives here.
 - `src/data/` — tables translated verbatim from the disassembly.

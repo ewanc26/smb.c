@@ -24,8 +24,11 @@
 
 #include "../core/frame.h"
 #include "../core/replay.h"
+#include "../core/runtime.h"
+#include "../core/snapshot.h"
 #include "../hw/render.h"
 #include "audio.h"
+#include "capture.h"
 #include "input.h"
 #include "video.h"
 
@@ -81,6 +84,69 @@ static int run_play(const char *path, unsigned stop) {
   return 1;
 }
 
+/* Host-side controls. Keys are read here only; the simulation sees the
+ * resulting runtime commands and the joypad bitmap. */
+#define SMBC_REWIND_FRAMES 600u /* ten seconds at 60 Hz */
+#define SMBC_STATE_PATH "smbc.sav"
+
+static void handle_key(SDL_Keycode key, SmbcRuntime *rt, bool *reset_now,
+                       bool *save_now, bool *load_now, bool *shot_now) {
+  switch (key) {
+  case SDLK_p:
+    runtime_command(rt, SMBC_CMD_PAUSE_TOGGLE);
+    break;
+  case SDLK_n:
+    runtime_command(rt, SMBC_CMD_STEP);
+    break;
+  case SDLK_EQUALS:
+  case SDLK_KP_PLUS:
+    runtime_command(rt, SMBC_CMD_SPEED_UP);
+    break;
+  case SDLK_MINUS:
+  case SDLK_KP_MINUS:
+    runtime_command(rt, SMBC_CMD_SPEED_DOWN);
+    break;
+  case SDLK_0:
+    runtime_command(rt, SMBC_CMD_SPEED_NORMAL);
+    break;
+  case SDLK_F1:
+    runtime_command(rt, SMBC_CMD_OVERLAY_TOGGLE);
+    break;
+  case SDLK_F2:
+    *save_now = true;
+    break;
+  case SDLK_F3:
+    *load_now = true;
+    break;
+  case SDLK_F5:
+    *reset_now = true;
+    break;
+  case SDLK_F12:
+    *shot_now = true;
+    break;
+  default:
+    break;
+  }
+}
+
+static void update_overlay(SmbcVideo *video, const SmbcRuntime *rt,
+                           const SmbcHistory *history) {
+  static char shown[160];
+  char text[160];
+  snprintf(text, sizeof(text),
+           "smbc | frame %u | %u%% | rewind %u/%u%s%s",
+           (unsigned)rt->frames_run, (unsigned)runtime_speed_percent(rt),
+           (unsigned)history->count, (unsigned)history->capacity,
+           rt->paused ? " | paused" : "", rt->overlay ? "" : " | (F1)");
+  if (rt->overlay && strcmp(text, shown) != 0) {
+    SDL_SetWindowTitle(video->window, text);
+    snprintf(shown, sizeof(shown), "%s", text);
+  } else if (!rt->overlay && shown[0] != '\0') {
+    SDL_SetWindowTitle(video->window, "smbc");
+    shown[0] = '\0';
+  }
+}
+
 static int run_game(unsigned scale, const char *record_path) {
   if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMECONTROLLER) !=
       0) {
@@ -105,6 +171,18 @@ static int run_game(unsigned scale, const char *record_path) {
     recording = &recording_store;
   }
 
+  uint8_t *rewind_store = malloc((size_t)SMBC_REWIND_FRAMES * smbc_snapshot_size());
+  if (rewind_store == NULL) {
+    fprintf(stderr, "smbc: out of memory for rewind history\n");
+    video_close(&video);
+    SDL_Quit();
+    return 1;
+  }
+  SmbcHistory history;
+  history_init(&history, rewind_store, SMBC_REWIND_FRAMES);
+  SmbcRuntime rt;
+  runtime_init(&rt, &history);
+
   SmbcAudio audio = {0};
   if (!audio_open(&audio)) {
     /* non-fatal: play silent */
@@ -113,16 +191,50 @@ static int run_game(unsigned scale, const char *record_path) {
   SDL_GameController *controller = input_open_controller();
 
   uint8_t fb[SMBC_RENDER_PIXELS];
+  memset(fb, 0, sizeof(fb));
+  char err[128];
   bool quit = false;
   uint64_t next = now_ns();
   while (!quit) {
+    bool reset_now = false, save_now = false, load_now = false,
+         shot_now = false;
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
       if (event.type == SDL_QUIT ||
           (event.type == SDL_KEYDOWN &&
            event.key.keysym.sym == SDLK_ESCAPE)) {
         quit = true;
+      } else if (event.type == SDL_KEYDOWN && event.key.repeat == 0) {
+        handle_key(event.key.keysym.sym, &rt, &reset_now, &save_now,
+                   &load_now, &shot_now);
       }
+    }
+
+    if (save_now) {
+      if (capture_write_state(&smbc, SMBC_STATE_PATH, err, sizeof(err))) {
+        printf("smbc: state saved to %s\n", SMBC_STATE_PATH);
+      } else {
+        fprintf(stderr, "smbc: save state: %s\n", err);
+      }
+    }
+    if (load_now) {
+      if (capture_read_state(&smbc, SMBC_STATE_PATH, err, sizeof(err))) {
+        printf("smbc: state loaded from %s\n", SMBC_STATE_PATH);
+      } else {
+        fprintf(stderr, "smbc: load state: %s\n", err);
+      }
+    }
+    if (shot_now) {
+      char path[64];
+      snprintf(path, sizeof(path), "smbc-%u.ppm", (unsigned)rt.frames_run);
+      if (capture_write_ppm(path, fb, err, sizeof(err))) {
+        printf("smbc: screenshot %s\n", path);
+      } else {
+        fprintf(stderr, "smbc: screenshot: %s\n", err);
+      }
+    }
+    if (reset_now) {
+      runtime_command(&rt, SMBC_CMD_RESET);
     }
 
     /* fixed-step pacing: advance the core one frame per NES period,
@@ -135,11 +247,25 @@ static int run_game(unsigned scale, const char *record_path) {
     }
     unsigned steps = 0;
     while (now >= next && steps < SMBC_MAX_CATCHUP) {
+      const Uint8 *keys = SDL_GetKeyboardState(NULL);
+      if (keys[SDL_SCANCODE_BACKSPACE]) {
+        runtime_command(&rt, SMBC_CMD_REWIND);
+      }
       uint8_t buttons = input_poll(controller);
-      joypad_set_buttons(&smbc.joypad1, buttons);
-      smbc_frame(&smbc);
-      audio_push_frame(&audio, &smbc);
-      if (recording != NULL &&
+      /* a plain step is one frame at 100% with nothing rewound or reset:
+       * only those steps can be reproduced by a replay file */
+      bool plain = !rt.paused && runtime_speed_percent(&rt) == 100u &&
+                   !rt.rewind_requested && !rt.reset_requested && !reset_now;
+      uint32_t frames = runtime_tick(&rt, &smbc, buttons, 0x00u);
+      if (recording != NULL && (!plain || frames != 1u)) {
+        printf("smbc: recording stopped: play left the plain 100%% path\n");
+        replay_free(recording);
+        recording = NULL;
+      }
+      if (frames == 1u) {
+        audio_push_frame(&audio, &smbc);
+      }
+      if (recording != NULL && frames == 1u &&
           !replay_append(recording, buttons, 0x00u,
                          smbc_state_hash(&smbc))) {
         fprintf(stderr, "smbc: recording aborted (out of memory)\n");
@@ -155,12 +281,13 @@ static int run_game(unsigned scale, const char *record_path) {
 
     ppu_render_frame(&smbc.ppu, fb, NULL);
     video_present(&video, fb);
+    update_overlay(&video, &rt, &history);
   }
 
   if (recording != NULL) {
-    char err[128];
-    if (!replay_save(recording, record_path, err, sizeof(err))) {
-      fprintf(stderr, "smbc: %s: %s\n", record_path, err);
+    char rec_err[128];
+    if (!replay_save(recording, record_path, rec_err, sizeof(rec_err))) {
+      fprintf(stderr, "smbc: %s: %s\n", record_path, rec_err);
     } else {
       printf("smbc: recorded %u frames to %s\n", recording->count,
              record_path);
@@ -168,6 +295,7 @@ static int run_game(unsigned scale, const char *record_path) {
     replay_free(recording);
   }
 
+  free(rewind_store);
   input_close_controller(controller);
   audio_close(&audio);
   video_close(&video);

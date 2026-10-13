@@ -27,7 +27,7 @@ $(BIN): $(HOST_SRCS) $(LIB_SRCS)
 
 $(BUILD)/tests/%: tests/%.c $(LIB_SRCS)
 	@mkdir -p $(dir $@)
-	$(CC) $(CSTD) $(WARN) $(CFLAGS) -o $@ $^
+	$(CC) $(CSTD) $(WARN) $(CFLAGS) -o $@ $^ -lm
 
 test: $(TEST_BINS)
 	@for t in $(TEST_BINS); do ./$$t || exit 1; done

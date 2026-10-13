@@ -14,7 +14,7 @@ SDL_LIBS   := $(shell pkg-config --libs sdl2)
 
 LIB_SRCS := $(shell find src -name '*.c' ! -path 'src/host/*')
 HOST_SRCS := $(shell find src/host -name '*.c')
-HOST_LIB_SRCS := src/host/palette.c src/host/capture.c src/host/keymap.c src/host/padset.c
+HOST_LIB_SRCS := src/host/palette.c src/host/capture.c src/host/keymap.c src/host/padset.c src/host/settings.c
 TEST_SRCS := $(shell find tests -name '*.c')
 TEST_BINS := $(patsubst tests/%.c,$(BUILD)/tests/%,$(TEST_SRCS))
 

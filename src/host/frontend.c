@@ -30,6 +30,8 @@
 #include "audio.h"
 #include "capture.h"
 #include "input.h"
+#include "keymap.h"
+#include "padset.h"
 #include "video.h"
 
 /* NTSC 2C02 frame rate: the core runs one frame per period. */
@@ -88,9 +90,53 @@ static int run_play(const char *path, unsigned stop) {
  * resulting runtime commands and the joypad bitmap. */
 #define SMBC_REWIND_FRAMES 600u /* ten seconds at 60 Hz */
 #define SMBC_STATE_PATH "smbc.sav"
+#define SMBC_KEYS_PATH "smbc.keys"
+
+/* Load the optional mapping file. A missing file keeps the defaults; a bad
+ * one is reported and also keeps the defaults rather than half-applying. */
+static void load_keymap(SmbcKeymap *map) {
+  keymap_defaults(map);
+  FILE *f = fopen(SMBC_KEYS_PATH, "rb");
+  if (f == NULL) {
+    return;
+  }
+  char text[4096];
+  size_t n = fread(text, 1, sizeof(text) - 1, f);
+  fclose(f);
+  text[n] = '\0';
+  char err[128];
+  if (!keymap_parse(map, text, err, sizeof(err))) {
+    keymap_defaults(map);
+    fprintf(stderr, "smbc: %s: %s (using default controls)\n", SMBC_KEYS_PATH,
+            err);
+  } else {
+    printf("smbc: controls loaded from %s\n", SMBC_KEYS_PATH);
+  }
+}
+
+/* Open every controller present at start. */
+static void scan_pads(SmbcPadSet *pads) {
+  for (int i = 0; i < SDL_NumJoysticks() && pads->count < SMBC_MAX_PADS; i++) {
+    SDL_GameController *c = input_open_pad(i);
+    if (c != NULL) {
+      padset_add(pads, input_pad_instance_id(c));
+    }
+  }
+}
+
+static void report_active_pad(const SmbcPadSet *pads) {
+  if (padset_active_id(pads) < 0) {
+    printf("smbc: no controller selected (keyboard only)\n");
+  } else {
+    printf("smbc: controller %u of %u active\n",
+           (unsigned)padset_index_of(pads, padset_active_id(pads)) + 1u,
+           (unsigned)pads->count);
+  }
+}
 
 static void handle_key(SDL_Keycode key, SmbcRuntime *rt, bool *reset_now,
-                       bool *save_now, bool *load_now, bool *shot_now) {
+                       bool *save_now, bool *load_now, bool *shot_now,
+                       bool *cycle_pad) {
   switch (key) {
   case SDLK_p:
     runtime_command(rt, SMBC_CMD_PAUSE_TOGGLE);
@@ -120,6 +166,9 @@ static void handle_key(SDL_Keycode key, SmbcRuntime *rt, bool *reset_now,
     break;
   case SDLK_F5:
     *reset_now = true;
+    break;
+  case SDLK_F6:
+    *cycle_pad = true;
     break;
   case SDLK_F12:
     *shot_now = true;
@@ -188,7 +237,12 @@ static int run_game(unsigned scale, const char *record_path) {
     /* non-fatal: play silent */
     fprintf(stderr, "smbc: audio: %s (continuing silent)\n", SDL_GetError());
   }
-  SDL_GameController *controller = input_open_controller();
+  SmbcKeymap keymap;
+  load_keymap(&keymap);
+  SmbcPadSet pads;
+  padset_init(&pads);
+  scan_pads(&pads);
+  report_active_pad(&pads);
 
   uint8_t fb[SMBC_RENDER_PIXELS];
   memset(fb, 0, sizeof(fb));
@@ -197,7 +251,7 @@ static int run_game(unsigned scale, const char *record_path) {
   uint64_t next = now_ns();
   while (!quit) {
     bool reset_now = false, save_now = false, load_now = false,
-         shot_now = false;
+         shot_now = false, cycle_pad = false;
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
       if (event.type == SDL_QUIT ||
@@ -206,8 +260,34 @@ static int run_game(unsigned scale, const char *record_path) {
         quit = true;
       } else if (event.type == SDL_KEYDOWN && event.key.repeat == 0) {
         handle_key(event.key.keysym.sym, &rt, &reset_now, &save_now,
-                   &load_now, &shot_now);
+                   &load_now, &shot_now, &cycle_pad);
+      } else if (event.type == SDL_CONTROLLERDEVICEADDED) {
+        /* `which` is a device index here */
+        SDL_GameController *c = input_open_pad(event.cdevice.which);
+        if (c != NULL && padset_add(&pads, input_pad_instance_id(c))) {
+          printf("smbc: controller connected\n");
+          report_active_pad(&pads);
+        } else if (c != NULL) {
+          SDL_GameControllerClose(c); /* already known, or set is full */
+        }
+      } else if (event.type == SDL_CONTROLLERDEVICEREMOVED) {
+        /* `which` is an instance id here */
+        SDL_GameController *c = input_pad_from_instance(event.cdevice.which);
+        bool was_active = false;
+        if (padset_remove(&pads, event.cdevice.which, &was_active)) {
+          if (c != NULL) {
+            SDL_GameControllerClose(c);
+          }
+          printf("smbc: controller disconnected%s\n",
+                 was_active ? " (was active)" : "");
+          report_active_pad(&pads);
+        }
       }
+    }
+    if (cycle_pad && pads.count > 0) {
+      unsigned next = (unsigned)padset_index_of(&pads, padset_active_id(&pads));
+      padset_select(&pads, (next + 1u) % pads.count);
+      report_active_pad(&pads);
     }
 
     if (save_now) {
@@ -251,7 +331,9 @@ static int run_game(unsigned scale, const char *record_path) {
       if (keys[SDL_SCANCODE_BACKSPACE]) {
         runtime_command(&rt, SMBC_CMD_REWIND);
       }
-      uint8_t buttons = input_poll(controller);
+      SDL_GameController *active =
+          input_pad_from_instance(padset_active_id(&pads));
+      uint8_t buttons = input_poll(&keymap, active);
       /* a plain step is one frame at 100% with nothing rewound or reset:
        * only those steps can be reproduced by a replay file */
       bool plain = !rt.paused && runtime_speed_percent(&rt) == 100u &&
@@ -296,7 +378,12 @@ static int run_game(unsigned scale, const char *record_path) {
   }
 
   free(rewind_store);
-  input_close_controller(controller);
+  for (unsigned i = 0; i < pads.count; i++) {
+    SDL_GameController *c = input_pad_from_instance(pads.ids[i]);
+    if (c != NULL) {
+      SDL_GameControllerClose(c);
+    }
+  }
   audio_close(&audio);
   video_close(&video);
   SDL_Quit();

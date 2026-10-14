@@ -57,6 +57,13 @@ uint64_t smbc_state_hash(const Smbc *smbc) {
   h = hash_bytes(h, p->scroll_log,
                  sizeof(PpuScrollPoint) * p->scroll_log_len);
   h = hash_bytes(h, smbc->apu.regs, SMBC_APU_REGISTER_COUNT);
+  /* an NMI overrun (#41) is state the next frame depends on. It is hashed
+   * only when set, so recordings made before it existed still match. */
+  if (smbc->nmi_owed_cycles != 0u) {
+    for (unsigned i = 0; i < 4u; i++) {
+      h = hash_u8(h, (uint8_t)(smbc->nmi_owed_cycles >> (8u * i)));
+    }
+  }
   return h;
 }
 

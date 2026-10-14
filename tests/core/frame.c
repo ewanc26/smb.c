@@ -31,6 +31,50 @@ int main(void) {
   assert(smbc.state.ram[SMBC_SAVED_JOYPAD2_BITS] == 0x10u);
   assert(smbc.state.ram[SMBC_FRAME_COUNTER] == 1u);
 
+  /* #41: a first title NMI of 71600 cycles (the issue's measurement, about
+   * 2.4 frames) ends 98995 cycles into its frame. Its overrun blocks the
+   * vblanks of the next two frames, and the handler runs again at frame 6 —
+   * the emulator's pattern: no NMI in frames 4 and 5. */
+  {
+    uint32_t owed = 0;
+    bool ran[4];
+    for (unsigned f = 0; f < 4; f++) {
+      ran[f] = nmi_timeline_runs(owed);
+      uint32_t end = ran[f] ? SMBC_CPU_CYCLES_TO_VBLANK + (f == 0 ? 71600u : 0u)
+                            : owed;
+      owed = nmi_timeline_carry(end);
+    }
+    assert(ran[0] && !ran[1] && !ran[2] && ran[3]);
+    assert(owed == 0u); /* the last handler (frame 6) was short */
+  }
+
+  /* #41: with no cost charged, every handler finishes inside its frame, so
+   * nothing is ever owed and every frame runs its NMI */
+  {
+    Smbc quiet;
+    smbc_init(&quiet);
+    assert(quiet.nmi_owed_cycles == 0u);
+    /* the first two frames run InitializeGame, which clears the counter,
+     * so count from there: each frame's NMI adds exactly one */
+    smbc_frame(&quiet);
+    smbc_frame(&quiet);
+    for (unsigned f = 0; f < 10; f++) {
+      uint8_t before = quiet.state.ram[SMBC_FRAME_COUNTER];
+      smbc_frame(&quiet);
+      assert(quiet.nmi_owed_cycles == 0u);
+      assert((uint8_t)(quiet.state.ram[SMBC_FRAME_COUNTER] - before) == 1u);
+    }
+  }
+
+  /* charging accumulates into the running handler's cost */
+  {
+    Smbc charged;
+    smbc_init(&charged);
+    smbc_charge_cycles(&charged, 100u);
+    smbc_charge_cycles(&charged, 25u);
+    assert(charged.nmi_cycles == 125u);
+  }
+
   printf("tests/core/frame: ok\n");
   return 0;
 }

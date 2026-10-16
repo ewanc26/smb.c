@@ -1,6 +1,7 @@
 /* tests/host/keymap.c — mapping resolution, rebinding conflicts and the
  * versioned configuration (#22). Runs with a mocked input snapshot. */
 #include <assert.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -13,6 +14,21 @@
 #define KEY_UP 82u
 
 static void press_key(SmbcInputState *in, unsigned code) { in->keys[code] = 1; }
+
+/* Compare slot by slot. memcmp would also compare struct padding, which
+ * the compiler is free to leave indeterminate. */
+static bool same_map(const SmbcKeymap *a, const SmbcKeymap *b) {
+  for (int act = 0; act < SMBC_ACTION_COUNT; act++) {
+    for (int slot = 0; slot < SMBC_SLOT_COUNT; slot++) {
+      const SmbcBinding *x = &a->slot[act][slot];
+      const SmbcBinding *y = &b->slot[act][slot];
+      if (x->bound != y->bound || x->code != y->code) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
 
 int main(void) {
   char buf[1024], err[128];
@@ -87,7 +103,7 @@ int main(void) {
     SmbcBinding none = {.bound = false, .code = 0};
     keymap_bind(&back, SMBC_ACT_UP, SMBC_SLOT_KEY, none, NULL);
     assert(keymap_parse(&back, buf, err, sizeof(err)));
-    assert(memcmp(&map, &back, sizeof(map)) == 0);
+    assert(same_map(&map, &back));
   }
 
   /* migration: a file with no header is version 0 and reads with the same

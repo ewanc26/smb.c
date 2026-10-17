@@ -1,64 +1,45 @@
-/* host/input.c — controller mapping. */
+/* host/input.c — SDL side of input; see host/input.h for the contract. */
 #include "input.h"
 
-#include "../hw/joypad.h"
+#include <string.h>
 
-/* the bitmap is in the hw serial-port layout (hw/joypad.h), which is what
- * joypad_set_buttons consumes — NOT the in-game SavedJoypadBits order */
-#define SMBC_BTN_A      SMBC_BUTTON_A
-#define SMBC_BTN_B      SMBC_BUTTON_B
-#define SMBC_BTN_SELECT SMBC_BUTTON_SELECT
-#define SMBC_BTN_START  SMBC_BUTTON_START
-#define SMBC_BTN_UP     SMBC_BUTTON_UP
-#define SMBC_BTN_DOWN   SMBC_BUTTON_DOWN
-#define SMBC_BTN_LEFT   SMBC_BUTTON_LEFT
-#define SMBC_BTN_RIGHT  SMBC_BUTTON_RIGHT
+#define SMBC_PAD_BUTTONS 15 /* SDL_CONTROLLER_BUTTON_MAX */
 
-SDL_GameController *input_open_controller(void) {
-  for (int i = 0; i < SDL_NumJoysticks(); i++) {
-    if (SDL_IsGameController(i)) {
-      return SDL_GameControllerOpen(i);
+SDL_GameController *input_open_pad(int device_index) {
+  if (!SDL_IsGameController(device_index)) {
+    return NULL;
+  }
+  return SDL_GameControllerOpen(device_index);
+}
+
+int32_t input_pad_instance_id(SDL_GameController *controller) {
+  if (controller == NULL) {
+    return -1;
+  }
+  return SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(controller));
+}
+
+SDL_GameController *input_pad_from_instance(int32_t instance_id) {
+  return SDL_GameControllerFromInstanceID((SDL_JoystickID)instance_id);
+}
+
+uint8_t input_poll(const SmbcKeymap *map, SDL_GameController *controller) {
+  SmbcInputState in;
+  memset(&in, 0, sizeof(in));
+
+  const Uint8 *keys = SDL_GetKeyboardState(NULL);
+  int n = SDL_NUM_SCANCODES < (int)SMBC_KEYMAP_KEYS ? SDL_NUM_SCANCODES
+                                                    : (int)SMBC_KEYMAP_KEYS;
+  for (int i = 0; i < n; i++) {
+    in.keys[i] = keys[i];
+  }
+
+  if (controller != NULL) {
+    for (int b = 0; b < SMBC_PAD_BUTTONS; b++) {
+      if (SDL_GameControllerGetButton(controller, (SDL_GameControllerButton)b)) {
+        in.pad_buttons |= 1u << b;
+      }
     }
   }
-  return NULL;
-}
-
-uint8_t input_poll(SDL_GameController *controller) {
-  uint8_t bitmap = 0;
-
-  const uint8_t *keys = SDL_GetKeyboardState(NULL);
-  if (keys[SDL_SCANCODE_X]) bitmap |= SMBC_BTN_A;
-  if (keys[SDL_SCANCODE_Z]) bitmap |= SMBC_BTN_B;
-  if (keys[SDL_SCANCODE_RSHIFT]) bitmap |= SMBC_BTN_SELECT;
-  if (keys[SDL_SCANCODE_RETURN]) bitmap |= SMBC_BTN_START;
-  if (keys[SDL_SCANCODE_UP]) bitmap |= SMBC_BTN_UP;
-  if (keys[SDL_SCANCODE_DOWN]) bitmap |= SMBC_BTN_DOWN;
-  if (keys[SDL_SCANCODE_LEFT]) bitmap |= SMBC_BTN_LEFT;
-  if (keys[SDL_SCANCODE_RIGHT]) bitmap |= SMBC_BTN_RIGHT;
-
-  if (controller != NULL) {
-    if (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_A))
-      bitmap |= SMBC_BTN_A;
-    if (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_B))
-      bitmap |= SMBC_BTN_B;
-    if (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_BACK))
-      bitmap |= SMBC_BTN_SELECT;
-    if (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_START))
-      bitmap |= SMBC_BTN_START;
-    if (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_DPAD_UP))
-      bitmap |= SMBC_BTN_UP;
-    if (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_DPAD_DOWN))
-      bitmap |= SMBC_BTN_DOWN;
-    if (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_DPAD_LEFT))
-      bitmap |= SMBC_BTN_LEFT;
-    if (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_DPAD_RIGHT))
-      bitmap |= SMBC_BTN_RIGHT;
-  }
-  return bitmap;
-}
-
-void input_close_controller(SDL_GameController *controller) {
-  if (controller != NULL) {
-    SDL_GameControllerClose(controller);
-  }
+  return keymap_resolve(map, &in);
 }
